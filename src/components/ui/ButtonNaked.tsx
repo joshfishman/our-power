@@ -24,7 +24,7 @@ export const ButtonNaked = forwardRef<HTMLButtonElement, ButtonProps>(
         className={cn(
           'rounded-sm focus:outline-none',
           className,
-          isFocusVisible && 'ring ring-violet-500 ring-offset-2',
+          isFocusVisible && 'ring ring-green-500 ring-offset-2',
         )}>
         {children}
       </button>

@@ -33,7 +33,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         className={cn(
           [buttonVariants({ size, mode, shape, expand })],
           iconOnly && 'rounded-full p-3',
-          isFocusVisible && 'ring-2 ring-violet-500 ring-offset-2',
+          isFocusVisible && 'ring-2 ring-green-500 ring-offset-2',
           className,
         )}
         disabled={buttonProps.disabled || loading}>

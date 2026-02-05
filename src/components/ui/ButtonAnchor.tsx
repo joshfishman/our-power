@@ -11,7 +11,7 @@ export function ButtonAnchor({ href, children, size, mode, shape, expand }: Butt
       href={href}
       className={cn(
         buttonVariants({ size, mode, shape, expand }),
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2',
       )}>
       {children}
     </a>

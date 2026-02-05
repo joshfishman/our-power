@@ -27,7 +27,7 @@ export const DiscoverProfile = memo(
             user.gender === 'MALE' && 'from-blue-200/50 to-blue-300/50 dark:from-blue-600/50 dark:to-blue-800/50',
             user.gender === 'FEMALE' && 'from-pink-200/50 to-pink-300/50 dark:from-pink-600/50 dark:to-pink-800/50',
             user.gender === 'NONBINARY' &&
-              'dark:from-yellow-699/50 from-yellow-200/50 via-purple-200/50 to-black dark:via-purple-800/50 dark:to-black',
+              'dark:from-yellow-699/50 from-yellow-200/50 via-green-200/50 to-black dark:via-green-800/50 dark:to-black',
             !user.gender && 'bg-muted/70',
           )}>
           <div className="h-24 w-24">
