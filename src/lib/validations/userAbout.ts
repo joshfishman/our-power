@@ -48,6 +48,7 @@ export const userAboutSchema = z.object({
       }
     }),
   ),
+  causeIds: z.array(z.string()).optional(),
 });
 
 export type UserAboutSchema = z.infer<typeof userAboutSchema>;

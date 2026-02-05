@@ -52,10 +52,19 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
     }
 
+    // Authorization: check if user is an org manager or campaign member
+    const isOrgManager = await prisma.organization.findFirst({
+      where: { id: campaign.org.id, managers: { some: { id: session.user!.id } } },
+    });
+    const isMember = campaign.members.some((m) => m.userId === session.user?.id);
+    if (!isOrgManager && !isMember) {
+      return NextResponse.json({ error: 'Not authorized to view this dashboard' }, { status: 403 });
+    }
+
     // Check if user is an organizer
-    const isOrganizer = campaign.members.some(
-      (m) => m.userId === session.user?.id && ['ORGANIZER', 'ADMIN'].includes(m.role),
-    );
+    const isOrganizer =
+      !!isOrgManager ||
+      campaign.members.some((m) => m.userId === session.user?.id && ['ORGANIZER', 'ADMIN'].includes(m.role));
 
     // Calculate detailed stats
     const actionStats = await Promise.all(

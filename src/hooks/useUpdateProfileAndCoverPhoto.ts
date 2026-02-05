@@ -3,8 +3,8 @@ import 'server-only';
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma/prisma';
 import { v4 as uuid } from 'uuid';
-import { uploadObject } from '@/lib/s3/uploadObject';
-import { fileNameToUrl } from '@/lib/s3/fileNameToUrl';
+import { uploadObject } from '@/lib/storage/uploadObject';
+import { fileNameToUrl } from '@/lib/storage/fileNameToUrl';
 import { getServerUser } from '@/lib/getServerUser';
 
 const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/jpg', 'image/png'];

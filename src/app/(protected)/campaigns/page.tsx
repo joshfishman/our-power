@@ -2,11 +2,14 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import Link from 'next/link';
 import { ResponsiveContainer } from '@/components/ui/ResponsiveContainer';
 import { CampaignCard } from '@/components/campaigns';
 import { GenericLoading } from '@/components/GenericLoading';
 import { Item } from 'react-stately';
 import { Select } from '@/components/ui/Select';
+import Button from '@/components/ui/Button';
+import { Plus } from '@/svg_components';
 
 interface Campaign {
   id: string;
@@ -79,9 +82,14 @@ export default function CampaignsPage() {
   return (
     <ResponsiveContainer className="py-6">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="mb-2 text-2xl font-bold">Campaigns</h1>
-        <p className="text-muted-foreground">Join campaigns that align with your values and take action.</p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="mb-2 text-2xl font-bold">Campaigns</h1>
+          <p className="text-muted-foreground">Join campaigns that align with your values and take action.</p>
+        </div>
+        <Link href="/campaigns/create">
+          <Button Icon={Plus}>Create Campaign</Button>
+        </Link>
       </div>
 
       {/* Filters */}

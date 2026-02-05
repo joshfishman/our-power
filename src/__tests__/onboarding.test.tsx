@@ -15,10 +15,10 @@ const mockCauses = [
   { id: '2', name: 'Education', icon: '📚', color: '#3b82f6', description: 'Public education' },
   { id: '3', name: 'Healthcare', icon: '🏥', color: '#ef4444', description: 'Healthcare access' },
   { id: '4', name: 'Housing', icon: '🏠', color: '#f97316', description: 'Affordable housing' },
-  { id: '5', name: 'Criminal Justice', icon: '⚖️', color: '#8b5cf6', description: 'Justice reform' },
+  { id: '5', name: 'Criminal Justice', icon: '⚖️', color: '#22c55e', description: 'Justice reform' },
 ];
 
-// Test wrapper with providers
+// eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
 function TestWrapper({ children }: { children: ReactNode }) {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -68,14 +68,14 @@ describe('Location Schema Validation', () => {
 });
 
 describe('Causes Schema Validation', () => {
-  it('should require at least 4 causes', () => {
+  it('should accept zero causes (optional)', () => {
     const result = causesSchema.safeParse({
-      causeIds: ['1', '2', '3'],
+      causeIds: [],
     });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
-  it('should accept 4 or more causes', () => {
+  it('should accept any number of causes', () => {
     const result = causesSchema.safeParse({
       causeIds: ['1', '2', '3', '4'],
     });
@@ -100,12 +100,12 @@ describe('Full Onboarding Schema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should reject incomplete data', () => {
+  it('should accept data with no causes (optional)', () => {
     const result = onboardingSchema.safeParse({
       zipCode: '90210',
-      causeIds: ['1', '2'],
+      causeIds: [],
     });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 });
 
@@ -126,11 +126,11 @@ describe('CauseSelector Component', () => {
         causes={mockCauses}
         selectedIds={['1', '2']}
         onSelectionChange={onSelectionChange}
-        minRequired={4}
+        minRequired={0}
       />,
     );
 
-    expect(screen.getByText('2 / 4 selected')).toBeInTheDocument();
+    expect(screen.getByText('2 selected')).toBeInTheDocument();
   });
 
   it('should call onSelectionChange when a cause is clicked', async () => {
@@ -155,18 +155,18 @@ describe('CauseSelector Component', () => {
     expect(onSelectionChange).toHaveBeenCalledWith([]);
   });
 
-  it('should show green text when minimum is met', () => {
+  it('should show green text when causes are selected', () => {
     const onSelectionChange = vi.fn();
     render(
       <CauseSelector
         causes={mockCauses}
         selectedIds={['1', '2', '3', '4']}
         onSelectionChange={onSelectionChange}
-        minRequired={4}
+        minRequired={0}
       />,
     );
 
-    const countText = screen.getByText('4 / 4 selected');
+    const countText = screen.getByText('4 selected');
     expect(countText).toHaveClass('text-green-500');
   });
 });

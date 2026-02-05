@@ -30,13 +30,12 @@ export function CauseSelector({ causes, selectedIds, onSelectionChange, minRequi
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">Select at least {minRequired} causes that matter to you</p>
+        <p className="text-sm text-muted-foreground">
+          {minRequired > 0 ? `Select at least ${minRequired} causes` : 'Select causes that matter to you (optional)'}
+        </p>
         <span
-          className={cn(
-            'text-sm font-medium',
-            selectedIds.length >= minRequired ? 'text-green-500' : 'text-muted-foreground',
-          )}>
-          {selectedIds.length} / {minRequired} selected
+          className={cn('text-sm font-medium', selectedIds.length > 0 ? 'text-green-500' : 'text-muted-foreground')}>
+          {selectedIds.length} selected
         </span>
       </div>
 

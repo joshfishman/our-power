@@ -1,81 +1,126 @@
-# Munia 
+# Our Power
 
-A responsive and accessible full stack social media web app.
+A social network that powers real-world activism. Our Power empowers citizens to interact and affect change in their government through coordinated citizen lobbying campaigns.
 
-## Preview 🎬
+## Features
 
-[![Watch the showcase](https://norcio-dot-dev-public-files.s3.us-east-1.amazonaws.com/munia/showcase-thumbnail.png)](https://norcio-dot-dev-public-files.s3.us-east-1.amazonaws.com/munia/showcase.mp4)
+**For Citizens:**
 
+- Browse and join activist campaigns aligned with your causes
+- RSVP to and complete campaign actions (events, phone banks, emails, canvassing)
+- Track your participation across campaigns and actions
+- Social feed with posts, comments, likes, and follows
+- Notifications for upcoming actions and campaign updates
+- Customizable profile with cause preferences
 
-## Features ✨
+**For Organizations:**
 
-- Email and OAuth 2.0 login (Github, Google and Facebook)
-- Users can update their info, profile photo and cover photo
-- Create, update and delete posts, comments and replies
-- Like and unlike posts, comments and replies
-- Images and videos can be added to posts
-- Drag and drop sorting of images and videos when creating and editing a post
-- Hashtags can be added to posts
-- Users can @ mention other users in their posts, comments and replies
-- Bidirectional infinite scrolling of posts
-- Follow and unfollow other users
-- Search users with filters
-- Display, search and filter a user's followers and following list
-- Activity logging and notifications
-- Gallery of user's uploaded photos and videos
-- Full-page image and videos slider
-- Accessible components
-- Fully responsive design
-- Dark and light themes
+- Create and manage organizations with multiple managers
+- Create campaigns with cause categories, types, and status tracking
+- Create actions (EVENT, PHONE, EMAIL, CANVASS) with type-specific fields
+- Campaign dashboards with analytics and participation metrics
+- Integration with phone banking (Scale to Win) and canvassing (Ecanvasser) tools
 
-> [!NOTE]  
-> This project is a work in progress, it still contains bugs and will constantly be updated to stay up-to-date with the latest framework changes.
+## Tech Stack
 
-## Tech Stack 🛠️
+- **Framework**: [Next.js 14](https://nextjs.org/) (App Router)
+- **Language**: [TypeScript](https://www.typescriptlang.org/)
+- **Database**: [Supabase](https://supabase.com/) (PostgreSQL) + [Prisma ORM](https://www.prisma.io/)
+- **Auth**: [NextAuth.js v5](https://authjs.dev/) (Google, Facebook OAuth + email magic links)
+- **Storage**: [Supabase Storage](https://supabase.com/docs/guides/storage)
+- **Email**: [Resend](https://resend.com/)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+- **Data Fetching**: [React Query](https://tanstack.com/query)
+- **UI Components**: [React Aria](https://react-spectrum.adobe.com/react-aria/)
+- **Validation**: [Zod](https://zod.dev/)
+- **Testing**: [Vitest](https://vitest.dev/) + [React Testing Library](https://testing-library.com/) + [Playwright](https://playwright.dev/)
+- **Deployment**: [Vercel](https://vercel.com/)
 
-- [TypeScript](https://www.typescriptlang.org/)
-- [React](https://react.dev/)
-- [Next.js](https://nextjs.org/)
-- [NextAuth.js](https://next-auth.js.org/)
-- [Tailwind CSS](https://tailwindcss.com/)
-- [React Query](https://tanstack.com/query/latest/docs/react/overview)
-- [React Aria](https://react-spectrum.adobe.com/react-aria/getting-started.html)
-- [React Hook Form](https://react-hook-form.com/)
-- [Zod](https://zod.dev/)
-- [Prisma](https://www.prisma.io/)
-- [AWS S3](https://aws.amazon.com/s3/)
-- [AWS SES](https://aws.amazon.com/ses/)
+## Getting Started
 
-## About this project
+### Prerequisites
 
-This project is an open source portfolio project that explores how can a social media app be built with Next.js.
+- Node.js 18+
+- A [Supabase](https://supabase.com/) project
+- OAuth credentials (Google, Facebook)
+- A [Resend](https://resend.com/) API key
 
-It utilizes the following Next.js features:
+### Setup
 
-- routing
-- static and dynamic rendering
-- server and client components
-- nested layouts
-- route handlers
-- middleware
-- font optimizations
-- dynamic metadata
+```bash
+# Clone the repository
+git clone https://github.com/joshfishman/our-power.git
+cd our-power
 
-Due to the highly dynamic nature of social media apps, most data fetching and mutations are done on the client-side using React Query.
+# Install dependencies
+npm install --legacy-peer-deps
 
-React Query simplifies the implementation of features that would have been challenging and inefficient with Next.js's server components and server actions. These features include bidirectional infinite scrolling, optimistic updates, client-side data caching, client-side loading states, and more.
+# Set up environment variables
+cp .env.example .env.local
+# Edit .env.local with your credentials (see ENV_SETUP.md for details)
 
-## Accessibility
+# Set up the database
+npx prisma migrate dev
 
-The UI components are built with React Aria's accessibility hooks, assuring accessibility across different platforms.
+# Seed with sample data
+npx prisma db seed
 
-## Deployment on EC2
+# Start the dev server
+npm run dev
+```
 
-Follow these steps to deploy Munia on an EC2 instance.
+See [ENV_SETUP.md](ENV_SETUP.md) for detailed instructions on obtaining each credential.
 
-1. Set up a PostgreSQL database and copy its connection URL into `.env`.
-2. Set up a client application for each OAuth provider (Github, Google and Facebook) and copy the client id's and client secrets into `.env.local`.
-3. Run `npm install`
-4. Run `npm run prisma:deploy`
-5. Run `npm run prisma:seed`
-6. Run `npm run pm2` (or `npm run build` and then `npm run start` if you're not using PM2). You can modify the port specified in the `pm2` script depending on your server configuration.
+### Scripts
+
+| Command             | Description                  |
+| ------------------- | ---------------------------- |
+| `npm run dev`       | Start development server     |
+| `npm run build`     | Production build             |
+| `npm run lint`      | Run ESLint                   |
+| `npm run typecheck` | Run TypeScript type checking |
+| `npm run test`      | Run unit tests in watch mode |
+| `npm run test:run`  | Run unit tests once          |
+| `npm run test:e2e`  | Run Playwright E2E tests     |
+
+## Project Structure
+
+```
+src/
+  app/                  # Next.js App Router
+    (protected)/        # Authenticated pages
+    (unprotected)/      # Public pages
+    api/                # API routes
+  components/           # React components
+    campaigns/          # Campaign and action components
+    organizations/      # Organization management
+    onboarding/         # User onboarding wizard
+    ui/                 # Shared UI primitives
+  hooks/                # Custom React hooks
+  lib/                  # Utilities and services
+    email/              # Resend email integration
+    integrations/       # Third-party integrations
+    notifications/      # Activity and notification system
+    prisma/             # Database client
+    storage/            # Supabase Storage helpers
+    validations/        # Zod schemas
+prisma/
+  schema.prisma         # Database schema
+  seed.ts               # Sample data seed script
+```
+
+## Contributing
+
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## Security
+
+For reporting security vulnerabilities, see [SECURITY.md](SECURITY.md).
+
+## License
+
+This project is licensed under the MIT License - see [LICENSE](LICENSE) for details.
+
+## Acknowledgments
+
+Built on top of [Munia](https://github.com/leandronorcio/munia), an open-source social media app by Leandro Norcio.

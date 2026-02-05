@@ -2,18 +2,26 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import prisma from '@/lib/prisma/prisma';
 import { actionSchema } from '@/lib/validations/campaign';
+import { withCors, corsOptionsResponse, isRateLimited, rateLimitedResponse } from '@/lib/api-utils';
+
+export async function OPTIONS() {
+  return corsOptionsResponse();
+}
 
 // GET /api/actions - List actions
 export async function GET(request: Request) {
   try {
+    const ip = request.headers.get('x-forwarded-for') || 'unknown';
+    if (isRateLimited(ip)) return rateLimitedResponse();
     const session = await auth();
     const { searchParams } = new URL(request.url);
     const campaignId = searchParams.get('campaignId');
     const type = searchParams.get('type');
     const upcoming = searchParams.get('upcoming') === 'true';
-    const limit = parseInt(searchParams.get('limit') || '20');
+    const limit = parseInt(searchParams.get('limit') || '20', 10);
 
-    const where: any = { isActive: true };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const where: Record<string, any> = { isActive: true };
 
     if (campaignId) where.campaignId = campaignId;
     if (type) where.type = type;
@@ -44,10 +52,10 @@ export async function GET(request: Request) {
       take: limit,
     });
 
-    return NextResponse.json(actions);
+    return withCors(NextResponse.json(actions));
   } catch (error) {
     console.error('Error fetching actions:', error);
-    return NextResponse.json({ error: 'Failed to fetch actions' }, { status: 500 });
+    return withCors(NextResponse.json({ error: 'Failed to fetch actions' }, { status: 500 }));
   }
 }
 

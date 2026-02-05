@@ -80,6 +80,6 @@
 
 @layer components {
   .link {
-    @apply rounded-sm decoration-blue-500 decoration-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500;
+    @apply rounded-sm decoration-green-500 decoration-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500;
   }
 }

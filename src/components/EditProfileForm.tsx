@@ -13,12 +13,14 @@ import { useSessionUserData } from '@/hooks/useSessionUserData';
 import { useSessionUserDataMutation } from '@/hooks/mutations/useSessionUserDataMutation';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { GenericLoading } from './GenericLoading';
 import { DatePicker } from './ui/DatePicker';
 import { Textarea } from './ui/Textarea';
 import { Select } from './ui/Select';
 import Button from './ui/Button';
 import { TextInput } from './ui/TextInput';
+import { CauseSelector } from './onboarding/CauseSelector';
 
 export function EditProfileForm({ redirectTo }: { redirectTo?: string }) {
   const [userData] = useSessionUserData();
@@ -35,9 +37,22 @@ export function EditProfileForm({ redirectTo }: { redirectTo?: string }) {
       gender: userData?.gender || null,
       relationshipStatus: userData?.relationshipStatus || null,
       birthDate: userData?.birthDate?.toString() || null,
+      causeIds: userData?.causes?.map((c) => c.id) || [],
     }),
     [userData],
   );
+
+  // Fetch all available causes
+  const { data: allCauses, isError: causesError } = useQuery({
+    queryKey: ['causes'],
+    queryFn: async () => {
+      const res = await fetch('/api/causes');
+      if (!res.ok) throw new Error('Failed to fetch causes');
+      return res.json() as Promise<
+        { id: string; name: string; icon: string | null; color: string | null; description: string | null }[]
+      >;
+    },
+  });
 
   const { control, handleSubmit, reset, setError, setFocus } = useForm<UserAboutSchema>({
     resolver: zodResolver(userAboutSchema),
@@ -262,6 +277,29 @@ export function EditProfileForm({ redirectTo }: { redirectTo?: string }) {
                 errorMessage={error?.message}
                 triggerRef={ref}
               />
+            </div>
+          )}
+        />
+
+        {/* Causes selection */}
+        <Controller
+          control={control}
+          name="causeIds"
+          render={({ field: { onChange, value } }) => (
+            <div>
+              <h2 className="mb-2 text-lg font-semibold">Causes</h2>
+              {causesError ? (
+                <p className="text-sm text-red-500">Failed to load causes. Please try refreshing the page.</p>
+              ) : allCauses ? (
+                <CauseSelector
+                  causes={allCauses}
+                  selectedIds={value || []}
+                  onSelectionChange={onChange}
+                  minRequired={0}
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">Loading causes...</p>
+              )}
             </div>
           )}
         />

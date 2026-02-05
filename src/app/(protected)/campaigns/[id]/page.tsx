@@ -1,13 +1,14 @@
 'use client';
 
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
 import { ResponsiveContainer } from '@/components/ui/ResponsiveContainer';
-import { ActionCard } from '@/components/campaigns';
+import { ActionCard, CreateActionForm } from '@/components/campaigns';
 import { GenericLoading } from '@/components/GenericLoading';
 import Button from '@/components/ui/Button';
 import { useToast } from '@/hooks/useToast';
-import { BackArrow, TwoPeople, Calendar, ChartBar } from '@/svg_components';
+import { BackArrow, TwoPeople, Calendar, ChartBar, Plus } from '@/svg_components';
 import Link from 'next/link';
 import { useSessionUserData } from '@/hooks/useSessionUserData';
 
@@ -40,6 +41,11 @@ interface Campaign {
     eventTime: string | null;
     callScript: string | null;
     dialerUrl: string | null;
+    emailSubject: string | null;
+    emailBody: string | null;
+    emailTargets: string[];
+    canvassArea: string | null;
+    _count: { participants: number };
   }>;
   _count: {
     members: number;
@@ -62,6 +68,7 @@ export default function CampaignDetailPage() {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   const [userData] = useSessionUserData();
+  const [showCreateAction, setShowCreateAction] = useState(false);
 
   const campaignId = params.id as string;
 
@@ -85,13 +92,25 @@ export default function CampaignDetailPage() {
     queryFn: async () => {
       if (!userData?.id) return null;
       const res = await fetch(`/api/campaigns/${campaignId}/join`);
-      // 400 = not a member, which is fine
-      if (res.status === 400) return null;
       if (!res.ok) return null;
+      const data = await res.json();
+      return data.isMember ? data : null;
+    },
+    enabled: !!userData?.id,
+  });
+
+  // Check if user is an org manager (can create actions)
+  const { data: managedOrgs } = useQuery<Array<{ id: string }>>({
+    queryKey: ['organizations', 'managed'],
+    queryFn: async () => {
+      const res = await fetch('/api/organizations?managed=true');
+      if (!res.ok) return [];
       return res.json();
     },
     enabled: !!userData?.id,
   });
+
+  const isOrgManager = campaign && managedOrgs?.some((org) => org.id === campaign.org.id);
 
   // Join campaign mutation
   const joinMutation = useMutation({
@@ -134,6 +153,27 @@ export default function CampaignDetailPage() {
     },
   });
 
+  // Send email action mutation
+  const sendEmailMutation = useMutation({
+    mutationFn: async (actionId: string) => {
+      const res = await fetch(`/api/actions/${actionId}/send-email`, {
+        method: 'POST',
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to send email');
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      showToast({ type: 'success', title: data.message });
+      queryClient.invalidateQueries({ queryKey: ['campaign', campaignId] });
+    },
+    onError: (err) => {
+      showToast({ type: 'error', title: err.message });
+    },
+  });
+
   // RSVP/Complete action mutations
   const participateMutation = useMutation({
     mutationFn: async ({
@@ -148,7 +188,10 @@ export default function CampaignDetailPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error('Failed to update participation');
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to update participation');
+      }
       return res.json();
     },
     onSuccess: (data) => {
@@ -266,7 +309,26 @@ export default function CampaignDetailPage() {
 
       {/* Actions */}
       <div>
-        <h2 className="mb-4 text-lg font-semibold">Upcoming Actions</h2>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Upcoming Actions</h2>
+          {isOrgManager && (
+            <Button size="small" Icon={Plus} onPress={() => setShowCreateAction(!showCreateAction)}>
+              {showCreateAction ? 'Cancel' : 'Add Action'}
+            </Button>
+          )}
+        </div>
+
+        {/* Create Action Form */}
+        {showCreateAction && isOrgManager && (
+          <div className="mb-6 rounded-xl border border-border bg-card p-6">
+            <h3 className="mb-4 text-lg font-semibold">Create New Action</h3>
+            <CreateActionForm
+              campaignId={campaignId}
+              onSuccess={() => setShowCreateAction(false)}
+              onCancel={() => setShowCreateAction(false)}
+            />
+          </div>
+        )}
 
         {campaign.actions.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2">
@@ -276,12 +338,21 @@ export default function CampaignDetailPage() {
                 action={action}
                 onRSVP={(actionId) => participateMutation.mutate({ actionId, data: { willAttend: true } })}
                 onComplete={(actionId) => participateMutation.mutate({ actionId, data: { attended: true } })}
+                onSendEmail={(actionId) => sendEmailMutation.mutate(actionId)}
                 isLoading={participateMutation.isPending}
+                isSendingEmail={sendEmailMutation.isPending}
               />
             ))}
           </div>
         ) : (
-          <p className="py-8 text-center text-muted-foreground">No upcoming actions yet. Check back soon!</p>
+          <div className="rounded-lg border border-dashed border-border py-8 text-center">
+            <p className="text-muted-foreground">No upcoming actions yet.</p>
+            {isOrgManager && !showCreateAction && (
+              <Button className="mt-4" mode="subtle" Icon={Plus} onPress={() => setShowCreateAction(true)}>
+                Create First Action
+              </Button>
+            )}
+          </div>
         )}
       </div>
     </ResponsiveContainer>

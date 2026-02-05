@@ -15,6 +15,24 @@ export async function GET(request: Request) {
   const timeframe = searchParams.get('timeframe') || '30d'; // 7d, 30d, 90d, all
 
   try {
+    // Authorization: if requesting stats for a specific org or campaign,
+    // verify the user is a manager of that organization.
+    if (orgId) {
+      const org = await prisma.organization.findFirst({
+        where: { id: orgId, managers: { some: { id: session.user.id } } },
+      });
+      if (!org) {
+        return NextResponse.json({ error: 'Not authorized to view these stats' }, { status: 403 });
+      }
+    }
+    if (campaignId) {
+      const campaign = await prisma.campaign.findFirst({
+        where: { id: campaignId, org: { managers: { some: { id: session.user.id } } } },
+      });
+      if (!campaign) {
+        return NextResponse.json({ error: 'Not authorized to view these stats' }, { status: 403 });
+      }
+    }
     // Calculate date range
     const now = new Date();
     let startDate: Date | undefined;

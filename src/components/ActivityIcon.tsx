@@ -7,7 +7,7 @@ import SvgBullhorn from '@/svg_components/Bullhorn';
 import SvgCalendar from '@/svg_components/Calendar';
 import SvgCheckCircle from '@/svg_components/CheckCircle';
 import SvgNotificationBell from '@/svg_components/NotificationBell';
-import { ActivityType } from '@prisma/client';
+import { ActivityType } from '@/generated/prisma/client';
 
 function CreateFollowNotificationIcon() {
   return (
@@ -18,14 +18,14 @@ function CreateFollowNotificationIcon() {
 }
 function LikeNotificationIcon() {
   return (
-    <div className="absolute -bottom-2 right-0 rounded-full bg-gradient-to-r from-violet-400 to-violet-500 p-2">
+    <div className="absolute -bottom-2 right-0 rounded-full bg-gradient-to-r from-green-400 to-green-500 p-2">
       <SvgHeart width={18} height={18} stroke="white" />
     </div>
   );
 }
 function MentionNotificationIcon() {
   return (
-    <div className="absolute -bottom-2 right-0 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 p-2">
+    <div className="absolute -bottom-2 right-0 rounded-full bg-gradient-to-r from-indigo-500 to-green-500 p-2">
       <SvgAtSign width={18} height={18} stroke="white" />
     </div>
   );

@@ -10,7 +10,7 @@ export const locationSchema = z.object({
 });
 
 export const causesSchema = z.object({
-  causeIds: z.array(z.string()).min(4, 'Please select at least 4 causes that matter to you'),
+  causeIds: z.array(z.string()),
 });
 
 export const onboardingSchema = locationSchema.merge(causesSchema);

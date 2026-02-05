@@ -15,10 +15,7 @@ export function HomeMobileDropdownMenu() {
   const onAction = useCallback((key: Key) => router.push(key as string), [router]);
 
   const menuItems = useMemo(() => {
-    const items = [
-      { key: '/terms', label: 'Terms' },
-      { key: '/privacy-policy', label: 'Privacy Policy' },
-    ];
+    const items: Array<{ key: string; label: string }> = [];
 
     if (!isLoggedIn) {
       items.push({ key: '/login', label: 'Login' });

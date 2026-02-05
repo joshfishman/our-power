@@ -1,6 +1,6 @@
-import { VisualMediaType } from '@prisma/client';
+import { VisualMediaType } from '@/generated/prisma/client';
 import { v4 as uuid } from 'uuid';
-import { uploadObject } from '@/lib/s3/uploadObject';
+import { uploadObject } from '@/lib/storage/uploadObject';
 import { Blob } from 'buffer';
 
 /**

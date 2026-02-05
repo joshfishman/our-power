@@ -12,20 +12,19 @@ import { redirect } from 'next/navigation';
 export async function useCheckIfRequiredFieldsArePopulated() {
   const [user] = await getServerUser();
 
-  // If the user is logged in and if they don't have a set `username`, `email`, or `name`, redirect them to `/setup`
+  // If the user is logged in and hasn't completed onboarding, redirect them to `/setup`
   if (user?.id) {
     const res = await prisma.user.findUnique({
       where: {
         id: user.id,
       },
       select: {
-        username: true,
-        name: true,
+        onboardingComplete: true,
       },
     });
 
     if (!res) return;
-    if (!res.username || !res.name) {
+    if (!res.onboardingComplete) {
       redirect('/setup');
     }
   }

@@ -1,8 +1,8 @@
 import { FindActivityResults, GetActivities } from '@/types/definitions';
-import { ActivityType } from '@prisma/client';
+import { ActivityType } from '@/generated/prisma/client';
 import prisma from './prisma';
 import { convertMentionUsernamesToIds } from '../convertMentionUsernamesToIds';
-import { fileNameToUrl } from '../s3/fileNameToUrl';
+import { fileNameToUrl } from '../storage/fileNameToUrl';
 
 async function getContentFromPostOrComment(
   type: ActivityType,

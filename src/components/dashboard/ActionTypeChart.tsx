@@ -25,8 +25,8 @@ const ACTION_TYPE_COLORS: Record<string, { bg: string; bar: string; label: strin
     label: 'Phone Banking',
   },
   EMAIL: {
-    bg: 'bg-purple-100 dark:bg-purple-900/30',
-    bar: 'bg-purple-500',
+    bg: 'bg-green-100 dark:bg-green-900/30',
+    bar: 'bg-green-500',
     label: 'Email Actions',
   },
   CANVASS: {

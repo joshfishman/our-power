@@ -1,5 +1,4 @@
-import { Feather } from '@/svg_components';
-import { LogoText } from '@/components/LogoText';
+import { AppLogo } from '@/components/AppLogo';
 import Link from 'next/link';
 import React from 'react';
 import { getServerUser } from '@/lib/getServerUser';
@@ -22,15 +21,9 @@ export default async function Layout({ children }: { children: React.ReactNode }
       <div className="w-full max-w-3xl gap-3 py-4 sm:py-8">
         <nav className="flex items-center justify-between px-4 sm:px-0">
           <Link href="/" title="Home page">
-            <div className="flex cursor-pointer flex-row items-center justify-center gap-2 sm:pr-5">
-              <Feather className="stroke-primary" width={32} height={32} />
-              <LogoText className="text-2xl" />
-            </div>
+            <AppLogo size={36} textClass="text-2xl" />
           </Link>
           <div className="hidden gap-3 sm:flex">
-            <HomeNavLink href="/terms">Terms</HomeNavLink>
-            <HomeNavLink href="/privacy-policy">Privacy Policy</HomeNavLink>
-
             {!isLoggedIn && (
               <>
                 <HomeNavLink href="/login">Login</HomeNavLink>

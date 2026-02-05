@@ -16,23 +16,28 @@ interface ActionCardProps {
     eventTime?: string | null;
     callScript?: string | null;
     emailSubject?: string | null;
+    emailBody?: string | null;
+    emailTargets?: string[];
     dialerUrl?: string | null;
+    canvassArea?: string | null;
     _count?: { participants: number };
     participants?: Array<{ willAttend: boolean; attended: boolean }>;
   };
   onRSVP?: (actionId: string) => void;
   onComplete?: (actionId: string) => void;
+  onSendEmail?: (actionId: string) => void;
   isLoading?: boolean;
+  isSendingEmail?: boolean;
 }
 
 const typeConfig = {
   EVENT: { icon: Calendar, label: 'Event', color: 'text-blue-500' },
   PHONE: { icon: Phone, label: 'Phone Bank', color: 'text-green-500' },
-  EMAIL: { icon: Mail, label: 'Email', color: 'text-purple-500' },
+  EMAIL: { icon: Mail, label: 'Email', color: 'text-green-500' },
   CANVASS: { icon: TwoPeople, label: 'Canvass', color: 'text-orange-500' },
 };
 
-export function ActionCard({ action, onRSVP, onComplete, isLoading }: ActionCardProps) {
+export function ActionCard({ action, onRSVP, onComplete, onSendEmail, isLoading, isSendingEmail }: ActionCardProps) {
   const config = typeConfig[action.type];
   const Icon = config.icon;
   const dueDate = new Date(action.dueDate);
@@ -82,6 +87,14 @@ export function ActionCard({ action, onRSVP, onComplete, isLoading }: ActionCard
         </p>
       )}
 
+      {action.type === 'CANVASS' && action.canvassArea && (
+        <p className="mb-3 text-sm text-muted-foreground">📍 {action.canvassArea}</p>
+      )}
+
+      {action.type === 'EMAIL' && action.emailSubject && (
+        <p className="mb-3 text-sm text-muted-foreground">📧 Subject: {action.emailSubject}</p>
+      )}
+
       {/* Participants count */}
       {action._count && (
         <p className="mb-3 text-xs text-muted-foreground">
@@ -115,6 +128,12 @@ export function ActionCard({ action, onRSVP, onComplete, isLoading }: ActionCard
         {action.type === 'PHONE' && action.dialerUrl && (
           <Button size="small" mode="secondary" onPress={() => window.open(action.dialerUrl!, '_blank')}>
             Open Dialer
+          </Button>
+        )}
+
+        {action.type === 'EMAIL' && action.emailTargets?.length && !hasCompleted && (
+          <Button size="small" mode="secondary" loading={isSendingEmail} onPress={() => onSendEmail?.(action.id)}>
+            Send Email
           </Button>
         )}
       </div>

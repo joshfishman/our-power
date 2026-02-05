@@ -1,7 +1,7 @@
 'use client';
 
 import { Select } from '@/components/ui/Select';
-import { Gender, RelationshipStatus } from '@prisma/client';
+import { Gender, RelationshipStatus } from '@/generated/prisma/client';
 import { kebabCase, lowerCase, snakeCase, startCase, toUpper } from 'lodash';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { Item } from 'react-stately';

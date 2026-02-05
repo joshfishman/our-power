@@ -23,9 +23,16 @@ export const metadata = {
 export default async function Layout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   return (
-    <html lang="en" className="dark overflow-y-scroll">
+    <html lang="en" className="overflow-y-scroll">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+        <link rel="alternate" type="application/rss+xml" title="Our Power - Campaigns" href="/api/rss/campaigns" />
+        <link rel="alternate" type="application/rss+xml" title="Our Power - Actions" href="/api/rss/actions" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var t=localStorage.getItem('theme');if(t==='dark'){document.documentElement.classList.add('dark')}else if(t==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches){document.documentElement.classList.add('dark')}})();`,
+          }}
+        />
       </head>
       <body className={cn('bg-background text-foreground', poppins.className)}>
         <Providers session={session}>{children}</Providers>

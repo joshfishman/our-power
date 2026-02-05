@@ -6,41 +6,50 @@ type Themes = 'system' | 'light' | 'dark';
 export const ThemeContext = createContext<{
   theme: Themes;
   handleThemeChange: (theme: Themes) => void;
-}>({ theme: 'system', handleThemeChange: () => {} });
+}>({ theme: 'light', handleThemeChange: () => {} });
 
 const LS_THEME_KEY = 'theme';
-export function ThemeContextProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Themes>('system');
 
-  const setToDarkTheme = useCallback(() => {
-    document.documentElement.classList.add('dark');
+function getInitialTheme(): Themes {
+  if (typeof window === 'undefined') return 'light';
+  return (localStorage.getItem(LS_THEME_KEY) as Themes) || 'light';
+}
+
+export function ThemeContextProvider({ children }: { children: React.ReactNode }) {
+  const [theme, setTheme] = useState<Themes>(getInitialTheme);
+
+  const applyThemeToDOM = useCallback((themeValue: Themes) => {
+    if (themeValue === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else if (themeValue === 'system' && window.matchMedia) {
+      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
   }, []);
-  const setToLightTheme = useCallback(() => {
-    document.documentElement.classList.remove('dark');
-  }, []);
+
   const handleThemeChange = useCallback(
     (themeValue: Themes) => {
       localStorage.setItem(LS_THEME_KEY, themeValue);
       setTheme(themeValue);
-      if (themeValue === 'dark') setToDarkTheme();
-      if (themeValue === 'light') setToLightTheme();
-      if (themeValue === 'system' && window.matchMedia) {
-        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-          setToDarkTheme();
-        } else {
-          setToLightTheme();
-        }
-      }
+      applyThemeToDOM(themeValue);
     },
-    [setToDarkTheme, setToLightTheme],
+    [applyThemeToDOM],
   );
+
   const value = useMemo(() => ({ theme, handleThemeChange }), [theme, handleThemeChange]);
 
+  // Sync DOM on mount — the inline script in <head> already set the correct class,
+  // so this just ensures React state matches. No visible flash will occur.
   useEffect(() => {
-    // Defaults to 'system' if there's no saved theme
-    const savedTheme = (localStorage.getItem(LS_THEME_KEY) || 'system') as Themes;
-    handleThemeChange(savedTheme);
-  }, [handleThemeChange]);
+    const savedTheme = (localStorage.getItem(LS_THEME_KEY) as Themes) || 'light';
+    setTheme(savedTheme);
+    applyThemeToDOM(savedTheme);
+  }, [applyThemeToDOM]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

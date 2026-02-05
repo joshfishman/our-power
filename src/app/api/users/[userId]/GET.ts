@@ -22,6 +22,15 @@ export async function GET(request: Request, { params }: { params: { userId: stri
     return NextResponse.json(null);
   }
 
+  // Self-healing: backfill username if missing
+  if (!res.username) {
+    await prisma.user.update({
+      where: { id: res.id },
+      data: { username: res.id },
+    });
+    res.username = res.id;
+  }
+
   const userResponse = toGetUser(res);
   return NextResponse.json<GetUser | null>(userResponse);
 }

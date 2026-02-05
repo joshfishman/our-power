@@ -16,10 +16,16 @@ export default {
       const isLoggedIn = !!auth?.user;
       const isOnAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register');
 
-      const unProtectedPages = ['/terms', '/privacy-policy']; // Add more here if needed
+      const unProtectedPages = ['/terms', '/privacy-policy', '/developers']; // Add more here if needed
+      // Dynamic route patterns that should be public
+      const unProtectedPatterns = [
+        /^\/c\/[^/]+$/, // Public campaign detail pages at /c/:id
+        /^\/embed/, // Embed pages
+      ];
       const isOnUnprotectedPage =
         pathname === '/' || // The root page '/' is also an unprotected page
-        unProtectedPages.some((page) => pathname.startsWith(page));
+        unProtectedPages.some((page) => pathname.startsWith(page)) ||
+        unProtectedPatterns.some((pattern) => pattern.test(pathname));
       const isProtectedPage = !isOnUnprotectedPage;
 
       if (isOnAuthPage) {

@@ -1,14 +1,22 @@
-import { PrismaClient } from '@prisma/client';
+import dotenv from 'dotenv';
+dotenv.config({ path: '.env.local' });
+dotenv.config({ path: '.env' });
+
+import { PrismaClient } from '../src/generated/prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { faker } from '@faker-js/faker';
 import { subHours } from 'date-fns';
 import { createId } from '@paralleldrive/cuid2';
 
-const prisma = new PrismaClient();
+const adapter = new PrismaPg({
+  connectionString: process.env.DIRECT_URL || process.env.DATABASE_URL!,
+});
+const prisma = new PrismaClient({ adapter });
 
 let maleAvatars = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 let femaleAvatars = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
-function getRandomItemAndRemove(array) {
+function getRandomItemAndRemove(array: number[]) {
   // Generate a random index
   const randomIndex = Math.floor(Math.random() * array.length);
 
@@ -22,7 +30,7 @@ function getRandomItemAndRemove(array) {
   return item;
 }
 
-function generateRandomBoolean(probability) {
+function generateRandomBoolean(probability: number) {
   // Generate a random number between 0 and 1
   const random = Math.random();
 
@@ -40,10 +48,7 @@ function createRandomUser() {
   const lastName = faker.person.lastName();
   const fullName = `${firstName} ${lastName}`;
   const id = createId();
-  const username = faker.internet
-    .userName({ firstName, lastName })
-    .replace(/[.-]/g, '_')
-    .toLowerCase();
+  const username = faker.internet.userName({ firstName, lastName }).replace(/[.-]/g, '_').toLowerCase();
   const email = faker.internet.email({ firstName, lastName });
   const birthDate = faker.date.birthdate({ min: 18, max: 65, mode: 'age' });
   const bio = faker.person.bio();
@@ -51,25 +56,22 @@ function createRandomUser() {
   const phoneNumber = faker.phone.number();
   const address = faker.location.streetAddress({ useFullAddress: true });
   const relationshipStatus = faker.helpers.arrayElement([
-    'SINGLE',
-    'IN_A_RELATIONSHIP',
-    'ENGAGED',
-    'MARRIED',
+    'SINGLE' as const,
+    'IN_A_RELATIONSHIP' as const,
+    'ENGAGED' as const,
+    'MARRIED' as const,
   ]);
 
   // Get a random profile picture from maleAvatars or femaleAvatars
   // depending on gender, then, remove the returned profile picture
-  const randomProfilePhoto = `${getRandomItemAndRemove(
-    gender === 'male' ? maleAvatars : femaleAvatars,
-  )}.png`;
+  const randomProfilePhoto = `${getRandomItemAndRemove(gender === 'male' ? maleAvatars : femaleAvatars)}.png`;
   // Reset avatars array when all values are consumed
   if (maleAvatars.length === 0) maleAvatars = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-  if (femaleAvatars.length === 0)
-    femaleAvatars = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  if (femaleAvatars.length === 0) femaleAvatars = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   const profilePhotoPath = `seed-${gender}-avatars/${randomProfilePhoto}`;
 
   // Create fake posts
-  const fakePosts = Array.from({ length: 3 }).map((item, i) => ({
+  const fakePosts = Array.from({ length: 3 }).map((_item, i) => ({
     userId: id,
     content: faker.lorem.sentence(),
     createdAt: subHours(new Date(), i),
@@ -81,7 +83,7 @@ function createRandomUser() {
       username,
       name: fullName,
       email,
-      gender: isGenderNonBinary ? 'NONBINARY' : gender.toUpperCase(),
+      gender: isGenderNonBinary ? ('NONBINARY' as const) : (gender.toUpperCase() as 'MALE' | 'FEMALE'),
       birthDate,
       bio,
       website,

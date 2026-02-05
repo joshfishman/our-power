@@ -4,13 +4,13 @@ const nextConfig = {
     scrollRestoration: true,
   },
   eslint: {
-    // Warning: This allows production builds to successfully complete even if
-    // your project has ESLint errors.
+    // ESLint checks run in CI via GitHub Actions.
+    // Disable during Vercel builds to avoid duplicating CI work.
     ignoreDuringBuilds: true,
   },
   typescript: {
-    // Warning: This allows production builds to successfully complete even if
-    // your project has type errors.
+    // Type checks run in CI via GitHub Actions.
+    // Disable during Vercel builds to avoid duplicating CI work.
     ignoreBuildErrors: true,
   },
   images: {
@@ -20,13 +20,56 @@ const nextConfig = {
         hostname: '*.supabase.co',
         port: '',
       },
-      {
-        protocol: 'https',
-        hostname: 'munia-s3-bucket.s3.us-east-1.amazonaws.com',
-        port: '',
-      },
     ],
+  },
+  async headers() {
+    return [
+      {
+        // Relaxed headers for embed assets - allow cross-origin loading
+        source: '/embed/:path*',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN',
+          },
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: '*',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+        ],
+      },
+      {
+        // Apply security headers to all other routes
+        source: '/((?!embed).*)',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=()',
+          },
+          {
+            key: 'X-DNS-Prefetch-Control',
+            value: 'on',
+          },
+        ],
+      },
+    ];
   },
 };
 
-module.exports = nextConfig;
+export default nextConfig;

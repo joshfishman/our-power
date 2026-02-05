@@ -32,7 +32,7 @@ export function Switch({ children, renderIcon, ...props }: SwitchProps) {
         className={cn(
           'flex h-9 w-16 rounded-[40px] p-[2px] hover:opacity-90',
           props.isSelected ? 'justify-end bg-primary-accent' : 'justify-start bg-muted',
-          isFocusVisible && 'ring-2 ring-violet-500 ring-offset-2',
+          isFocusVisible && 'ring-2 ring-green-500 ring-offset-2',
         )}>
         <motion.div
           layout

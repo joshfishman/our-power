@@ -39,7 +39,7 @@ export function OnboardingWizard() {
   });
 
   // Form setup
-  const { control, handleSubmit, watch, trigger } = useForm<OnboardingSchema>({
+  const { control, handleSubmit, trigger } = useForm<OnboardingSchema>({
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
       zipCode: '',
@@ -47,8 +47,6 @@ export function OnboardingWizard() {
       causeIds: [],
     },
   });
-
-  const selectedCauseIds = watch('causeIds');
 
   // Submit mutation
   const submitMutation = useMutation({
@@ -65,16 +63,13 @@ export function OnboardingWizard() {
       return res.json();
     },
     onSuccess: () => {
-      setStep('complete');
       showToast({
         type: 'success',
         title: 'Welcome to Our Power!',
         message: "Your profile is ready. Let's find campaigns for you.",
       });
-      // Redirect after a brief delay
-      setTimeout(() => {
-        router.push('/campaigns');
-      }, 2000);
+      // Redirect immediately
+      router.push('/feed');
     },
     onError: (error) => {
       showToast({
@@ -193,7 +188,7 @@ export function OnboardingWizard() {
               name="causeIds"
               render={({ field: { onChange, value }, fieldState: { error } }) => (
                 <div>
-                  <CauseSelector causes={causes} selectedIds={value} onSelectionChange={onChange} minRequired={4} />
+                  <CauseSelector causes={causes} selectedIds={value} onSelectionChange={onChange} minRequired={0} />
                   {error?.message && <p className="mt-2 text-sm text-red-500">{error.message}</p>}
                 </div>
               )}
@@ -219,10 +214,7 @@ export function OnboardingWizard() {
             ) : (
               <div />
             )}
-            <Button
-              onPress={handleNextStep}
-              loading={submitMutation.isPending}
-              isDisabled={(step === 'causes' && selectedCauseIds.length < 4) || submitMutation.isPending}>
+            <Button onPress={handleNextStep} loading={submitMutation.isPending} isDisabled={submitMutation.isPending}>
               {step === 'causes' ? 'Complete Setup' : 'Continue'}
             </Button>
           </div>

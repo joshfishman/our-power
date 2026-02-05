@@ -10,7 +10,7 @@
 import { getServerUser } from '@/lib/getServerUser';
 import prisma from '@/lib/prisma/prisma';
 import { followPostSchema } from '@/lib/validations/follow';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '@/generated/prisma/client';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 

@@ -1,4 +1,12 @@
-import { VisualMediaType, User, Follow, ActivityType, Gender, VisualMedia, RelationshipStatus } from '@prisma/client';
+import {
+  VisualMediaType,
+  User,
+  Follow,
+  ActivityType,
+  Gender,
+  VisualMedia,
+  RelationshipStatus,
+} from '@/generated/prisma/client';
 
 type UserSummary = Pick<User, 'id' | 'username' | 'name' | 'profilePhoto'>;
 /**
@@ -18,9 +26,17 @@ interface UserAfterSetUp extends User {
   name: string;
 }
 
+export interface UserCause {
+  id: string;
+  name: string;
+  icon: string | null;
+  color: string | null;
+}
+
 // Use this type when finding a User in prisma.
 export interface FindUserResult extends User {
   followers: Follow[];
+  causes: UserCause[];
   _count: {
     following: number;
     followers: number;
@@ -36,6 +52,7 @@ export interface GetUser extends UserAfterSetUp {
   followerCount: number | null;
   followingCount: number | null;
   isFollowing: boolean | null; // true when the authenticated user is following the user being requested
+  causes: UserCause[];
 }
 
 export interface GetVisualMedia {

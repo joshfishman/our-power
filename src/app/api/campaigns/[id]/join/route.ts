@@ -60,6 +60,42 @@ export async function POST(request: Request, { params }: { params: { id: string 
   }
 }
 
+// GET /api/campaigns/[id]/join - Check membership status
+export async function GET(request: Request, { params }: { params: { id: string } }) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const membership = await prisma.campaignMember.findUnique({
+      where: {
+        userId_campaignId: {
+          userId: session.user.id,
+          campaignId: params.id,
+        },
+      },
+      include: {
+        campaign: { select: { name: true } },
+      },
+    });
+
+    if (!membership) {
+      return NextResponse.json({ isMember: false }, { status: 200 });
+    }
+
+    return NextResponse.json({
+      isMember: true,
+      role: membership.role,
+      joinedAt: membership.joinedAt,
+      campaignName: membership.campaign.name,
+    });
+  } catch (error) {
+    console.error('Error checking membership:', error);
+    return NextResponse.json({ error: 'Failed to check membership' }, { status: 500 });
+  }
+}
+
 // DELETE /api/campaigns/[id]/join - Leave a campaign
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   try {

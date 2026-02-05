@@ -1,6 +1,6 @@
 import { FindCommentResult, GetComment } from '@/types/definitions';
 import { convertMentionUsernamesToIds } from '../convertMentionUsernamesToIds';
-import { fileNameToUrl } from '../s3/fileNameToUrl';
+import { fileNameToUrl } from '../storage/fileNameToUrl';
 
 export async function toGetComment(findCommentResult: FindCommentResult): Promise<GetComment> {
   const { commentLikes, content, ...rest } = findCommentResult;

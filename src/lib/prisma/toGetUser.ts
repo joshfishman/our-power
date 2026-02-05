@@ -5,7 +5,7 @@
  */
 
 import { FindUserResult, GetUser } from '@/types/definitions';
-import { fileNameToUrl } from '../s3/fileNameToUrl';
+import { fileNameToUrl } from '../storage/fileNameToUrl';
 
 export const toGetUser = (findUserResult: FindUserResult): GetUser => {
   const followerCount = findUserResult?._count.followers || 0;
@@ -15,7 +15,7 @@ export const toGetUser = (findUserResult: FindUserResult): GetUser => {
   // in `GetUser`. The `rest` below contains the properties
   // of the `User` type of @prisma/client.
   // eslint-disable-next-line @typescript-eslint/naming-convention
-  const { followers, _count, ...rest } = findUserResult;
+  const { followers, _count, causes, ...rest } = findUserResult;
 
   const userResponse: GetUser = {
     ...rest,
@@ -28,6 +28,7 @@ export const toGetUser = (findUserResult: FindUserResult): GetUser => {
     followerCount,
     followingCount,
     isFollowing: findUserResult?.followers.length === 1,
+    causes: causes || [],
   };
 
   return userResponse;

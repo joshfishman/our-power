@@ -2,18 +2,26 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import prisma from '@/lib/prisma/prisma';
 import { campaignSchema } from '@/lib/validations/campaign';
+import { withCors, corsOptionsResponse, isRateLimited, rateLimitedResponse } from '@/lib/api-utils';
+
+export async function OPTIONS() {
+  return corsOptionsResponse();
+}
 
 // GET /api/campaigns - List campaigns
 export async function GET(request: Request) {
   try {
+    const ip = request.headers.get('x-forwarded-for') || 'unknown';
+    if (isRateLimited(ip)) return rateLimitedResponse();
     const { searchParams } = new URL(request.url);
     const causeId = searchParams.get('causeId');
     const status = searchParams.get('status');
     const orgId = searchParams.get('orgId');
-    const limit = parseInt(searchParams.get('limit') || '20');
-    const offset = parseInt(searchParams.get('offset') || '0');
+    const limit = parseInt(searchParams.get('limit') || '20', 10);
+    const offset = parseInt(searchParams.get('offset') || '0', 10);
 
-    const where: any = {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const where: Record<string, any> = {};
 
     if (causeId) where.causeId = causeId;
     if (status) where.status = status;
@@ -39,15 +47,17 @@ export async function GET(request: Request) {
       prisma.campaign.count({ where }),
     ]);
 
-    return NextResponse.json({
-      campaigns,
-      total,
-      limit,
-      offset,
-    });
+    return withCors(
+      NextResponse.json({
+        campaigns,
+        total,
+        limit,
+        offset,
+      }),
+    );
   } catch (error) {
     console.error('Error fetching campaigns:', error);
-    return NextResponse.json({ error: 'Failed to fetch campaigns' }, { status: 500 });
+    return withCors(NextResponse.json({ error: 'Failed to fetch campaigns' }, { status: 500 }));
   }
 }
 

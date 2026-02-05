@@ -6,6 +6,14 @@ export const includeToUser = (userId: string | undefined) => ({
       followerId: userId,
     },
   },
+  causes: {
+    select: {
+      id: true,
+      name: true,
+      icon: true,
+      color: true,
+    },
+  },
   _count: {
     select: {
       followers: true,

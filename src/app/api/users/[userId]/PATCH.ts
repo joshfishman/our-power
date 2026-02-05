@@ -4,7 +4,7 @@
  */
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma/prisma';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '@/generated/prisma/client';
 import { getServerUser } from '@/lib/getServerUser';
 import { userAboutSchema } from '@/lib/validations/userAbout';
 import { toGetUser } from '@/lib/prisma/toGetUser';
@@ -19,13 +19,22 @@ export async function PATCH(request: Request, { params }: { params: { userId: st
   const validate = userAboutSchema.safeParse(userAbout);
   if (validate.success) {
     try {
+      // Extract causeIds separately since it maps to a relation, not a scalar field
+      const { causeIds, ...scalarData } = validate.data;
+
       const res = await prisma.user.update({
         where: {
           id: user.id,
         },
         data: {
-          ...validate.data,
-          birthDate: validate.data.birthDate && new Date(validate.data.birthDate),
+          ...scalarData,
+          birthDate: scalarData.birthDate && new Date(scalarData.birthDate),
+          // Use `set` to replace all existing cause connections with the new selection
+          ...(causeIds !== undefined && {
+            causes: {
+              set: causeIds.map((id) => ({ id })),
+            },
+          }),
         },
         include: includeToUser(user.id),
       });

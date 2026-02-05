@@ -10,7 +10,7 @@
 import { getServerUser } from '@/lib/getServerUser';
 import prisma from '@/lib/prisma/prisma';
 import { searchUser } from '@/lib/prisma/searchUser';
-import { fileNameToUrl } from '@/lib/s3/fileNameToUrl';
+import { fileNameToUrl } from '@/lib/storage/fileNameToUrl';
 import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {

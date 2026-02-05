@@ -8,7 +8,7 @@ import { includeToUser } from '@/lib/prisma/includeToUser';
 import prisma from '@/lib/prisma/prisma';
 import { searchUser } from '@/lib/prisma/searchUser';
 import { toGetUser } from '@/lib/prisma/toGetUser';
-import { Gender, RelationshipStatus } from '@prisma/client';
+import { Gender, RelationshipStatus } from '@/generated/prisma/client';
 import { snakeCase, toUpper } from 'lodash';
 import { NextResponse } from 'next/server';
 import { FindUserResult, GetUser } from '@/types/definitions';

@@ -1,27 +1,29 @@
-// https://github.com/prisma/prisma/issues/6219#issuecomment-840676092
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@/generated/prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 
-declare global {
-  interface Global {
-    prisma: PrismaClient;
+// eslint-disable-next-line no-undef
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
+
+function createPrismaClient() {
+  // Append ?pgbouncer=true to disable prepared statements when using
+  // Supabase's PgBouncer connection pooler (port 6543). Without this,
+  // serverless environments hit "prepared statement already exists" errors.
+  const connectionString = process.env.DATABASE_URL!;
+  const url = new URL(connectionString);
+  if (!url.searchParams.has('pgbouncer')) {
+    url.searchParams.set('pgbouncer', 'true');
   }
+
+  const adapter = new PrismaPg({
+    connectionString: url.toString(),
+  });
+  return new PrismaClient({ adapter });
 }
 
-// eslint-disable-next-line import/no-mutable-exports
-let prisma: PrismaClient;
+const prisma = globalForPrisma.prisma || createPrismaClient();
 
-if (typeof window === 'undefined') {
-  if (process.env.NODE_ENV === 'production') {
-    prisma = new PrismaClient();
-  } else {
-    // @ts-expect-error `global` is a global object in the browser
-    if (!global.prisma) {
-      // @ts-expect-error `global` is a global object in the browser
-      global.prisma = new PrismaClient();
-    }
-    // @ts-expect-error `global` is a global object in the browser
-    prisma = global.prisma;
-  }
+if (process.env.NODE_ENV !== 'production') {
+  globalForPrisma.prisma = prisma;
 }
-// @ts-expect-error `global` is a global object in the browser
+
 export default prisma;

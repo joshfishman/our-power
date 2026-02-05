@@ -2,10 +2,17 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import prisma from '@/lib/prisma/prisma';
 import { campaignSchema } from '@/lib/validations/campaign';
+import { withCors, corsOptionsResponse, isRateLimited, rateLimitedResponse } from '@/lib/api-utils';
+
+export async function OPTIONS() {
+  return corsOptionsResponse();
+}
 
 // GET /api/campaigns/[id] - Get single campaign
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
+    const ip = request.headers.get('x-forwarded-for') || 'unknown';
+    if (isRateLimited(ip)) return rateLimitedResponse();
     const campaign = await prisma.campaign.findUnique({
       where: { id: params.id },
       include: {
@@ -15,6 +22,28 @@ export async function GET(request: Request, { params }: { params: { id: string }
           where: { isActive: true },
           orderBy: { dueDate: 'asc' },
           take: 10,
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            type: true,
+            dueDate: true,
+            // EVENT fields
+            location: true,
+            eventTime: true,
+            locationUrl: true,
+            // PHONE fields
+            callScript: true,
+            dialerUrl: true,
+            // EMAIL fields
+            emailSubject: true,
+            emailBody: true,
+            emailTargets: true,
+            // CANVASS fields
+            canvassArea: true,
+            ecanvasserCampaignId: true,
+            _count: { select: { participants: true } },
+          },
         },
         _count: { select: { members: true, actions: true } },
       },
@@ -24,10 +53,10 @@ export async function GET(request: Request, { params }: { params: { id: string }
       return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
     }
 
-    return NextResponse.json(campaign);
+    return withCors(NextResponse.json(campaign));
   } catch (error) {
     console.error('Error fetching campaign:', error);
-    return NextResponse.json({ error: 'Failed to fetch campaign' }, { status: 500 });
+    return withCors(NextResponse.json({ error: 'Failed to fetch campaign' }, { status: 500 }));
   }
 }
 

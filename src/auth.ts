@@ -2,8 +2,7 @@ import NextAuth from 'next-auth';
 import authConfig from '@/auth.config';
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import prisma from '@/lib/prisma/prisma';
-import { createSendEmailCommand } from '@/lib/ses/createSendEmailCommand';
-import { sesClient } from '@/lib/ses/sesClient';
+import { sendEmail } from '@/lib/email';
 
 declare module 'next-auth' {
   interface Session {
@@ -33,49 +32,97 @@ export const {
       maxAge: 24 * 60 * 60,
       options: {},
       async sendVerificationRequest({ identifier: email, url }) {
-        const sendEmailCommand = createSendEmailCommand(
-          email,
-          'noreply@norcio.dev',
-          'Login To Our Power',
-          `<body>
-  <table width="100%" border="0" cellspacing="20" cellpadding="0"
-    style=" max-width: 600px; margin: auto; border-radius: 10px;">
+        await sendEmail({
+          to: email,
+          subject: 'Login to Our Power',
+          html: `<body style="background-color: #f4f4f5; padding: 40px 0;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: auto; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
     <tr>
-      <td align="center"
-        style="padding: 10px 0px; font-size: 22px; font-family: Helvetica, Arial, sans-serif;">
-        Login to <strong>Our Power</strong>
+      <td align="center" style="padding: 40px 20px 20px;">
+        <h1 style="margin: 0; font-size: 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #18181b;">
+          Login to <strong style="color: #16a34a;">Our Power</strong>
+        </h1>
       </td>
     </tr>
     <tr>
-      <td align="center" style="padding: 20px 0;">
-        <table border="0" cellspacing="0" cellpadding="0">
-          <tr>
-            <td align="center" style="border-radius: 5px;" bgcolor="purple"><a href="${url}"
-                target="_blank"
-                style="font-size: 18px; font-family: Helvetica, Arial, sans-serif; color: black; text-decoration: none; border-radius: 5px; padding: 10px 20px; display: inline-block; font-weight: bold;">Login</a></td>
-          </tr>
-        </table>
+      <td align="center" style="padding: 20px;">
+        <a href="${url}" target="_blank" style="display: inline-block; background: #16a34a; color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+          Sign In
+        </a>
       </td>
     </tr>
     <tr>
-      <td align="center"
-        style="padding: 0px 0px 10px 0px; font-size: 16px; line-height: 22px; font-family: Helvetica, Arial, sans-serif;">
-        If you did not request this email you can safely ignore it.
+      <td align="center" style="padding: 20px 40px 40px;">
+        <p style="margin: 0; font-size: 14px; color: #71717a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+          If you did not request this email, you can safely ignore it.
+        </p>
       </td>
     </tr>
   </table>
 </body>`,
-        );
-        await sesClient.send(sendEmailCommand);
+        });
       },
     },
   ],
-  adapter: PrismaAdapter(prisma),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  adapter: PrismaAdapter(prisma) as any,
   session: {
     strategy: 'jwt',
   },
+  // Enable debug mode in development to see detailed OAuth errors
+  debug: process.env.NODE_ENV === 'development',
+  // Log OAuth errors for debugging
+  logger: {
+    error(code, ...message) {
+      console.error('[NextAuth Error]', code, JSON.stringify(message, null, 2));
+    },
+    warn(code, ...message) {
+      console.warn('[NextAuth Warning]', code, message);
+    },
+    debug(code, ...message) {
+      if (process.env.AUTH_DEBUG === 'true') {
+        console.log('[NextAuth Debug]', code, message);
+      }
+    },
+  },
+  events: {
+    async signIn({ user: signedInUser, account }) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Auth Event] Sign in:', { provider: account?.provider });
+      }
+
+      // Auto-assign username if missing (e.g. first OAuth sign-in)
+      if (signedInUser?.id) {
+        const existing = await prisma.user.findUnique({
+          where: { id: signedInUser.id },
+          select: { username: true, name: true },
+        });
+        if (existing && !existing.username) {
+          await prisma.user.update({
+            where: { id: signedInUser.id },
+            data: {
+              username: signedInUser.id,
+              // Also ensure name is populated from the OAuth provider
+              ...(!existing.name && signedInUser.name ? { name: signedInUser.name } : {}),
+            },
+          });
+        }
+      }
+    },
+    async linkAccount({ account }) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Auth Event] Account linked:', { provider: account?.provider });
+      }
+    },
+  },
   callbacks: {
     ...authConfig.callbacks,
+    async signIn({ account }) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Auth Callback] signIn:', { provider: account?.provider });
+      }
+      return true;
+    },
     session({ token, user, ...rest }) {
       return {
         /**

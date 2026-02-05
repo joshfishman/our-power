@@ -1,9 +1,7 @@
 'use client';
 
 import { useActiveRouteChecker } from '@/hooks/useActiveRouteChecker';
-import { useDialogs } from '@/hooks/useDialogs';
 import { cn } from '@/lib/cn';
-import { signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import React, { SVGProps, useCallback, useEffect } from 'react';
 import { Badge } from './ui/Badge';
@@ -22,22 +20,12 @@ export function MenuBarItem({
 }) {
   const router = useRouter();
   const [isActive] = useActiveRouteChecker(route);
-  const { confirm } = useDialogs();
 
   const onItemClick = useCallback(() => {
-    if (route === '/api/auth/signout') {
-      confirm({
-        title: 'Confirm Logout',
-        message: 'Do you really wish to logout?',
-        onConfirm: () => signOut({ callbackUrl: '/' }),
-      });
-    } else {
-      router.push(route);
-    }
-  }, [route, router, confirm]);
+    router.push(route);
+  }, [route, router]);
 
   useEffect(() => {
-    if (route === '/api/auth/signout') return;
     router.prefetch(route);
   }, [route, router]);
 

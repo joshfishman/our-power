@@ -10,8 +10,8 @@ import { toGetPost } from '@/lib/prisma/toGetPost';
 import { getServerUser } from '@/lib/getServerUser';
 import { convertMentionUsernamesToIds } from '@/lib/convertMentionUsernamesToIds';
 import { mentionsActivityLogger } from '@/lib/mentionsActivityLogger';
-import { deleteObject } from '@/lib/s3/deleteObject';
-import { savePostFiles } from '@/lib/s3/savePostFiles';
+import { deleteObject } from '@/lib/storage/deleteObject';
+import { savePostFiles } from '@/lib/storage/savePostFiles';
 import { verifyAccessToPost } from '@/app/api/posts/[postId]/verifyAccessToPost';
 
 // If `type` is `edit`, then the `postId` is required
@@ -33,7 +33,7 @@ export async function serverWritePost({ formData, type, postId }: Props) {
   const userId = user.id;
 
   if (type === 'edit') {
-    if (!verifyAccessToPost(postId)) {
+    if (!(await verifyAccessToPost(postId))) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
   }

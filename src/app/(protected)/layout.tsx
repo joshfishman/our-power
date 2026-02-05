@@ -1,4 +1,5 @@
 import { MenuBar } from '@/components/MenuBar';
+import { Footer } from '@/components/Footer';
 import { ResponsiveContainer } from '@/components/ui/ResponsiveContainer';
 import { useCheckIfRequiredFieldsArePopulated } from '@/hooks/useCheckIfRequiredFieldsArePopulated';
 import React from 'react';
@@ -9,10 +10,14 @@ export default async function Layout({ children }: { children: React.ReactNode }
   await useCheckIfRequiredFieldsArePopulated();
 
   return (
-    <div className="md:flex md:justify-center md:gap-2">
-      <MenuBar />
+    <div className="flex min-h-screen flex-col">
+      <div className="flex flex-1 md:justify-center md:gap-2">
+        <MenuBar />
 
-      <ResponsiveContainer className="pb-20 md:pb-4">{children}</ResponsiveContainer>
+        <ResponsiveContainer className="pt-14 md:pt-0">{children}</ResponsiveContainer>
+      </div>
+
+      <Footer />
     </div>
   );
 }
