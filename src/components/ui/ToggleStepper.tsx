@@ -9,11 +9,11 @@ const toggle = cva('flex cursor-pointer select-none items-center gap-3 rounded-f
     color: {
       red: 'hover:bg-destructive-foreground/30 focus:outline-none',
       blue: 'hover:bg-blue-200 focus:outline-none dark:hover:bg-blue-900',
-      purple: 'hover:bg-primary-accent/30 focus:outline-none',
+      green: 'hover:bg-primary-accent/30 focus:outline-none',
     },
   },
   defaultVariants: {
-    color: 'purple',
+    color: 'green',
   },
 });
 
@@ -22,11 +22,11 @@ const icon = cva('h-6 w-6', {
     color: {
       red: 'fill-destructive-foreground',
       blue: 'fill-blue-500 dark:fill-blue-600',
-      purple: 'fill-primary-accent',
+      green: 'fill-primary-accent',
     },
   },
   defaultVariants: {
-    color: 'purple',
+    color: 'green',
   },
 });
 
