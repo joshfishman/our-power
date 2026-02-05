@@ -1,14 +1,29 @@
 import 'server-only';
-import { PutObjectCommand } from '@aws-sdk/client-s3';
-import { s3Client } from './s3Client';
+import { supabaseAdmin, STORAGE_BUCKETS } from '@/lib/supabase/server';
+
+// Map file extensions to MIME types
+const MIME_TYPES: Record<string, string> = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  mp4: 'video/mp4',
+  webm: 'video/webm',
+  mov: 'video/quicktime',
+};
 
 export async function uploadObject(file: Buffer, fileName: string, type: string) {
-  const command = new PutObjectCommand({
-    Bucket: process.env.S3_BUCKET_NAME,
-    Key: fileName,
-    Body: file,
-    ContentType: type,
+  const bucketName = STORAGE_BUCKETS.PRIVATE;
+  const contentType = MIME_TYPES[type.toLowerCase()] || `application/${type}`;
+
+  const { error } = await supabaseAdmin.storage.from(bucketName).upload(fileName, file, {
+    contentType,
+    cacheControl: '3600',
+    upsert: true,
   });
 
-  await s3Client.send(command);
+  if (error) {
+    throw new Error(`Failed to upload file: ${error.message}`);
+  }
 }

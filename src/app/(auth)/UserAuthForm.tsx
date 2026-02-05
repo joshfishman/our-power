@@ -3,7 +3,7 @@
 import Button from '@/components/ui/Button';
 import { TextInput } from '@/components/ui/TextInput';
 import { useToast } from '@/hooks/useToast';
-import { AtSign, Facebook, Github, Google, LogInSquare } from '@/svg_components';
+import { AtSign, Facebook, Github, Google, Instagram, LogInSquare } from '@/svg_components';
 import { signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useState } from 'react';
@@ -18,9 +18,10 @@ export function UserAuthForm({ mode }: { mode: 'login' | 'register' }) {
     github: false,
     facebook: false,
     google: false,
+    instagram: false,
   });
   // Disable buttons when loading
-  const areButtonsDisabled = loading.email || loading.github || loading.facebook || loading.google;
+  const areButtonsDisabled = loading.email || loading.github || loading.facebook || loading.google || loading.instagram;
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('from') || '/feed';
   const { showToast } = useToast();
@@ -66,7 +67,7 @@ export function UserAuthForm({ mode }: { mode: 'login' | 'register' }) {
   }, [email, callbackUrl, showToast]);
 
   const signInWithProvider = useCallback(
-    (provider: 'github' | 'google' | 'facebook') => async () => {
+    (provider: 'github' | 'google' | 'facebook' | 'instagram') => async () => {
       setLoading((prev) => ({
         ...prev,
         [provider]: true,
@@ -116,16 +117,6 @@ export function UserAuthForm({ mode }: { mode: 'login' | 'register' }) {
         </div>
       </div>
       <div className="mb-4 flex flex-col gap-3">
-        <Button
-          onPress={signInWithProvider('github')}
-          shape="pill"
-          expand="full"
-          mode="subtle"
-          Icon={Github}
-          loading={loading.github}
-          isDisabled={areButtonsDisabled}>
-          Github
-        </Button>
         <div className="flex gap-2">
           <Button
             onPress={signInWithProvider('google')}
@@ -146,6 +137,28 @@ export function UserAuthForm({ mode }: { mode: 'login' | 'register' }) {
             loading={loading.facebook}
             isDisabled={areButtonsDisabled}>
             Facebook
+          </Button>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            onPress={signInWithProvider('instagram')}
+            shape="pill"
+            expand="full"
+            mode="subtle"
+            Icon={Instagram}
+            loading={loading.instagram}
+            isDisabled={areButtonsDisabled}>
+            Instagram
+          </Button>
+          <Button
+            onPress={signInWithProvider('github')}
+            shape="pill"
+            expand="full"
+            mode="subtle"
+            Icon={Github}
+            loading={loading.github}
+            isDisabled={areButtonsDisabled}>
+            Github
           </Button>
         </div>
       </div>

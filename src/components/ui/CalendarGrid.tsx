@@ -32,8 +32,8 @@ export function CalendarGrid({ state, ...props }: CalendarGridProps) {
                 // eslint-disable-next-line react/no-array-index-key
                 <CalendarCell key={i} state={state} date={date} />
               ) : (
-                // eslint-disable-next-line react/no-array-index-key
-                <td key={i} />
+                // eslint-disable-next-line react/no-array-index-key, jsx-a11y/control-has-associated-label
+                <td key={i} aria-hidden="true" />
               ),
             )}
           </tr>

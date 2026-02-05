@@ -1,12 +1,12 @@
 import 'server-only';
-import { DeleteObjectCommand } from '@aws-sdk/client-s3';
-import { s3Client } from './s3Client';
+import { supabaseAdmin, STORAGE_BUCKETS } from '@/lib/supabase/server';
 
 export async function deleteObject(fileName: string) {
-  const command = new DeleteObjectCommand({
-    Bucket: process.env.S3_BUCKET_NAME,
-    Key: fileName,
-  });
+  const bucketName = STORAGE_BUCKETS.PRIVATE;
 
-  await s3Client.send(command);
+  const { error } = await supabaseAdmin.storage.from(bucketName).remove([fileName]);
+
+  if (error) {
+    throw new Error(`Failed to delete file: ${error.message}`);
+  }
 }

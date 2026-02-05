@@ -1,7 +1,7 @@
 datasource db {
-  provider          = "postgresql"
-  url               = env("DATABASE_URL")
-  shadowDatabaseUrl = env("SHADOW_DATABASE_URL") // Only needed when using a cloud provider that doesn't support the creation of new databases, like Heroku. Learn more: https://pris.ly/d/migrate-shadow
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL") // Required for Supabase - uses direct connection for migrations
 }
 
 generator client {
@@ -66,6 +66,15 @@ model User {
   following          Follow[]            @relation("follower")
   activities         Activity[]          @relation("activity")
   notifications      Activity[]          @relation("notification")
+
+  // Our Power specific fields
+  zipCode              String?
+  streetAddress        String?
+  onboardingComplete   Boolean               @default(false)
+  causes               Cause[]               @relation("UserCauses")
+  managedOrganizations Organization[]        @relation("OrgManagers")
+  campaignMemberships  CampaignMember[]
+  actionParticipations ActionParticipation[]
 }
 
 model VerificationToken {
@@ -95,6 +104,10 @@ model Post {
   userId      String
   postLikes   PostLike[]
   comments    Comment[]
+
+  // Optional campaign relation - posts can be associated with campaigns
+  campaign   Campaign? @relation("CampaignPosts", fields: [campaignId], references: [id], onDelete: SetNull)
+  campaignId String?
 }
 
 model PostLike {
@@ -187,6 +200,12 @@ enum ActivityType {
   CREATE_REPLY
   REPLY_MENTION
   REPLY_LIKE
+
+  // Our Power activity types
+  CAMPAIGN_JOIN        // User joined a campaign
+  ACTION_RSVP          // User RSVP'd to an action
+  ACTION_COMPLETED     // User completed an action
+  ACTION_REMINDER      // Reminder for upcoming action
 }
 
 enum VisualMediaType {
@@ -205,4 +224,160 @@ enum RelationshipStatus {
   IN_A_RELATIONSHIP
   ENGAGED
   MARRIED
+}
+
+// =============================================================================
+// OUR POWER - ACTIVISM PLATFORM MODELS
+// =============================================================================
+
+model Organization {
+  id          String     @id @default(cuid())
+  name        String
+  description String?
+  logoUrl     String?
+  website     String?
+  managers    User[]     @relation("OrgManagers")
+  campaigns   Campaign[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Cause {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  description String?
+  icon        String? // Icon name or URL
+  color       String? // Hex color for UI
+  users       User[]     @relation("UserCauses")
+  campaigns   Campaign[]
+  createdAt   DateTime   @default(now())
+}
+
+model Campaign {
+  id          String         @id @default(cuid())
+  name        String
+  description String         @db.Text
+  type        CampaignType
+  status      CampaignStatus @default(ACTIVE)
+  imageUrl    String?
+  startDate   DateTime?
+  endDate     DateTime?
+
+  // Relations
+  cause   Cause            @relation(fields: [causeId], references: [id])
+  causeId String
+  org     Organization     @relation(fields: [orgId], references: [id])
+  orgId   String
+  actions Action[]
+  members CampaignMember[]
+  posts   Post[]           @relation("CampaignPosts")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum CampaignType {
+  LEGISLATIVE // Focused on passing or blocking legislation
+  FISCAL // Budget and funding related
+  CRIMINAL_JUSTICE // Justice reform related
+  ELECTORAL // Election related
+  COMMUNITY // Community organizing
+  OTHER
+}
+
+enum CampaignStatus {
+  DRAFT // Not yet published
+  ACTIVE // Currently accepting participants
+  PAUSED // Temporarily paused
+  COMPLETED // Successfully completed
+  ARCHIVED // No longer active
+}
+
+model Action {
+  id          String     @id @default(cuid())
+  title       String
+  description String?    @db.Text
+  type        ActionType
+  dueDate     DateTime
+  isActive    Boolean    @default(true)
+
+  // EVENT type fields
+  location     String?
+  eventTime    DateTime?
+  eventEndTime DateTime?
+  locationUrl  String? // Google Maps or venue link
+
+  // PHONE type fields
+  callScript   String?  @db.Text
+  phoneNumbers String[] // Target phone numbers
+  dialerUrl    String? // Deep link to Scale to Win/GetThru
+
+  // EMAIL type fields
+  emailSubject String?
+  emailBody    String?  @db.Text
+  emailTargets String[] // Target email addresses
+
+  // CANVASS type fields
+  canvassArea          String? // Description of area
+  canvassTurf          Json? // GeoJSON or turf boundaries
+  ecanvasserCampaignId String? // Linked Ecanvasser campaign
+
+  // Shareable content
+  graphics  String[] // URLs to shareable images
+  shareText String? // Suggested share text
+
+  // Relations
+  campaign     Campaign              @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaignId   String
+  participants ActionParticipation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum ActionType {
+  EVENT // Show up at a physical location
+  PHONE // Phone banking / calling
+  EMAIL // Email campaign
+  CANVASS // Door-to-door canvassing
+}
+
+model ActionParticipation {
+  id          String    @id @default(cuid())
+  willAttend  Boolean   @default(false) // RSVP'd yes
+  attended    Boolean   @default(false) // Actually participated
+  completedAt DateTime? // When they completed
+  notes       String? // User notes
+
+  // Relations
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId   String
+  action   Action @relation(fields: [actionId], references: [id], onDelete: Cascade)
+  actionId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, actionId])
+}
+
+model CampaignMember {
+  id   String     @id @default(cuid())
+  role MemberRole @default(MEMBER)
+
+  // Relations
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaignId String
+
+  joinedAt DateTime @default(now())
+
+  @@unique([userId, campaignId])
+}
+
+enum MemberRole {
+  MEMBER // Regular campaign member
+  ORGANIZER // Can create/edit actions
+  ADMIN // Full campaign admin
 }

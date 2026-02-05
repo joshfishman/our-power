@@ -1,6 +1,17 @@
 'use client';
 
-import { Feather, GridFeedCards, LogOutCircle, NotificationBell, Profile, Search } from '@/svg_components';
+import {
+  Bullhorn,
+  Calendar,
+  ChartBar,
+  Feather,
+  GridFeedCards,
+  LogOutCircle,
+  NotificationBell,
+  Profile,
+  Search,
+  TwoPeople,
+} from '@/svg_components';
 import { useSessionUserData } from '@/hooks/useSessionUserData';
 import { useNotificationsCountQuery } from '@/hooks/queries/useNotificationsCountQuery';
 import Link from 'next/link';
@@ -24,6 +35,26 @@ export function MenuBar() {
           title: 'Feed',
           Icon: GridFeedCards,
           route: '/feed',
+        },
+        {
+          title: 'Campaigns',
+          Icon: Bullhorn,
+          route: '/campaigns',
+        },
+        {
+          title: 'My Campaigns',
+          Icon: TwoPeople,
+          route: '/my-campaigns',
+        },
+        {
+          title: 'My Actions',
+          Icon: Calendar,
+          route: '/my-actions',
+        },
+        {
+          title: 'Dashboard',
+          Icon: ChartBar,
+          route: '/dashboard',
         },
         {
           title: 'Discover',
