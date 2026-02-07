@@ -116,7 +116,7 @@ export default function MyActionsPage() {
           {groupedActions.today.length > 0 && (
             <section>
               <h2 className="mb-3 text-lg font-semibold text-red-500">🔥 Today</h2>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4">
                 {groupedActions.today.map((action) => (
                   <div key={action.id}>
                     <p className="mb-2 text-xs text-muted-foreground">
@@ -138,7 +138,7 @@ export default function MyActionsPage() {
           {groupedActions.tomorrow.length > 0 && (
             <section>
               <h2 className="mb-3 text-lg font-semibold text-yellow-500">⏰ Tomorrow</h2>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4">
                 {groupedActions.tomorrow.map((action) => (
                   <div key={action.id}>
                     <p className="mb-2 text-xs text-muted-foreground">
@@ -160,7 +160,7 @@ export default function MyActionsPage() {
           {groupedActions.thisWeek.length > 0 && (
             <section>
               <h2 className="mb-3 text-lg font-semibold">📅 This Week</h2>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4">
                 {groupedActions.thisWeek.map((action) => (
                   <div key={action.id}>
                     <p className="mb-2 text-xs text-muted-foreground">
@@ -182,7 +182,7 @@ export default function MyActionsPage() {
           {groupedActions.later.length > 0 && (
             <section>
               <h2 className="mb-3 text-lg font-semibold text-muted-foreground">🗓️ Later</h2>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4">
                 {groupedActions.later.map((action) => (
                   <div key={action.id}>
                     <p className="mb-2 text-xs text-muted-foreground">

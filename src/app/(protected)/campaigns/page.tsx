@@ -113,7 +113,7 @@ export default function CampaignsPage() {
 
       {/* Campaign grid */}
       {data?.campaigns && data.campaigns.length > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4">
           {data.campaigns.map((campaign) => (
             <CampaignCard key={campaign.id} campaign={campaign} />
           ))}

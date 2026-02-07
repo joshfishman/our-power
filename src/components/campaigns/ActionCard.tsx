@@ -7,6 +7,7 @@ import Button from '@/components/ui/Button';
 import { TextInput } from '@/components/ui/TextInput';
 import { format, isPast, isToday, isTomorrow } from 'date-fns';
 import { useSessionUserData } from '@/hooks/useSessionUserData';
+import Link from 'next/link';
 
 interface ActionCardProps {
   action: {
@@ -163,29 +164,36 @@ export function ActionCard({
   };
 
   return (
-    <article className={cn('rounded-lg border border-border bg-card p-4', isPastDue && 'opacity-60')}>
-      {/* Header */}
-      <div className="mb-3 flex items-start justify-between">
-        <div className="flex items-center gap-2">
-          <Icon className={cn('h-5 w-5', config.color)} />
-          <span className="text-xs font-medium uppercase text-muted-foreground">{config.label}</span>
+    <article
+      className={cn(
+        'rounded-lg border border-border bg-card p-4 transition-colors hover:bg-card/80',
+        isPastDue && 'opacity-60',
+      )}>
+      {/* Clickable header + content area */}
+      <Link href={`/actions/${action.id}`} className="block">
+        {/* Header */}
+        <div className="mb-3 flex items-start justify-between">
+          <div className="flex items-center gap-2">
+            <Icon className={cn('h-5 w-5', config.color)} />
+            <span className="text-xs font-medium uppercase text-muted-foreground">{config.label}</span>
+          </div>
+          <span
+            className={cn(
+              'rounded-full px-2 py-1 text-xs font-medium',
+              isToday(dueDate)
+                ? 'bg-red-500/10 text-red-500'
+                : isTomorrow(dueDate)
+                ? 'bg-yellow-500/10 text-yellow-500'
+                : 'bg-muted text-muted-foreground',
+            )}>
+            {getDateLabel()}
+          </span>
         </div>
-        <span
-          className={cn(
-            'rounded-full px-2 py-1 text-xs font-medium',
-            isToday(dueDate)
-              ? 'bg-red-500/10 text-red-500'
-              : isTomorrow(dueDate)
-              ? 'bg-yellow-500/10 text-yellow-500'
-              : 'bg-muted text-muted-foreground',
-          )}>
-          {getDateLabel()}
-        </span>
-      </div>
 
-      {/* Content */}
-      <h4 className="mb-1 font-medium">{action.title}</h4>
-      {action.description && <p className="mb-3 line-clamp-2 text-sm text-muted-foreground">{action.description}</p>}
+        {/* Content */}
+        <h4 className="mb-1 font-medium">{action.title}</h4>
+        {action.description && <p className="mb-3 line-clamp-2 text-sm text-muted-foreground">{action.description}</p>}
+      </Link>
       {action.graphics?.[0] && (
         <img
           src={action.graphics[0]}
