@@ -14,7 +14,7 @@ export async function DELETE(request: Request, { params }: { params: { userId: s
   const rateLimitResponse = await enforceRateLimit(request, { limit: 40, windowSeconds: 60 });
   if (rateLimitResponse) return rateLimitResponse;
 
-  const parsedUserId = z.string().cuid().safeParse(params.userId);
+  const parsedUserId = z.string().min(1).safeParse(params.userId);
   const parsedCommentId = z.coerce.number().int().positive().safeParse(params.commentId);
   if (!parsedUserId.success || !parsedCommentId.success) {
     return NextResponse.json({ error: 'Invalid user or comment id' }, { status: 400 });

@@ -16,7 +16,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const campaignId = z.string().cuid().safeParse(params.id);
+    const campaignId = z.string().min(1).safeParse(params.id);
     if (!campaignId.success) {
       return NextResponse.json({ error: 'Invalid campaign id' }, { status: 400 });
     }
@@ -83,7 +83,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const campaignId = z.string().cuid().safeParse(params.id);
+    const campaignId = z.string().min(1).safeParse(params.id);
     if (!campaignId.success) {
       return NextResponse.json({ error: 'Invalid campaign id' }, { status: 400 });
     }
@@ -126,7 +126,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const campaignId = z.string().cuid().safeParse(params.id);
+    const campaignId = z.string().min(1).safeParse(params.id);
     if (!campaignId.success) {
       return NextResponse.json({ error: 'Invalid campaign id' }, { status: 400 });
     }

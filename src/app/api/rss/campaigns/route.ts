@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   const siteUrl = getSiteUrl();
 
   if (causeId) {
-    const parsedCauseId = z.string().cuid().safeParse(causeId);
+    const parsedCauseId = z.string().min(1).safeParse(causeId);
     if (!parsedCauseId.success) {
       return new Response('Invalid cause id', { status: 400 });
     }

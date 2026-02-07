@@ -16,7 +16,7 @@ export async function PATCH(request: Request, { params }: { params: { userId: st
   const rateLimitResponse = await enforceRateLimit(request, { limit: 20, windowSeconds: 60 });
   if (rateLimitResponse) return rateLimitResponse;
 
-  const parsedUserId = z.string().cuid().safeParse(params.userId);
+  const parsedUserId = z.string().min(1).safeParse(params.userId);
   if (!parsedUserId.success) {
     return NextResponse.json({ error: 'Invalid user id' }, { status: 400 });
   }

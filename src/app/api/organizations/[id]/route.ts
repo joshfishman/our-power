@@ -16,7 +16,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
     const rateLimitResponse = await enforceRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
     const session = await auth();
-    const organizationId = z.string().cuid().safeParse(params.id);
+    const organizationId = z.string().min(1).safeParse(params.id);
     if (!organizationId.success) {
       return NextResponse.json({ error: 'Invalid organization id' }, { status: 400 });
     }
@@ -84,7 +84,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const organizationId = z.string().cuid().safeParse(params.id);
+    const organizationId = z.string().min(1).safeParse(params.id);
     if (!organizationId.success) {
       return NextResponse.json({ error: 'Invalid organization id' }, { status: 400 });
     }
@@ -131,7 +131,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const organizationId = z.string().cuid().safeParse(params.id);
+    const organizationId = z.string().min(1).safeParse(params.id);
     if (!organizationId.success) {
       return NextResponse.json({ error: 'Invalid organization id' }, { status: 400 });
     }

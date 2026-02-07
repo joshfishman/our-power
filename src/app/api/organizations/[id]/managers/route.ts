@@ -16,7 +16,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const organizationId = z.string().cuid().safeParse(params.id);
+    const organizationId = z.string().min(1).safeParse(params.id);
     if (!organizationId.success) {
       return NextResponse.json({ error: 'Invalid organization id' }, { status: 400 });
     }
@@ -77,7 +77,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const organizationId = z.string().cuid().safeParse(params.id);
+    const organizationId = z.string().min(1).safeParse(params.id);
     if (!organizationId.success) {
       return NextResponse.json({ error: 'Invalid organization id' }, { status: 400 });
     }
@@ -104,7 +104,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
       return NextResponse.json({ error: 'userId is required' }, { status: 400 });
     }
 
-    const parsedUserIdToRemove = z.string().cuid().safeParse(userIdToRemove);
+    const parsedUserIdToRemove = z.string().min(1).safeParse(userIdToRemove);
     if (!parsedUserIdToRemove.success) {
       return NextResponse.json({ error: 'Invalid user id' }, { status: 400 });
     }

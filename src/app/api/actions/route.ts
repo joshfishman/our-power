@@ -30,7 +30,7 @@ export async function GET(request: Request) {
     const where: Record<string, any> = { isActive: true };
 
     if (campaignId) {
-      const parsedCampaignId = z.string().cuid().safeParse(campaignId);
+      const parsedCampaignId = z.string().min(1).safeParse(campaignId);
       if (!parsedCampaignId.success) {
         return withCors(NextResponse.json({ error: 'Invalid campaign id' }, { status: 400 }), request);
       }

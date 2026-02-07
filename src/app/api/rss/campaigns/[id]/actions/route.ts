@@ -9,7 +9,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
   if (rateLimitResponse) return rateLimitResponse;
 
   const siteUrl = getSiteUrl();
-  const parsedCampaignId = z.string().cuid().safeParse(params.id);
+  const parsedCampaignId = z.string().min(1).safeParse(params.id);
   if (!parsedCampaignId.success) {
     return new Response('Invalid campaign id', { status: 400 });
   }

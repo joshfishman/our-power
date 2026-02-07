@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     if (rateLimitResponse) return rateLimitResponse;
 
     const body = await request.json();
-    const parsed = z.object({ actionId: z.string().cuid() }).safeParse(body);
+    const parsed = z.object({ actionId: z.string().min(1) }).safeParse(body);
     if (!parsed.success) {
       return NextResponse.json({ error: 'Invalid action id' }, { status: 400 });
     }
@@ -110,7 +110,7 @@ export async function GET(request: Request) {
   if (!actionId) {
     return NextResponse.json({ error: 'Action ID required' }, { status: 400 });
   }
-  const parsedActionId = z.string().cuid().safeParse(actionId);
+  const parsedActionId = z.string().min(1).safeParse(actionId);
   if (!parsedActionId.success) {
     return NextResponse.json({ error: 'Invalid action id' }, { status: 400 });
   }

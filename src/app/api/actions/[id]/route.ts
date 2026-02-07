@@ -16,7 +16,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const actionId = z.string().cuid().safeParse(params.id);
+    const actionId = z.string().min(1).safeParse(params.id);
     if (!actionId.success) {
       return NextResponse.json({ error: 'Invalid action id' }, { status: 400 });
     }

@@ -9,7 +9,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
   if (rateLimitResponse) return rateLimitResponse;
 
   const siteUrl = getSiteUrl();
-  const parsedCauseId = z.string().cuid().safeParse(params.id);
+  const parsedCauseId = z.string().min(1).safeParse(params.id);
   if (!parsedCauseId.success) {
     return new Response('Invalid cause id', { status: 400 });
   }

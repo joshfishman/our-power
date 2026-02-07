@@ -17,7 +17,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   if (rateLimitResponse) return rateLimitResponse;
 
   const { id } = await params;
-  const campaignId = z.string().cuid().safeParse(id);
+  const campaignId = z.string().min(1).safeParse(id);
   if (!campaignId.success) {
     return NextResponse.json({ error: 'Invalid campaign id' }, { status: 400 });
   }

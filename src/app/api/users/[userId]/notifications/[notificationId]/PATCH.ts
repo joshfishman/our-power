@@ -25,7 +25,7 @@ export async function PATCH(request: Request, { params }: { params: { userId: st
   const rateLimitResponse = await enforceRateLimit(request, { limit: 60, windowSeconds: 60 });
   if (rateLimitResponse) return rateLimitResponse;
 
-  const parsedUserId = z.string().cuid().safeParse(params.userId);
+  const parsedUserId = z.string().min(1).safeParse(params.userId);
   const parsedNotificationId = z.coerce.number().int().positive().safeParse(params.notificationId);
   if (!parsedUserId.success || !parsedNotificationId.success) {
     return NextResponse.json({ error: 'Invalid user or notification id' }, { status: 400 });

@@ -13,8 +13,8 @@ export async function DELETE(request: Request, { params }: { params: { userId: s
   const rateLimitResponse = await enforceRateLimit(request, { limit: 20, windowSeconds: 60 });
   if (rateLimitResponse) return rateLimitResponse;
 
-  const parsedUserId = z.string().cuid().safeParse(params.userId);
-  const parsedTargetUserId = z.string().cuid().safeParse(params.targetUserId);
+  const parsedUserId = z.string().min(1).safeParse(params.userId);
+  const parsedTargetUserId = z.string().min(1).safeParse(params.targetUserId);
   if (!parsedUserId.success || !parsedTargetUserId.success) {
     return NextResponse.json({ error: 'Invalid user id' }, { status: 400 });
   }

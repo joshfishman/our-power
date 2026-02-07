@@ -9,7 +9,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
   if (rateLimitResponse) return rateLimitResponse;
 
   const siteUrl = getSiteUrl();
-  const parsedOrgId = z.string().cuid().safeParse(params.id);
+  const parsedOrgId = z.string().min(1).safeParse(params.id);
   if (!parsedOrgId.success) {
     return new Response('Invalid organization id', { status: 400 });
   }

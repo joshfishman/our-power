@@ -22,13 +22,13 @@ export async function GET(request: Request) {
 
   try {
     if (orgId) {
-      const parsedOrgId = z.string().cuid().safeParse(orgId);
+      const parsedOrgId = z.string().min(1).safeParse(orgId);
       if (!parsedOrgId.success) {
         return NextResponse.json({ error: 'Invalid organization id' }, { status: 400 });
       }
     }
     if (campaignId) {
-      const parsedCampaignId = z.string().cuid().safeParse(campaignId);
+      const parsedCampaignId = z.string().min(1).safeParse(campaignId);
       if (!parsedCampaignId.success) {
         return NextResponse.json({ error: 'Invalid campaign id' }, { status: 400 });
       }
