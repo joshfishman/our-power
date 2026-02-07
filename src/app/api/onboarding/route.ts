@@ -18,6 +18,17 @@ export async function POST(request: Request) {
     const body = await request.json();
     const validatedData = onboardingSchema.parse(body);
 
+    const uniqueCauseIds = Array.from(new Set(validatedData.causeIds));
+    if (uniqueCauseIds.length > 0) {
+      const existingCauses = await prisma.cause.findMany({
+        where: { id: { in: uniqueCauseIds } },
+        select: { id: true },
+      });
+      if (existingCauses.length !== uniqueCauseIds.length) {
+        return NextResponse.json({ error: 'One or more causes are invalid' }, { status: 400 });
+      }
+    }
+
     // Update user with location and causes
     const updatedUser = await prisma.user.update({
       where: { id: session.user.id },
@@ -26,7 +37,7 @@ export async function POST(request: Request) {
         streetAddress: validatedData.streetAddress,
         onboardingComplete: true,
         causes: {
-          connect: validatedData.causeIds.map((id) => ({ id })),
+          connect: uniqueCauseIds.map((id) => ({ id })),
         },
       },
       include: {

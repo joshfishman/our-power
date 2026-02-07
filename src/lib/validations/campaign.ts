@@ -1,11 +1,19 @@
 import { z } from 'zod';
 
+const httpUrl = z
+  .string()
+  .url()
+  .refine((value) => value.startsWith('http://') || value.startsWith('https://'), {
+    message: 'URL must start with http:// or https://',
+  });
+const httpUrlOptional = httpUrl.optional().nullable();
+
 export const campaignSchema = z.object({
   name: z.string().min(3, 'Name must be at least 3 characters').max(100),
   description: z.string().min(10, 'Description must be at least 10 characters'),
   type: z.enum(['LEGISLATIVE', 'FISCAL', 'CRIMINAL_JUSTICE', 'ELECTORAL', 'COMMUNITY', 'OTHER']),
   status: z.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'COMPLETED', 'ARCHIVED']).optional(),
-  imageUrl: z.string().url().optional().nullable(),
+  imageUrl: httpUrlOptional,
   startDate: z.string().datetime().optional().nullable(),
   endDate: z.string().datetime().optional().nullable(),
   causeId: z.string().min(1, 'Please select a cause'),
@@ -23,15 +31,21 @@ export const actionSchema = z.object({
   location: z.string().optional().nullable(),
   eventTime: z.string().datetime().optional().nullable(),
   eventEndTime: z.string().datetime().optional().nullable(),
-  locationUrl: z.string().url().optional().nullable(),
+  locationUrl: httpUrlOptional,
 
   // PHONE fields
   callScript: z.string().optional().nullable(),
   phoneNumbers: z.array(z.string()).optional(),
-  dialerUrl: z.string().url().optional().nullable(),
+  dialerUrl: httpUrlOptional,
 
   // EMAIL fields
-  emailSubject: z.string().optional().nullable(),
+  emailSubject: z
+    .string()
+    .optional()
+    .nullable()
+    .refine((value) => !value || !/[\r\n]/.test(value), {
+      message: 'Email subject must be a single line',
+    }),
   emailBody: z.string().optional().nullable(),
   emailTargets: z.array(z.string().email()).optional(),
 
@@ -41,7 +55,7 @@ export const actionSchema = z.object({
   ecanvasserCampaignId: z.string().optional().nullable(),
 
   // Shareable content
-  graphics: z.array(z.string().url()).optional(),
+  graphics: z.array(httpUrl).optional(),
   shareText: z.string().optional().nullable(),
 });
 

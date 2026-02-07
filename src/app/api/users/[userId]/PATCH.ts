@@ -31,6 +31,16 @@ export async function PATCH(request: Request, { params }: { params: { userId: st
     try {
       // Extract causeIds separately since it maps to a relation, not a scalar field
       const { causeIds, ...scalarData } = validate.data;
+      const uniqueCauseIds = causeIds ? Array.from(new Set(causeIds)) : undefined;
+      if (uniqueCauseIds && uniqueCauseIds.length > 0) {
+        const existingCauses = await prisma.cause.findMany({
+          where: { id: { in: uniqueCauseIds } },
+          select: { id: true },
+        });
+        if (existingCauses.length !== uniqueCauseIds.length) {
+          return NextResponse.json({ errorMessage: 'One or more causes are invalid' }, { status: 400 });
+        }
+      }
 
       const res = await prisma.user.update({
         where: {
@@ -40,9 +50,9 @@ export async function PATCH(request: Request, { params }: { params: { userId: st
           ...scalarData,
           birthDate: scalarData.birthDate && new Date(scalarData.birthDate),
           // Use `set` to replace all existing cause connections with the new selection
-          ...(causeIds !== undefined && {
+          ...(uniqueCauseIds !== undefined && {
             causes: {
-              set: causeIds.map((id) => ({ id })),
+              set: uniqueCauseIds.map((id) => ({ id })),
             },
           }),
         },

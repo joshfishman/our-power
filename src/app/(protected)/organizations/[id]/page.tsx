@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -53,8 +53,13 @@ export default function OrganizationDetailPage() {
   const { confirm } = useDialogs();
   const [newManagerEmail, setNewManagerEmail] = useState('');
   const [showAddManager, setShowAddManager] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const {
     data: org,
@@ -79,7 +84,7 @@ export default function OrganizationDetailPage() {
     },
   });
 
-  const isManager = managedOrgs?.some((o) => o.id === params.id);
+  const isManager = mounted && managedOrgs?.some((o) => o.id === params.id);
 
   const addManagerMutation = useMutation({
     mutationFn: async (email: string) => {

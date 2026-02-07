@@ -1,10 +1,18 @@
 import { z } from 'zod';
 
+const httpUrl = z
+  .string()
+  .url()
+  .refine((value) => value.startsWith('http://') || value.startsWith('https://'), {
+    message: 'URL must start with http:// or https://',
+  });
+const httpUrlOptional = httpUrl.optional().nullable();
+
 export const organizationSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(100),
   description: z.string().optional().nullable(),
-  logoUrl: z.string().url().optional().nullable(),
-  website: z.string().url().optional().nullable(),
+  logoUrl: httpUrlOptional,
+  website: httpUrlOptional,
 });
 
 export const addManagerSchema = z.object({

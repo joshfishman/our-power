@@ -7,6 +7,14 @@ import { logError } from '@/lib/logger';
 import { logActionCompleted, logActionRSVP } from '@/lib/notifications/campaignNotifications';
 import { z } from 'zod';
 
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
 // POST /api/actions/[id]/send-email - Send an advocacy email on behalf of a user
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
@@ -53,19 +61,24 @@ export async function POST(request: Request, { params }: { params: { id: string 
       select: { name: true, email: true },
     });
 
+    const safeSubject = action.emailSubject.replace(/[\r\n]+/g, ' ').trim();
+    const safeBody = escapeHtml(action.emailBody);
+    const safeUserName = escapeHtml(user?.name || 'a concerned citizen');
+    const safeCampaignName = escapeHtml(action.campaign.name);
+
     // Send emails to all targets
     const results = await Promise.allSettled(
       action.emailTargets.map((targetEmail) =>
         sendEmail({
           to: targetEmail,
-          subject: action.emailSubject!,
+          subject: safeSubject,
           html: `
             <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
-              <div style="white-space: pre-wrap; line-height: 1.6;">${action.emailBody}</div>
+              <div style="white-space: pre-wrap; line-height: 1.6;">${safeBody}</div>
               <hr style="margin: 24px 0; border: none; border-top: 1px solid #e5e7eb;" />
               <p style="font-size: 12px; color: #6b7280;">
-                Sent via Our Power on behalf of ${user?.name || 'a concerned citizen'}
-                as part of the "${action.campaign.name}" campaign.
+                Sent via Our Power on behalf of ${safeUserName}
+                as part of the "${safeCampaignName}" campaign.
               </p>
             </div>
           `,
