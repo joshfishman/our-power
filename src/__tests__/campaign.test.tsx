@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { act } from 'react';
 import { campaignSchema, actionSchema } from '@/lib/validations/campaign';
 import { CampaignCard } from '@/components/campaigns/CampaignCard';
 import { ActionCard } from '@/components/campaigns/ActionCard';
@@ -234,7 +235,9 @@ describe('ActionCard Component', () => {
     const onRSVP = vi.fn();
     render(<ActionCard action={mockAction} onRSVP={onRSVP} />);
 
-    await user.click(screen.getByText("I'll do this"));
+    await act(async () => {
+      await user.click(screen.getByText("I'll do this"));
+    });
     expect(onRSVP).toHaveBeenCalledWith('action-1');
   });
 
