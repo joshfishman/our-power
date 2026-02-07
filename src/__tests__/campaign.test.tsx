@@ -5,6 +5,15 @@ import { campaignSchema, actionSchema } from '@/lib/validations/campaign';
 import { CampaignCard } from '@/components/campaigns/CampaignCard';
 import { ActionCard } from '@/components/campaigns/ActionCard';
 
+vi.mock('@/hooks/useSessionUserData', () => ({
+  useSessionUserData: () => [
+    {
+      zipCode: '90001',
+      streetAddress: '123 Main St',
+    },
+  ],
+}));
+
 // Mock campaign data
 const mockCampaign = {
   id: 'campaign-1',
