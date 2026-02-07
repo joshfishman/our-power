@@ -69,7 +69,7 @@ export function CreateOrganizationForm({ onSuccess, onCancel }: CreateOrganizati
         label="Organization Name"
         name="name"
         value={name}
-        onChange={(e) => setName(e.target.value)}
+        onChange={setName}
         placeholder="e.g., Climate Action Coalition"
         required
       />
@@ -78,7 +78,7 @@ export function CreateOrganizationForm({ onSuccess, onCancel }: CreateOrganizati
         label="Description"
         name="description"
         value={description}
-        onChange={(e) => setDescription(e.target.value)}
+        onChange={setDescription}
         placeholder="What does this organization do?"
         rows={3}
       />
@@ -88,7 +88,7 @@ export function CreateOrganizationForm({ onSuccess, onCancel }: CreateOrganizati
         name="website"
         type="url"
         value={website}
-        onChange={(e) => setWebsite(e.target.value)}
+        onChange={setWebsite}
         placeholder="https://example.org"
       />
 
