@@ -9,7 +9,7 @@ import { GenericLoading } from '@/components/GenericLoading';
 import { Item } from 'react-stately';
 import { Select } from '@/components/ui/Select';
 import Button from '@/components/ui/Button';
-import { Plus } from '@/svg_components';
+import { ActionsPlus } from '@/svg_components';
 
 interface Campaign {
   id: string;
@@ -90,7 +90,7 @@ export default function CampaignsPage() {
           </p>
         </div>
         <Link href="/campaigns/create">
-          <Button Icon={Plus}>Create Campaign</Button>
+          <Button Icon={ActionsPlus}>Create Campaign</Button>
         </Link>
       </div>
 

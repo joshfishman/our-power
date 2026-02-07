@@ -240,6 +240,7 @@ model Organization {
   name        String
   description String?
   logoUrl     String?
+  imageUrl    String?    // Cover/banner image
   website     String?
   managers    User[]     @relation("OrgManagers")
   campaigns   Campaign[]

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -11,7 +11,8 @@ import Button from '@/components/ui/Button';
 import { TextInput } from '@/components/ui/TextInput';
 import { useToast } from '@/hooks/useToast';
 import { useDialogs } from '@/hooks/useDialogs';
-import { BuildingBusinessOffice, Plus, Trash, Globe } from '@/svg_components';
+import { BuildingBusinessOffice, ActionsPlus, Delete, WorldNet } from '@/svg_components';
+import { compressImage } from '@/lib/compressImage';
 
 interface Manager {
   id: string;
@@ -35,6 +36,7 @@ interface Organization {
   name: string;
   description: string | null;
   logoUrl: string | null;
+  imageUrl: string | null;
   website: string | null;
   managers: Manager[];
   campaigns: Campaign[];
@@ -51,6 +53,8 @@ export default function OrganizationDetailPage() {
   const { confirm } = useDialogs();
   const [newManagerEmail, setNewManagerEmail] = useState('');
   const [showAddManager, setShowAddManager] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const {
     data: org,
@@ -121,6 +125,47 @@ export default function OrganizationDetailPage() {
     },
   });
 
+  const uploadPhotoMutation = useMutation({
+    mutationFn: async ({ file, type }: { file: File; type: 'logo' | 'image' }) => {
+      let compressed: File;
+      try {
+        compressed = await compressImage(file, {
+          maxWidth: type === 'logo' ? 512 : 1920,
+          maxHeight: type === 'logo' ? 512 : 600,
+          quality: 0.85,
+        });
+      } catch {
+        compressed = file;
+      }
+      const formData = new FormData();
+      formData.append('file', compressed, compressed.name);
+      const res = await fetch(`/api/organizations/${params.id}/photo?type=${type}`, {
+        method: 'POST',
+        body: formData,
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to upload photo');
+      }
+      return res.json();
+    },
+    onSuccess: (_, { type }) => {
+      queryClient.invalidateQueries({ queryKey: ['organization', params.id] });
+      queryClient.invalidateQueries({ queryKey: ['organizations'] });
+      showToast({ type: 'success', title: `${type === 'logo' ? 'Logo' : 'Cover image'} updated!` });
+    },
+    onError: (error) => {
+      showToast({ type: 'error', title: 'Upload failed', message: error.message });
+    },
+  });
+
+  const handlePhotoChange = (type: 'logo' | 'image') => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    uploadPhotoMutation.mutate({ file, type });
+    e.target.value = '';
+  };
+
   const deleteOrgMutation = useMutation({
     mutationFn: async () => {
       const res = await fetch(`/api/organizations/${params.id}`, { method: 'DELETE' });
@@ -149,21 +194,75 @@ export default function OrganizationDetailPage() {
 
   return (
     <ResponsiveContainer className="py-6">
-      {/* Header */}
-      <div className="mb-6 flex items-start gap-4">
-        {org.logoUrl ? (
+      {/* Cover Image */}
+      <div className="relative mb-6 overflow-hidden rounded-xl">
+        {org.imageUrl ? (
           <Image
-            src={org.logoUrl}
-            alt={org.name}
-            width={64}
-            height={64}
-            className="h-16 w-16 rounded-xl object-cover"
+            src={org.imageUrl}
+            alt={`${org.name} cover`}
+            width={1200}
+            height={400}
+            className="h-48 w-full object-cover"
           />
         ) : (
-          <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-primary/10">
-            <BuildingBusinessOffice className="h-8 w-8 text-primary" />
+          <div className="flex h-48 w-full items-center justify-center bg-gradient-to-r from-primary/20 to-primary/5">
+            <BuildingBusinessOffice className="h-16 w-16 text-primary/30" />
           </div>
         )}
+        {isManager && (
+          <>
+            <button
+              type="button"
+              onClick={() => imageInputRef.current?.click()}
+              className="absolute bottom-3 right-3 rounded-md bg-background/80 px-3 py-1.5 text-xs font-medium backdrop-blur-sm hover:bg-background">
+              {org.imageUrl ? 'Change Cover' : 'Add Cover Image'}
+            </button>
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handlePhotoChange('image')}
+              className="hidden"
+            />
+          </>
+        )}
+      </div>
+
+      {/* Header */}
+      <div className="mb-6 flex items-start gap-4">
+        <div className="relative">
+          {org.logoUrl ? (
+            <Image
+              src={org.logoUrl}
+              alt={org.name}
+              width={64}
+              height={64}
+              className="h-16 w-16 rounded-xl object-cover"
+            />
+          ) : (
+            <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-primary/10">
+              <BuildingBusinessOffice className="h-8 w-8 text-primary" />
+            </div>
+          )}
+          {isManager && (
+            <>
+              <button
+                type="button"
+                onClick={() => logoInputRef.current?.click()}
+                className="absolute -bottom-1 -right-1 rounded-full bg-background p-1 text-xs shadow-md hover:bg-muted"
+                title="Change logo">
+                ✏️
+              </button>
+              <input
+                ref={logoInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handlePhotoChange('logo')}
+                className="hidden"
+              />
+            </>
+          )}
+        </div>
         <div className="flex-1">
           <h1 className="text-2xl font-bold">{org.name}</h1>
           {org.description && <p className="mt-1 text-muted-foreground">{org.description}</p>}
@@ -173,7 +272,7 @@ export default function OrganizationDetailPage() {
               target="_blank"
               rel="noopener noreferrer"
               className="mt-2 inline-flex items-center gap-1 text-sm text-primary hover:underline">
-              <Globe className="h-4 w-4" />
+              <WorldNet className="h-4 w-4" />
               {org.website}
             </a>
           )}
@@ -181,7 +280,7 @@ export default function OrganizationDetailPage() {
         {isManager && (
           <div className="flex gap-2">
             <Link href={`/campaigns/create?orgId=${org.id}`}>
-              <Button Icon={Plus}>New Campaign</Button>
+              <Button Icon={ActionsPlus}>New Campaign</Button>
             </Link>
           </div>
         )}
@@ -242,7 +341,7 @@ export default function OrganizationDetailPage() {
                 <Button
                   size="small"
                   mode="subtle"
-                  Icon={Trash}
+                  Icon={Delete}
                   onPress={() =>
                     confirm({
                       title: 'Remove Manager',
@@ -294,7 +393,7 @@ export default function OrganizationDetailPage() {
             <p className="text-muted-foreground">No campaigns yet</p>
             {isManager && (
               <Link href={`/campaigns/create?orgId=${org.id}`}>
-                <Button className="mt-4" mode="subtle" Icon={Plus}>
+                <Button className="mt-4" mode="subtle" Icon={ActionsPlus}>
                   Create First Campaign
                 </Button>
               </Link>

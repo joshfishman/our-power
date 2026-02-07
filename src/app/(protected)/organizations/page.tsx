@@ -6,7 +6,7 @@ import { ResponsiveContainer } from '@/components/ui/ResponsiveContainer';
 import { OrganizationCard, CreateOrganizationForm } from '@/components/organizations';
 import { GenericLoading } from '@/components/GenericLoading';
 import Button from '@/components/ui/Button';
-import { Plus } from '@/svg_components';
+import { ActionsPlus } from '@/svg_components';
 
 interface Organization {
   id: string;
@@ -62,7 +62,7 @@ export default function OrganizationsPage() {
           <h1 className="mb-2 text-2xl font-bold">Organizations</h1>
           <p className="text-muted-foreground">Manage organizations and create campaigns.</p>
         </div>
-        <Button onPress={() => setShowCreateForm(!showCreateForm)} Icon={Plus}>
+        <Button onPress={() => setShowCreateForm(!showCreateForm)} Icon={ActionsPlus}>
           {showCreateForm ? 'Cancel' : 'New Organization'}
         </Button>
       </div>
@@ -82,7 +82,7 @@ export default function OrganizationsPage() {
       {managedOrgs && managedOrgs.length > 0 && (
         <section className="mb-8">
           <h2 className="mb-4 text-lg font-semibold">My Organizations</h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4">
             {managedOrgs.map((org) => (
               <OrganizationCard key={org.id} organization={org} isManager />
             ))}
@@ -94,7 +94,7 @@ export default function OrganizationsPage() {
       <section>
         <h2 className="mb-4 text-lg font-semibold">All Organizations</h2>
         {allOrgs && allOrgs.length > 0 ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4">
             {allOrgs
               .filter((org) => !managedIds.has(org.id))
               .map((org) => (

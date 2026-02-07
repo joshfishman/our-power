@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { TextInput } from '@/components/ui/TextInput';
 import { Textarea } from '@/components/ui/Textarea';
 import Button from '@/components/ui/Button';
 import { useToast } from '@/hooks/useToast';
+import { compressImage } from '@/lib/compressImage';
+import Image from 'next/image';
 
 interface CreateOrganizationFormProps {
   onSuccess?: () => void;
@@ -16,11 +18,28 @@ export function CreateOrganizationForm({ onSuccess, onCancel }: CreateOrganizati
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [website, setWebsite] = useState('');
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
   const queryClient = useQueryClient();
 
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const compressed = await compressImage(file, { maxWidth: 512, maxHeight: 512, quality: 0.85 });
+      setLogoFile(compressed);
+      setLogoPreview(URL.createObjectURL(compressed));
+    } catch {
+      setLogoFile(file);
+      setLogoPreview(URL.createObjectURL(file));
+    }
+  };
+
   const createMutation = useMutation({
     mutationFn: async () => {
+      // 1. Create the org
       const res = await fetch('/api/organizations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -34,10 +53,23 @@ export function CreateOrganizationForm({ onSuccess, onCancel }: CreateOrganizati
         const error = await res.json();
         throw new Error(error.error || 'Failed to create organization');
       }
-      return res.json();
+      const org = await res.json();
+
+      // 2. Upload logo if provided
+      if (logoFile) {
+        const formData = new FormData();
+        formData.append('file', logoFile, logoFile.name);
+        await fetch(`/api/organizations/${org.id}/photo?type=logo`, {
+          method: 'POST',
+          body: formData,
+        });
+      }
+
+      return org;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['organizations'] });
+      queryClient.invalidateQueries({ queryKey: ['organizations', 'managed'] });
       showToast({
         type: 'success',
         title: 'Organization created!',
@@ -46,6 +78,8 @@ export function CreateOrganizationForm({ onSuccess, onCancel }: CreateOrganizati
       setName('');
       setDescription('');
       setWebsite('');
+      setLogoFile(null);
+      setLogoPreview(null);
       onSuccess?.();
     },
     onError: (error) => {
@@ -65,6 +99,41 @@ export function CreateOrganizationForm({ onSuccess, onCancel }: CreateOrganizati
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Logo upload */}
+      <div>
+        <label htmlFor="org-logo-upload" className="mb-1 block text-sm font-medium">
+          Logo (optional)
+        </label>
+        <div className="flex items-center gap-4">
+          {logoPreview ? (
+            <Image
+              src={logoPreview}
+              alt="Logo preview"
+              width={64}
+              height={64}
+              className="h-16 w-16 rounded-lg object-cover"
+            />
+          ) : (
+            <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-muted text-2xl text-muted-foreground">
+              🏛️
+            </div>
+          )}
+          <div>
+            <Button type="button" size="small" mode="subtle" onPress={() => logoInputRef.current?.click()}>
+              {logoPreview ? 'Change Logo' : 'Upload Logo'}
+            </Button>
+            <input
+              id="org-logo-upload"
+              ref={logoInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleLogoChange}
+              className="hidden"
+            />
+          </div>
+        </div>
+      </div>
+
       <TextInput
         label="Organization Name"
         name="name"
