@@ -1,14 +1,14 @@
 'use client';
 
 import { useEffect } from 'react';
+import { logError } from '@/lib/logger';
 import { useRouter } from 'next/navigation';
 
 export default function ProtectedError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   const router = useRouter();
 
   useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.error('Protected route error:', error);
+    logError('Protected route error', error);
   }, [error]);
 
   return (

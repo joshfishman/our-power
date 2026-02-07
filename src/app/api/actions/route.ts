@@ -2,17 +2,23 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import prisma from '@/lib/prisma/prisma';
 import { actionSchema } from '@/lib/validations/campaign';
-import { withCors, corsOptionsResponse, isRateLimited, rateLimitedResponse } from '@/lib/api-utils';
+import { withCors, corsOptionsResponse, enforceRateLimit } from '@/lib/api-utils';
+import { logError } from '@/lib/logger';
+import { z } from 'zod';
 
-export async function OPTIONS() {
-  return corsOptionsResponse();
+const cacheHeaders = {
+  'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=86400',
+};
+
+export async function OPTIONS(request: Request) {
+  return corsOptionsResponse(request);
 }
 
 // GET /api/actions - List actions
 export async function GET(request: Request) {
   try {
-    const ip = request.headers.get('x-forwarded-for') || 'unknown';
-    if (isRateLimited(ip)) return rateLimitedResponse();
+    const rateLimitResponse = await enforceRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
     const session = await auth();
     const { searchParams } = new URL(request.url);
     const campaignId = searchParams.get('campaignId');
@@ -23,7 +29,13 @@ export async function GET(request: Request) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: Record<string, any> = { isActive: true };
 
-    if (campaignId) where.campaignId = campaignId;
+    if (campaignId) {
+      const parsedCampaignId = z.string().cuid().safeParse(campaignId);
+      if (!parsedCampaignId.success) {
+        return withCors(NextResponse.json({ error: 'Invalid campaign id' }, { status: 400 }), request);
+      }
+      where.campaignId = parsedCampaignId.data;
+    }
     if (type) where.type = type;
     if (upcoming) {
       where.dueDate = { gte: new Date() };
@@ -52,16 +64,18 @@ export async function GET(request: Request) {
       take: limit,
     });
 
-    return withCors(NextResponse.json(actions));
+    return withCors(NextResponse.json(actions, { headers: cacheHeaders }), request);
   } catch (error) {
-    console.error('Error fetching actions:', error);
-    return withCors(NextResponse.json({ error: 'Failed to fetch actions' }, { status: 500 }));
+    logError('Error fetching actions', error);
+    return withCors(NextResponse.json({ error: 'Failed to fetch actions' }, { status: 500 }), request);
   }
 }
 
 // POST /api/actions - Create action
 export async function POST(request: Request) {
   try {
+    const rateLimitResponse = await enforceRateLimit(request, { limit: 30, windowSeconds: 60 });
+    if (rateLimitResponse) return rateLimitResponse;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -125,7 +139,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(action, { status: 201 });
   } catch (error) {
-    console.error('Error creating action:', error);
+    logError('Error creating action', error);
 
     if (error instanceof Error && error.name === 'ZodError') {
       return NextResponse.json({ error: 'Invalid data', details: error }, { status: 400 });

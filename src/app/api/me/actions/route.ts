@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import prisma from '@/lib/prisma/prisma';
+import { enforceRateLimit } from '@/lib/api-utils';
+import { logError } from '@/lib/logger';
 
 // GET /api/me/actions - Get current user's upcoming actions
 export async function GET(request: Request) {
   try {
+    const rateLimitResponse = await enforceRateLimit(request, { limit: 60, windowSeconds: 60 });
+    if (rateLimitResponse) return rateLimitResponse;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -52,7 +56,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(actions);
   } catch (error) {
-    console.error('Error fetching user actions:', error);
+    logError('Error fetching user actions', error);
     return NextResponse.json({ error: 'Failed to fetch actions' }, { status: 500 });
   }
 }

@@ -17,7 +17,7 @@ const mockCampaign = {
     id: 'cause-1',
     name: 'Climate & Environment',
     icon: '🌍',
-    color: '#22c55e',
+    color: '#0ea5e9',
   },
   org: {
     id: 'org-1',

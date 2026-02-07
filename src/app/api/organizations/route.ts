@@ -2,17 +2,22 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import prisma from '@/lib/prisma/prisma';
 import { organizationSchema } from '@/lib/validations/organization';
-import { withCors, corsOptionsResponse, isRateLimited, rateLimitedResponse } from '@/lib/api-utils';
+import { withCors, corsOptionsResponse, enforceRateLimit } from '@/lib/api-utils';
+import { logError } from '@/lib/logger';
 
-export async function OPTIONS() {
-  return corsOptionsResponse();
+const cacheHeaders = {
+  'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=86400',
+};
+
+export async function OPTIONS(request: Request) {
+  return corsOptionsResponse(request);
 }
 
 // GET /api/organizations - List organizations
 export async function GET(request: Request) {
   try {
-    const ip = request.headers.get('x-forwarded-for') || 'unknown';
-    if (isRateLimited(ip)) return rateLimitedResponse();
+    const rateLimitResponse = await enforceRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
     const session = await auth();
     const { searchParams } = new URL(request.url);
     const managed = searchParams.get('managed') === 'true';
@@ -37,16 +42,18 @@ export async function GET(request: Request) {
       orderBy: { name: 'asc' },
     });
 
-    return withCors(NextResponse.json(organizations));
+    return withCors(NextResponse.json(organizations, { headers: cacheHeaders }), request);
   } catch (error) {
-    console.error('Error fetching organizations:', error);
-    return withCors(NextResponse.json({ error: 'Failed to fetch organizations' }, { status: 500 }));
+    logError('Error fetching organizations', error);
+    return withCors(NextResponse.json({ error: 'Failed to fetch organizations' }, { status: 500 }), request);
   }
 }
 
 // POST /api/organizations - Create organization
 export async function POST(request: Request) {
   try {
+    const rateLimitResponse = await enforceRateLimit(request, { limit: 30, windowSeconds: 60 });
+    if (rateLimitResponse) return rateLimitResponse;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -75,7 +82,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(organization, { status: 201 });
   } catch (error) {
-    console.error('Error creating organization:', error);
+    logError('Error creating organization', error);
 
     if (error instanceof Error && error.name === 'ZodError') {
       return NextResponse.json({ error: 'Invalid data', details: error }, { status: 400 });

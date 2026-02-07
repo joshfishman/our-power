@@ -2,6 +2,7 @@ import prisma from '@/lib/prisma/prisma';
 import { notFound } from 'next/navigation';
 import { format } from 'date-fns';
 import Link from 'next/link';
+import Image from 'next/image';
 import type { Metadata } from 'next';
 import { getSiteUrl } from '@/lib/rss';
 
@@ -89,7 +90,7 @@ export default async function PublicCampaignPage({ params }: Props) {
       <div className="mb-4 flex items-center gap-2">
         <span
           className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium text-white"
-          style={{ backgroundColor: campaign.cause.color || '#16a34a' }}>
+          style={{ backgroundColor: campaign.cause.color || '#0284c7' }}>
           {campaign.cause.icon} {campaign.cause.name}
         </span>
         <span className="text-sm text-neutral-500">by {campaign.org.name}</span>
@@ -97,9 +98,14 @@ export default async function PublicCampaignPage({ params }: Props) {
 
       {/* Campaign header */}
       {campaign.imageUrl && (
-        <div className="mb-6 overflow-hidden rounded-xl">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={campaign.imageUrl} alt={campaign.name} className="h-48 w-full object-cover sm:h-64" />
+        <div className="relative mb-6 h-48 overflow-hidden rounded-xl sm:h-64">
+          <Image
+            src={campaign.imageUrl}
+            alt={campaign.name}
+            fill
+            sizes="(max-width: 768px) 100vw, 768px"
+            className="object-cover"
+          />
         </div>
       )}
 
@@ -118,7 +124,7 @@ export default async function PublicCampaignPage({ params }: Props) {
       <div className="mb-10">
         <Link
           href={`/login?from=/campaigns/${campaign.id}`}
-          className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-6 py-3 font-semibold text-white transition-colors hover:bg-green-700">
+          className="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-6 py-3 font-semibold text-white transition-colors hover:bg-sky-700">
           Join This Campaign
         </Link>
       </div>
@@ -155,7 +161,7 @@ export default async function PublicCampaignPage({ params }: Props) {
           <div className="mt-6 text-center">
             <Link
               href={`/login?from=/campaigns/${campaign.id}`}
-              className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-6 py-3 font-semibold text-white transition-colors hover:bg-green-700">
+              className="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-6 py-3 font-semibold text-white transition-colors hover:bg-sky-700">
               Sign Up to Take Action
             </Link>
           </div>

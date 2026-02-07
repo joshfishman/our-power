@@ -107,6 +107,9 @@ model Post {
   // Optional campaign relation - posts can be associated with campaigns
   campaign   Campaign? @relation("CampaignPosts", fields: [campaignId], references: [id], onDelete: SetNull)
   campaignId String?
+
+  @@index([userId, createdAt])
+  @@index([campaignId, createdAt])
 }
 
 model PostLike {
@@ -184,6 +187,9 @@ model Activity {
   targetUserId         String
   isNotificationActive Boolean      @default(true)
   isNotificationRead   Boolean      @default(false)
+
+  @@index([targetUserId, createdAt])
+  @@index([targetUserId, isNotificationRead])
 }
 
 enum ActivityType {
@@ -273,6 +279,9 @@ model Campaign {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([orgId, createdAt])
 }
 
 enum CampaignType {

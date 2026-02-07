@@ -8,7 +8,7 @@ import { usePostsSorter } from '@/hooks/usePostsSorter';
 import { getServerUser } from '@/lib/getServerUser';
 import prisma from '@/lib/prisma/prisma';
 import { selectPost } from '@/lib/prisma/selectPost';
-import { toGetPost } from '@/lib/prisma/toGetPost';
+import { toGetPosts } from '@/lib/prisma/toGetPost';
 import { NextResponse } from 'next/server';
 import { GetPost } from '@/types/definitions';
 
@@ -40,8 +40,7 @@ export async function GET(request: Request, { params }: { params: { userId: stri
     select: selectPost(user.id),
   });
 
-  const postsPromises = res.map(toGetPost);
-  const posts = await Promise.all(postsPromises);
+  const posts = await toGetPosts(res);
 
   return NextResponse.json<GetPost[]>(posts);
 }

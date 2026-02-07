@@ -147,6 +147,49 @@ This guide explains where to get each environment variable for Our Power.
 
 ---
 
+## 8. CORS + Embed Origins
+
+**Where:** Your application configuration / environment variables
+
+| Variable                | Value                                                                    |
+| ----------------------- | ------------------------------------------------------------------------ |
+| `ALLOWED_ORIGINS`       | Comma-separated list of allowed origins (e.g. `https://your-domain.com`) |
+| `EMBED_ALLOWED_ORIGINS` | Allowed origin for embed assets (`*` to allow all)                       |
+
+---
+
+## 9. Rate Limiting (Upstash / Vercel KV)
+
+**Where:** https://console.upstash.com or Vercel KV dashboard
+
+### Upstash (preferred):
+
+| Variable                   | Value      |
+| -------------------------- | ---------- |
+| `UPSTASH_REDIS_REST_URL`   | REST URL   |
+| `UPSTASH_REDIS_REST_TOKEN` | REST token |
+
+### Vercel KV (alternative):
+
+| Variable            | Value         |
+| ------------------- | ------------- |
+| `KV_REST_API_URL`   | KV REST URL   |
+| `KV_REST_API_TOKEN` | KV REST token |
+
+---
+
+## 10. Monitoring (Sentry)
+
+**Where:** https://sentry.io
+
+| Variable                    | Value                                              |
+| --------------------------- | -------------------------------------------------- |
+| `SENTRY_DSN`                | Server DSN from Sentry project settings            |
+| `NEXT_PUBLIC_SENTRY_DSN`    | Client DSN (usually same value)                    |
+| `SENTRY_TRACES_SAMPLE_RATE` | Optional sample rate for performance tracing (0-1) |
+
+---
+
 ## Quick Start Checklist
 
 - [ ] Create Supabase project

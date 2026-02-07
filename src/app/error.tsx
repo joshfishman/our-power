@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect } from 'react';
+import { logError } from '@/lib/logger';
 
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.error('Unhandled error:', error);
+    logError('Unhandled error', error);
   }, [error]);
 
   return (

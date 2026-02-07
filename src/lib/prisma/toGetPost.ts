@@ -3,7 +3,7 @@
  * in a Prisma `post` find query, to the <GetPost> type.
  */
 import { FindPostResult, GetPost, GetVisualMedia } from '@/types/definitions';
-import { convertMentionUsernamesToIds } from '../convertMentionUsernamesToIds';
+import { convertMentionsBatch } from '../convertMentionUsernamesToIds';
 import { fileNameToUrl } from '../storage/fileNameToUrl';
 
 export async function toGetPost(findPostResult: FindPostResult): Promise<GetPost> {
@@ -15,8 +15,8 @@ export async function toGetPost(findPostResult: FindPostResult): Promise<GetPost
   const { postLikes, content, ...rest } = findPostResult;
 
   // Convert the `@` `id` mentions back to usernames
-  const { str } = await convertMentionUsernamesToIds({
-    str: content || '',
+  const [converted] = await convertMentionsBatch({
+    strings: [content || ''],
     reverse: true,
   });
 
@@ -37,7 +37,37 @@ export async function toGetPost(findPostResult: FindPostResult): Promise<GetPost
       profilePhoto: fileNameToUrl(rest.user.profilePhoto),
     },
     visualMedia,
-    content: str,
+    content: converted,
     isLiked: postLikes.length > 0,
   };
+}
+
+export async function toGetPosts(findPostResults: FindPostResult[]): Promise<GetPost[]> {
+  const contents = findPostResults.map((post) => post.content || '');
+  const convertedContents = await convertMentionsBatch({
+    strings: contents,
+    reverse: true,
+  });
+
+  return findPostResults.map((findPostResult, index) => {
+    const { postLikes, ...rest } = findPostResult;
+
+    const visualMedia: GetVisualMedia[] = rest.visualMedia.map(({ type, fileName }) => ({
+      type,
+      url: fileNameToUrl(fileName) as string,
+    }));
+
+    return {
+      ...rest,
+      user: {
+        id: rest.user.id,
+        username: rest.user.username!,
+        name: rest.user.name!,
+        profilePhoto: fileNameToUrl(rest.user.profilePhoto),
+      },
+      visualMedia,
+      content: convertedContents[index] || '',
+      isLiked: postLikes.length > 0,
+    };
+  });
 }

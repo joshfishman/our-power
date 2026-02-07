@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import prisma from '@/lib/prisma/prisma';
 import { generateCanvassDeepLink, getActionCanvassStats, syncActionToEcanvasser } from '@/lib/integrations';
+import { enforceRateLimit } from '@/lib/api-utils';
+import { logError, logWarn } from '@/lib/logger';
+import { z } from 'zod';
 
 // POST: Start a canvassing session
 export async function POST(request: Request) {
@@ -11,7 +14,15 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { actionId } = await request.json();
+    const rateLimitResponse = await enforceRateLimit(request, { limit: 20, windowSeconds: 60 });
+    if (rateLimitResponse) return rateLimitResponse;
+
+    const body = await request.json();
+    const parsed = z.object({ actionId: z.string().cuid() }).safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid action id' }, { status: 400 });
+    }
+    const { actionId } = parsed.data;
 
     const action = await prisma.action.findUnique({
       where: { id: actionId },
@@ -45,7 +56,7 @@ export async function POST(request: Request) {
           data: { ecanvasserCampaignId },
         });
       } catch (err) {
-        console.error('Ecanvasser sync error:', err);
+        logWarn('Ecanvasser sync error', { error: err });
         // Continue without Ecanvasser link
       }
     }
@@ -78,7 +89,7 @@ export async function POST(request: Request) {
       canvassTurf: action.canvassTurf,
     });
   } catch (error) {
-    console.error('Canvass session error:', error);
+    logError('Canvass session error', error);
     return NextResponse.json({ error: 'Failed to start canvass session' }, { status: 500 });
   }
 }
@@ -90,16 +101,23 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const rateLimitResponse = await enforceRateLimit(request, { limit: 60, windowSeconds: 60 });
+  if (rateLimitResponse) return rateLimitResponse;
+
   const { searchParams } = new URL(request.url);
   const actionId = searchParams.get('actionId');
 
   if (!actionId) {
     return NextResponse.json({ error: 'Action ID required' }, { status: 400 });
   }
+  const parsedActionId = z.string().cuid().safeParse(actionId);
+  if (!parsedActionId.success) {
+    return NextResponse.json({ error: 'Invalid action id' }, { status: 400 });
+  }
 
   try {
     const action = await prisma.action.findUnique({
-      where: { id: actionId },
+      where: { id: parsedActionId.data },
     });
 
     if (!action?.ecanvasserCampaignId) {
@@ -114,7 +132,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(stats);
   } catch (error) {
-    console.error('Canvass stats error:', error);
+    logError('Canvass stats error', error);
     return NextResponse.json({ error: 'Failed to fetch canvass stats' }, { status: 500 });
   }
 }

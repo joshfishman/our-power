@@ -18,14 +18,14 @@ function CreateFollowNotificationIcon() {
 }
 function LikeNotificationIcon() {
   return (
-    <div className="absolute -bottom-2 right-0 rounded-full bg-gradient-to-r from-green-400 to-green-500 p-2">
+    <div className="absolute -bottom-2 right-0 rounded-full bg-gradient-to-r from-sky-400 to-sky-500 p-2">
       <SvgHeart width={18} height={18} stroke="white" />
     </div>
   );
 }
 function MentionNotificationIcon() {
   return (
-    <div className="absolute -bottom-2 right-0 rounded-full bg-gradient-to-r from-indigo-500 to-green-500 p-2">
+    <div className="absolute -bottom-2 right-0 rounded-full bg-gradient-to-r from-indigo-500 to-sky-500 p-2">
       <SvgAtSign width={18} height={18} stroke="white" />
     </div>
   );
@@ -46,7 +46,7 @@ function CreateReplyNotificationIcon() {
 }
 function CampaignJoinNotificationIcon() {
   return (
-    <div className="absolute -bottom-2 right-0 rounded-full bg-gradient-to-r from-green-400 to-green-600 p-2">
+    <div className="absolute -bottom-2 right-0 rounded-full bg-gradient-to-r from-sky-400 to-sky-600 p-2">
       <SvgBullhorn width={18} height={18} stroke="white" />
     </div>
   );

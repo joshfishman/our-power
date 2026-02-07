@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import prisma from '@/lib/prisma/prisma';
+import { enforceRateLimit } from '@/lib/api-utils';
+import { logError } from '@/lib/logger';
 
 // POST /api/onboarding/skip - Skip onboarding
-export async function POST() {
+export async function POST(request: Request) {
   try {
+    const rateLimitResponse = await enforceRateLimit(request, { limit: 10, windowSeconds: 60 });
+    if (rateLimitResponse) return rateLimitResponse;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -20,7 +24,7 @@ export async function POST() {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Skip onboarding error:', error);
+    logError('Skip onboarding error', error);
     return NextResponse.json({ error: 'Failed to skip onboarding' }, { status: 500 });
   }
 }

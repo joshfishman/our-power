@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import prisma from '@/lib/prisma/prisma';
+import { enforceRateLimit } from '@/lib/api-utils';
+import { logError } from '@/lib/logger';
+import { z } from 'zod';
 
 // GET: Get aggregated stats for dashboard
 export async function GET(request: Request) {
@@ -9,12 +12,28 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const rateLimitResponse = await enforceRateLimit(request, { limit: 60, windowSeconds: 60 });
+  if (rateLimitResponse) return rateLimitResponse;
+
   const { searchParams } = new URL(request.url);
   const campaignId = searchParams.get('campaignId');
   const orgId = searchParams.get('orgId');
   const timeframe = searchParams.get('timeframe') || '30d'; // 7d, 30d, 90d, all
 
   try {
+    if (orgId) {
+      const parsedOrgId = z.string().cuid().safeParse(orgId);
+      if (!parsedOrgId.success) {
+        return NextResponse.json({ error: 'Invalid organization id' }, { status: 400 });
+      }
+    }
+    if (campaignId) {
+      const parsedCampaignId = z.string().cuid().safeParse(campaignId);
+      if (!parsedCampaignId.success) {
+        return NextResponse.json({ error: 'Invalid campaign id' }, { status: 400 });
+      }
+    }
+
     // Authorization: if requesting stats for a specific org or campaign,
     // verify the user is a manager of that organization.
     if (orgId) {
@@ -155,7 +174,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(stats);
   } catch (error) {
-    console.error('Dashboard stats error:', error);
+    logError('Dashboard stats error', error);
     return NextResponse.json({ error: 'Failed to fetch dashboard stats' }, { status: 500 });
   }
 }

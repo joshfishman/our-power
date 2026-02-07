@@ -6,6 +6,7 @@ import { v4 as uuid } from 'uuid';
 import { uploadObject } from '@/lib/storage/uploadObject';
 import { fileNameToUrl } from '@/lib/storage/fileNameToUrl';
 import { getServerUser } from '@/lib/getServerUser';
+import { logError } from '@/lib/logger';
 
 const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/jpg', 'image/png'];
 export async function useUpdateProfileAndCoverPhoto({
@@ -70,7 +71,7 @@ export async function useUpdateProfileAndCoverPhoto({
 
     return NextResponse.json({ uploadedTo });
   } catch (error) {
-    console.error('Upload error:', error);
+    logError('Upload error', error);
     return NextResponse.json({ error: 'Server error.' }, { status: 500 });
   }
 }

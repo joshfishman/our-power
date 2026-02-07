@@ -2,10 +2,14 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import prisma from '@/lib/prisma/prisma';
 import { onboardingSchema } from '@/lib/validations/onboarding';
+import { enforceRateLimit } from '@/lib/api-utils';
+import { logError } from '@/lib/logger';
 
 // POST /api/onboarding - Complete user onboarding
 export async function POST(request: Request) {
   try {
+    const rateLimitResponse = await enforceRateLimit(request, { limit: 30, windowSeconds: 60 });
+    if (rateLimitResponse) return rateLimitResponse;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -40,7 +44,7 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
-    console.error('Onboarding error:', error);
+    logError('Onboarding error', error);
 
     if (error instanceof Error && error.name === 'ZodError') {
       return NextResponse.json({ error: 'Invalid data', details: error }, { status: 400 });
@@ -51,8 +55,10 @@ export async function POST(request: Request) {
 }
 
 // GET /api/onboarding - Get user's onboarding status
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const rateLimitResponse = await enforceRateLimit(request, { limit: 60, windowSeconds: 60 });
+    if (rateLimitResponse) return rateLimitResponse;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -77,7 +83,7 @@ export async function GET() {
 
     return NextResponse.json(user);
   } catch (error) {
-    console.error('Error fetching onboarding status:', error);
+    logError('Error fetching onboarding status', error);
     return NextResponse.json({ error: 'Failed to fetch onboarding status' }, { status: 500 });
   }
 }

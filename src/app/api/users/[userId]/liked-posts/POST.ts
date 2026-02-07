@@ -11,19 +11,37 @@
 import { getServerUser } from '@/lib/getServerUser';
 import prisma from '@/lib/prisma/prisma';
 import { NextResponse } from 'next/server';
+import { enforceRateLimit } from '@/lib/api-utils';
+import { z } from 'zod';
 
 export async function POST(request: Request, { params }: { params: { userId: string } }) {
+  const rateLimitResponse = await enforceRateLimit(request, { limit: 40, windowSeconds: 60 });
+  if (rateLimitResponse) return rateLimitResponse;
+
+  const parsedUserId = z.string().cuid().safeParse(params.userId);
+  if (!parsedUserId.success) {
+    return NextResponse.json({ error: 'Invalid user id' }, { status: 400 });
+  }
+
   const [user] = await getServerUser();
-  if (!user || params.userId !== user.id) return NextResponse.json({}, { status: 401 });
+  if (!user || parsedUserId.data !== user.id) return NextResponse.json({}, { status: 401 });
   const userId = user.id;
 
-  const { postId } = await request.json();
+  const body = await request.json();
+  const postId = z.coerce
+    .number()
+    .int()
+    .positive()
+    .safeParse(body?.postId);
+  if (!postId.success) {
+    return NextResponse.json({ error: 'Invalid post id' }, { status: 400 });
+  }
 
   // Check first if the post is already liked
   const isLiked = await prisma.postLike.count({
     where: {
       userId,
-      postId,
+      postId: postId.data,
     },
   });
 
@@ -36,14 +54,14 @@ export async function POST(request: Request, { params }: { params: { userId: str
   const res = await prisma.postLike.create({
     data: {
       userId,
-      postId,
+      postId: postId.data,
     },
   });
 
   // Record a 'POST_LIKE' activity
   const postOwner = await prisma.post.findUnique({
     where: {
-      id: postId,
+      id: postId.data,
     },
     select: {
       userId: true,
@@ -55,7 +73,7 @@ export async function POST(request: Request, { params }: { params: { userId: str
         type: 'POST_LIKE',
         sourceId: res.id,
         sourceUserId: userId,
-        targetId: postId,
+        targetId: postId.data,
         targetUserId: postOwner?.userId,
       },
     });

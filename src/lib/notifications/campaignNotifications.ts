@@ -104,22 +104,22 @@ export async function logActionCompleted({
  */
 export async function createActionReminders() {
   const now = new Date();
-  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-  const dayAfter = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+  const next24 = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  const next48 = new Date(now.getTime() + 48 * 60 * 60 * 1000);
 
-  // Find actions happening in the next 24-48 hours
+  // Find actions happening in the next 48 hours
   const upcomingActions = await prisma.action.findMany({
     where: {
       isActive: true,
       dueDate: {
-        gte: tomorrow,
-        lt: dayAfter,
+        gte: now,
+        lt: next48,
       },
     },
     include: {
       participants: {
-        where: { willAttend: true, attended: false },
-        select: { userId: true },
+        where: { attended: false },
+        select: { userId: true, willAttend: true },
       },
       campaign: {
         select: {
@@ -131,16 +131,22 @@ export async function createActionReminders() {
     },
   });
 
-  // Create reminder notifications using Promise.all to avoid await-in-loop
-  const reminderPromises = upcomingActions.flatMap((action) =>
-    action.participants.map(async (participant) => {
-      // Check if reminder already sent (avoid duplicates)
+  const reminderPromises = upcomingActions.flatMap((action) => {
+    const isDayOf = action.dueDate < next24;
+    const windowStart = isDayOf
+      ? new Date(action.dueDate.getTime() - 24 * 60 * 60 * 1000)
+      : new Date(action.dueDate.getTime() - 48 * 60 * 60 * 1000);
+    const recipients = isDayOf
+      ? action.participants.filter((participant) => participant.willAttend).map((participant) => participant.userId)
+      : action.campaign.members.map((member) => member.userId);
+
+    return recipients.map(async (userId) => {
       const existingReminder = await prisma.activity.findFirst({
         where: {
           type: 'ACTION_REMINDER',
           sourceId: parseInt(action.id.slice(-8), 16) || 1,
-          targetUserId: participant.userId,
-          createdAt: { gte: new Date(now.getTime() - 24 * 60 * 60 * 1000) },
+          targetUserId: userId,
+          createdAt: { gte: windowStart, lt: now },
         },
       });
 
@@ -148,19 +154,19 @@ export async function createActionReminders() {
         return prisma.activity.create({
           data: {
             type: 'ACTION_REMINDER',
-            sourceUserId: participant.userId, // Self-reminder
+            sourceUserId: userId, // Self-reminder
             sourceId: parseInt(action.id.slice(-8), 16) || 1,
-            targetUserId: participant.userId,
+            targetUserId: userId,
           },
         });
       }
       return null;
-    }),
-  );
+    });
+  });
 
   await Promise.all(reminderPromises);
 
-  return { remindersCreated: upcomingActions.length };
+  return { remindersCreated: reminderPromises.length };
 }
 
 /**

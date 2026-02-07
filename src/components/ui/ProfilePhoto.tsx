@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { FallbackProfilePhoto } from './FallbackProfilePhoto';
 
 export function ProfilePhoto({
@@ -13,13 +14,17 @@ export function ProfilePhoto({
   fallbackAvatarClassName?: string;
 }) {
   return (
-    <Link href={`/${username}`}>
+    <Link href={`/${username}`} className="block h-full w-full">
       {photoUrl ? (
-        <img
-          src={photoUrl}
-          alt={`${name}'s avatar`}
-          className="h-full w-full cursor-pointer rounded-full bg-muted object-cover"
-        />
+        <span className="relative block h-full w-full cursor-pointer">
+          <Image
+            src={photoUrl}
+            alt={`${name}'s avatar`}
+            fill
+            sizes="100px"
+            className="rounded-full bg-muted object-cover"
+          />
+        </span>
       ) : (
         <FallbackProfilePhoto name={name} className={fallbackAvatarClassName} />
       )}

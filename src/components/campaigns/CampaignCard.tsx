@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { cn } from '@/lib/cn';
 import { TwoPeople, Calendar } from '@/svg_components';
 
@@ -65,7 +66,13 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
         {/* Organization */}
         <div className="mb-4 flex items-center gap-2">
           {campaign.org.logoUrl ? (
-            <img src={campaign.org.logoUrl} alt={campaign.org.name} className="h-5 w-5 rounded-full object-cover" />
+            <Image
+              src={campaign.org.logoUrl}
+              alt={campaign.org.name}
+              width={20}
+              height={20}
+              className="h-5 w-5 rounded-full object-cover"
+            />
           ) : (
             <div className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-xs">
               {campaign.org.name[0]}

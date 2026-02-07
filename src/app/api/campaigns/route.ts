@@ -2,17 +2,23 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import prisma from '@/lib/prisma/prisma';
 import { campaignSchema } from '@/lib/validations/campaign';
-import { withCors, corsOptionsResponse, isRateLimited, rateLimitedResponse } from '@/lib/api-utils';
+import { withCors, corsOptionsResponse, enforceRateLimit } from '@/lib/api-utils';
+import { logError } from '@/lib/logger';
+import { z } from 'zod';
 
-export async function OPTIONS() {
-  return corsOptionsResponse();
+const cacheHeaders = {
+  'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=86400',
+};
+
+export async function OPTIONS(request: Request) {
+  return corsOptionsResponse(request);
 }
 
 // GET /api/campaigns - List campaigns
 export async function GET(request: Request) {
   try {
-    const ip = request.headers.get('x-forwarded-for') || 'unknown';
-    if (isRateLimited(ip)) return rateLimitedResponse();
+    const rateLimitResponse = await enforceRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
     const { searchParams } = new URL(request.url);
     const causeId = searchParams.get('causeId');
     const status = searchParams.get('status');
@@ -23,9 +29,21 @@ export async function GET(request: Request) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: Record<string, any> = {};
 
-    if (causeId) where.causeId = causeId;
+    if (causeId) {
+      const parsedCauseId = z.string().cuid().safeParse(causeId);
+      if (!parsedCauseId.success) {
+        return withCors(NextResponse.json({ error: 'Invalid cause id' }, { status: 400 }), request);
+      }
+      where.causeId = parsedCauseId.data;
+    }
     if (status) where.status = status;
-    if (orgId) where.orgId = orgId;
+    if (orgId) {
+      const parsedOrgId = z.string().cuid().safeParse(orgId);
+      if (!parsedOrgId.success) {
+        return withCors(NextResponse.json({ error: 'Invalid organization id' }, { status: 400 }), request);
+      }
+      where.orgId = parsedOrgId.data;
+    }
 
     // By default, only show active campaigns
     if (!status) {
@@ -48,22 +66,28 @@ export async function GET(request: Request) {
     ]);
 
     return withCors(
-      NextResponse.json({
-        campaigns,
-        total,
-        limit,
-        offset,
-      }),
+      NextResponse.json(
+        {
+          campaigns,
+          total,
+          limit,
+          offset,
+        },
+        { headers: cacheHeaders },
+      ),
+      request,
     );
   } catch (error) {
-    console.error('Error fetching campaigns:', error);
-    return withCors(NextResponse.json({ error: 'Failed to fetch campaigns' }, { status: 500 }));
+    logError('Error fetching campaigns', error);
+    return withCors(NextResponse.json({ error: 'Failed to fetch campaigns' }, { status: 500 }), request);
   }
 }
 
 // POST /api/campaigns - Create campaign
 export async function POST(request: Request) {
   try {
+    const rateLimitResponse = await enforceRateLimit(request, { limit: 30, windowSeconds: 60 });
+    if (rateLimitResponse) return rateLimitResponse;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -104,7 +128,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(campaign, { status: 201 });
   } catch (error) {
-    console.error('Error creating campaign:', error);
+    logError('Error creating campaign', error);
 
     if (error instanceof Error && error.name === 'ZodError') {
       return NextResponse.json({ error: 'Invalid data', details: error }, { status: 400 });

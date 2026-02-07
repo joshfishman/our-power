@@ -2,17 +2,28 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import prisma from '@/lib/prisma/prisma';
 import { sendEmail } from '@/lib/email';
+import { enforceRateLimit } from '@/lib/api-utils';
+import { logError } from '@/lib/logger';
+import { logActionCompleted, logActionRSVP } from '@/lib/notifications/campaignNotifications';
+import { z } from 'zod';
 
 // POST /api/actions/[id]/send-email - Send an advocacy email on behalf of a user
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
+    const rateLimitResponse = await enforceRateLimit(request, { limit: 10, windowSeconds: 60 });
+    if (rateLimitResponse) return rateLimitResponse;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const actionId = z.string().cuid().safeParse(params.id);
+    if (!actionId.success) {
+      return NextResponse.json({ error: 'Invalid action id' }, { status: 400 });
+    }
+
     const action = await prisma.action.findUnique({
-      where: { id: params.id },
+      where: { id: actionId.data },
       include: {
         campaign: {
           select: { id: true, name: true },
@@ -65,6 +76,15 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const sent = results.filter((r) => r.status === 'fulfilled').length;
     const failed = results.filter((r) => r.status === 'rejected').length;
 
+    const existingParticipation = await prisma.actionParticipation.findUnique({
+      where: {
+        userId_actionId: {
+          userId: session.user.id,
+          actionId: action.id,
+        },
+      },
+    });
+
     // Mark participation as completed
     await prisma.actionParticipation.upsert({
       where: {
@@ -86,6 +106,13 @@ export async function POST(request: Request, { params }: { params: { id: string 
       },
     });
 
+    if (!existingParticipation?.willAttend) {
+      await logActionRSVP({ userId: session.user.id, actionId: action.id, campaignId: action.campaignId });
+    }
+    if (!existingParticipation?.attended) {
+      await logActionCompleted({ userId: session.user.id, actionId: action.id, campaignId: action.campaignId });
+    }
+
     return NextResponse.json({
       success: true,
       sent,
@@ -93,7 +120,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       message: `Email sent to ${sent} recipient${sent !== 1 ? 's' : ''}${failed > 0 ? ` (${failed} failed)` : ''}`,
     });
   } catch (error) {
-    console.error('Send email action error:', error);
+    logError('Send email action error', error);
     return NextResponse.json({ error: 'Failed to send email' }, { status: 500 });
   }
 }

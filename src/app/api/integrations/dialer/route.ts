@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import prisma from '@/lib/prisma/prisma';
 import { generateUserDialerLink, trackSessionStart } from '@/lib/integrations';
+import { enforceRateLimit } from '@/lib/api-utils';
+import { logError } from '@/lib/logger';
+import { z } from 'zod';
 
 // POST: Start a phone banking session
 export async function POST(request: Request) {
@@ -11,7 +14,15 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { actionId } = await request.json();
+    const rateLimitResponse = await enforceRateLimit(request, { limit: 20, windowSeconds: 60 });
+    if (rateLimitResponse) return rateLimitResponse;
+
+    const body = await request.json();
+    const parsed = z.object({ actionId: z.string().cuid() }).safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid action id' }, { status: 400 });
+    }
+    const { actionId } = parsed.data;
 
     const action = await prisma.action.findUnique({
       where: { id: actionId },
@@ -61,7 +72,7 @@ export async function POST(request: Request) {
       phoneNumbers: action.phoneNumbers,
     });
   } catch (error) {
-    console.error('Dialer session error:', error);
+    logError('Dialer session error', error);
     return NextResponse.json({ error: 'Failed to start dialer session' }, { status: 500 });
   }
 }

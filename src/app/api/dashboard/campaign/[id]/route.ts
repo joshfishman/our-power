@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import prisma from '@/lib/prisma/prisma';
 import { getActionCanvassStats } from '@/lib/integrations';
+import { enforceRateLimit } from '@/lib/api-utils';
+import { logError } from '@/lib/logger';
+import { z } from 'zod';
 
 // GET: Get detailed stats for a specific campaign
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -10,11 +13,18 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const rateLimitResponse = await enforceRateLimit(request, { limit: 60, windowSeconds: 60 });
+  if (rateLimitResponse) return rateLimitResponse;
+
   const { id } = await params;
+  const campaignId = z.string().cuid().safeParse(id);
+  if (!campaignId.success) {
+    return NextResponse.json({ error: 'Invalid campaign id' }, { status: 400 });
+  }
 
   try {
     const campaign = await prisma.campaign.findUnique({
-      where: { id },
+      where: { id: campaignId.data },
       include: {
         org: {
           select: { id: true, name: true },
@@ -148,7 +158,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       topParticipants,
     });
   } catch (error) {
-    console.error('Campaign dashboard error:', error);
+    logError('Campaign dashboard error', error);
     return NextResponse.json({ error: 'Failed to fetch campaign dashboard' }, { status: 500 });
   }
 }

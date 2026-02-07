@@ -2,6 +2,7 @@
 
 import { useSession } from 'next-auth/react';
 import React, { useRef } from 'react';
+import { compressImage } from '@/lib/compressImage';
 import { useDialogs } from './useDialogs';
 import { useToast } from './useToast';
 import { useSessionUserDataMutation } from './mutations/useSessionUserDataMutation';
@@ -21,11 +22,23 @@ export function useUpdateProfileAndCoverPhotoClient(toUpdate: 'profile' | 'cover
 
   const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, files } = e.target;
-    const formData = new FormData();
 
     if (files === null) return;
-    const file = files[0];
+    const originalFile = files[0];
 
+    // Compress the image before uploading to stay within Vercel's 4.5MB body limit
+    let file: File;
+    try {
+      file = await compressImage(originalFile, {
+        maxWidth: toUpdate === 'profile' ? 1024 : 2048,
+        maxHeight: toUpdate === 'profile' ? 1024 : 1024,
+        quality: 0.85,
+      });
+    } catch {
+      file = originalFile;
+    }
+
+    const formData = new FormData();
     formData.append(name, file, file.name);
 
     if (!userId) return;
@@ -45,7 +58,7 @@ export function useUpdateProfileAndCoverPhotoClient(toUpdate: 'profile' | 'cover
         onError: () => {
           alert({
             title: 'Upload Error',
-            message: 'There was an error uploading your photo.',
+            message: 'There was an error uploading your photo. Please try a smaller image (under 4MB).',
           });
         },
       },

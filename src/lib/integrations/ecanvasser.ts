@@ -11,6 +11,8 @@
  * - Track volunteer activity
  */
 
+import { logError } from '@/lib/logger';
+
 const ECANVASSER_API_URL = process.env.ECANVASSER_API_URL || 'https://api.ecanvasser.com/v1';
 const { ECANVASSER_API_KEY } = process.env;
 
@@ -246,7 +248,7 @@ export async function getActionCanvassStats(ecanvasserCampaignId: string): Promi
     const results = await getCanvassResults(ecanvasserCampaignId);
     return calculateCanvassStats(results);
   } catch (error) {
-    console.error('Error fetching canvass stats:', error);
+    logError('Error fetching canvass stats', error);
     return null;
   }
 }

@@ -6,18 +6,25 @@
 import prisma from '@/lib/prisma/prisma';
 import { NextResponse } from 'next/server';
 import { getServerUser } from '@/lib/getServerUser';
+import { enforceRateLimit } from '@/lib/api-utils';
+import { z } from 'zod';
 import { verifyAccessToComment } from './verifyAccessToComment';
 
 export async function DELETE(request: Request, { params }: { params: { commentId: string } }) {
+  const rateLimitResponse = await enforceRateLimit(request, { limit: 20, windowSeconds: 60 });
+  if (rateLimitResponse) return rateLimitResponse;
   const [user] = await getServerUser();
-  const commentId = parseInt(params.commentId, 10);
-  if (!verifyAccessToComment(commentId)) {
+  const commentId = z.coerce.number().int().positive().safeParse(params.commentId);
+  if (!commentId.success) {
+    return NextResponse.json({ error: 'Invalid comment id' }, { status: 400 });
+  }
+  if (!verifyAccessToComment(commentId.data)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 
   const res = await prisma.comment.delete({
     where: {
-      id: commentId,
+      id: commentId.data,
     },
   });
 

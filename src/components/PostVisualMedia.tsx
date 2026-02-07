@@ -3,6 +3,7 @@ import { Play } from '@/svg_components';
 import { VisualMediaType } from '@/generated/prisma/client';
 import { useMemo } from 'react';
 import { mergeProps, useFocusRing, usePress } from 'react-aria';
+import Image from 'next/image';
 
 export function PostVisualMedia({
   type,
@@ -30,17 +31,23 @@ export function PostVisualMedia({
       className={cn(
         'group relative cursor-pointer focus:outline-none',
         colSpan === 1 ? 'col-span-1' : 'col-span-2',
-        isFocusVisible && 'border-4 border-green-500',
+        isFocusVisible && 'border-4 border-sky-500',
       )}
       style={style}>
       {type === 'PHOTO' ? (
-        <img src={url} alt="" className={cn('h-full w-full object-cover', isPressed && 'brightness-75')} />
+        <Image
+          src={url}
+          alt=""
+          fill
+          sizes="(max-width: 768px) 100vw, 50vw"
+          className={cn('object-cover', isPressed && 'brightness-75')}
+        />
       ) : (
         <>
           <Play
             width={72}
             height={72}
-            className="absolute left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] stroke-green-100 transition-transform group-hover:scale-125"
+            className="absolute left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] stroke-sky-100 transition-transform group-hover:scale-125"
           />
           {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
           <video className="h-full w-full object-cover">

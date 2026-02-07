@@ -3,6 +3,7 @@ import authConfig from '@/auth.config';
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import prisma from '@/lib/prisma/prisma';
 import { sendEmail } from '@/lib/email';
+import { logDebug, logError, logWarn } from '@/lib/logger';
 
 declare module 'next-auth' {
   interface Session {
@@ -40,13 +41,13 @@ export const {
     <tr>
       <td align="center" style="padding: 40px 20px 20px;">
         <h1 style="margin: 0; font-size: 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #18181b;">
-          Login to <strong style="color: #16a34a;">Our Power</strong>
+          Login to <strong style="color: #0284c7;">Our Power</strong>
         </h1>
       </td>
     </tr>
     <tr>
       <td align="center" style="padding: 20px;">
-        <a href="${url}" target="_blank" style="display: inline-block; background: #16a34a; color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+        <a href="${url}" target="_blank" style="display: inline-block; background: #0284c7; color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
           Sign In
         </a>
       </td>
@@ -68,28 +69,25 @@ export const {
   adapter: PrismaAdapter(prisma) as any,
   session: {
     strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60,
   },
   // Enable debug mode in development to see detailed OAuth errors
   debug: process.env.NODE_ENV === 'development',
   // Log OAuth errors for debugging
   logger: {
     error(code, ...message) {
-      console.error('[NextAuth Error]', code, JSON.stringify(message, null, 2));
+      logError('[NextAuth Error]', message, { code });
     },
     warn(code, ...message) {
-      console.warn('[NextAuth Warning]', code, message);
+      logWarn('[NextAuth Warning]', { code, message });
     },
     debug(code, ...message) {
-      if (process.env.AUTH_DEBUG === 'true') {
-        console.log('[NextAuth Debug]', code, message);
-      }
+      logDebug('[NextAuth Debug]', { code, message });
     },
   },
   events: {
     async signIn({ user: signedInUser, account }) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[Auth Event] Sign in:', { provider: account?.provider });
-      }
+      logDebug('[Auth Event] Sign in', { provider: account?.provider });
 
       // Auto-assign username if missing (e.g. first OAuth sign-in)
       if (signedInUser?.id) {
@@ -110,17 +108,13 @@ export const {
       }
     },
     async linkAccount({ account }) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[Auth Event] Account linked:', { provider: account?.provider });
-      }
+      logDebug('[Auth Event] Account linked', { provider: account?.provider });
     },
   },
   callbacks: {
     ...authConfig.callbacks,
     async signIn({ account }) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[Auth Callback] signIn:', { provider: account?.provider });
-      }
+      logDebug('[Auth Callback] signIn', { provider: account?.provider });
       return true;
     },
     session({ token, user, ...rest }) {

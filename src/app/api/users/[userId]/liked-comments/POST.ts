@@ -11,19 +11,37 @@
 import { getServerUser } from '@/lib/getServerUser';
 import prisma from '@/lib/prisma/prisma';
 import { NextResponse } from 'next/server';
+import { enforceRateLimit } from '@/lib/api-utils';
+import { z } from 'zod';
 
 export async function POST(request: Request, { params }: { params: { userId: string } }) {
+  const rateLimitResponse = await enforceRateLimit(request, { limit: 40, windowSeconds: 60 });
+  if (rateLimitResponse) return rateLimitResponse;
+
+  const parsedUserId = z.string().cuid().safeParse(params.userId);
+  if (!parsedUserId.success) {
+    return NextResponse.json({ error: 'Invalid user id' }, { status: 400 });
+  }
+
   const [user] = await getServerUser();
-  if (!user || params.userId !== user.id) return NextResponse.json({}, { status: 401 });
+  if (!user || parsedUserId.data !== user.id) return NextResponse.json({}, { status: 401 });
   const userId = user.id;
 
-  const { commentId } = await request.json();
+  const body = await request.json();
+  const commentId = z.coerce
+    .number()
+    .int()
+    .positive()
+    .safeParse(body?.commentId);
+  if (!commentId.success) {
+    return NextResponse.json({ error: 'Invalid comment id' }, { status: 400 });
+  }
 
   // Check first if the comment is already liked
   const isLiked = await prisma.commentLike.count({
     where: {
       userId,
-      commentId,
+      commentId: commentId.data,
     },
   });
 
@@ -36,14 +54,14 @@ export async function POST(request: Request, { params }: { params: { userId: str
   const res = await prisma.commentLike.create({
     data: {
       userId,
-      commentId,
+      commentId: commentId.data,
     },
   });
 
   // Record a 'REPLY_LIKE' or a 'COMMENT_LIKE' activity
   const comment = await prisma.comment.findUnique({
     where: {
-      id: commentId,
+      id: commentId.data,
     },
     select: {
       parentId: true,
@@ -57,7 +75,7 @@ export async function POST(request: Request, { params }: { params: { userId: str
         type,
         sourceId: res.id,
         sourceUserId: userId,
-        targetId: commentId,
+        targetId: commentId.data,
         targetUserId: comment?.userId,
       },
     });

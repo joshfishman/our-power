@@ -85,7 +85,9 @@ export default function CampaignsPage() {
       <div className="mb-6 flex items-start justify-between">
         <div>
           <h1 className="mb-2 text-2xl font-bold">Campaigns</h1>
-          <p className="text-muted-foreground">Join campaigns that align with your values and take action.</p>
+          <p className="text-muted-foreground">
+            Our Power only works when you participate. These campaigns need you. Please join.
+          </p>
         </div>
         <Link href="/campaigns/create">
           <Button Icon={Plus}>Create Campaign</Button>

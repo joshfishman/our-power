@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { TextInput } from '@/components/ui/TextInput';
 import { Textarea } from '@/components/ui/Textarea';
@@ -9,12 +9,32 @@ import { DatePicker } from '@/components/ui/DatePicker';
 import Button from '@/components/ui/Button';
 import { useToast } from '@/hooks/useToast';
 import { Item } from 'react-stately';
-import { today, getLocalTimeZone } from '@internationalized/date';
+import { today, getLocalTimeZone, parseDate } from '@internationalized/date';
 
 interface CreateActionFormProps {
   campaignId: string;
   onSuccess?: () => void;
   onCancel?: () => void;
+  mode?: 'create' | 'edit';
+  actionId?: string;
+  initialAction?: {
+    title: string;
+    description?: string | null;
+    type: 'EVENT' | 'PHONE' | 'EMAIL' | 'CANVASS';
+    dueDate: string;
+    location?: string | null;
+    eventTime?: string | null;
+    locationUrl?: string | null;
+    callScript?: string | null;
+    dialerUrl?: string | null;
+    emailSubject?: string | null;
+    emailBody?: string | null;
+    emailTargets?: string[];
+    canvassArea?: string | null;
+    ecanvasserCampaignId?: string | null;
+    graphics?: string[];
+    shareText?: string | null;
+  };
 }
 
 const actionTypes = [
@@ -24,23 +44,68 @@ const actionTypes = [
   { id: 'CANVASS', name: 'Canvassing', description: 'Door-to-door outreach' },
 ];
 
-export function CreateActionForm({ campaignId, onSuccess, onCancel }: CreateActionFormProps) {
+export function CreateActionForm({
+  campaignId,
+  onSuccess,
+  onCancel,
+  mode = 'create',
+  actionId,
+  initialAction,
+}: CreateActionFormProps) {
   const { showToast } = useToast();
   const queryClient = useQueryClient();
 
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [type, setType] = useState<string>('EVENT');
-  const [dueDate, setDueDate] = useState<ReturnType<typeof today> | null>(null);
-  const [eventTime, setEventTime] = useState('');
-  const [location, setLocation] = useState('');
-  const [locationUrl, setLocationUrl] = useState('');
-  const [callScript, setCallScript] = useState('');
-  const [dialerUrl, setDialerUrl] = useState('');
-  const [emailSubject, setEmailSubject] = useState('');
-  const [emailBody, setEmailBody] = useState('');
-  const [canvassArea, setCanvassArea] = useState('');
-  const [ecanvasserCampaignId, setEcanvasserCampaignId] = useState('');
+  const isEditing = mode === 'edit';
+
+  const defaultDate = useMemo(() => {
+    if (!initialAction?.dueDate) return null;
+    return parseDate(initialAction.dueDate.split('T')[0]);
+  }, [initialAction?.dueDate]);
+
+  const [title, setTitle] = useState(initialAction?.title || '');
+  const [description, setDescription] = useState(initialAction?.description || '');
+  const [type, setType] = useState<string>(initialAction?.type || 'EVENT');
+  const [dueDate, setDueDate] = useState<ReturnType<typeof today> | null>(defaultDate);
+  const [eventTime, setEventTime] = useState(initialAction?.eventTime?.slice(11, 16) || '');
+  const [location, setLocation] = useState(initialAction?.location || '');
+  const [locationUrl, setLocationUrl] = useState(initialAction?.locationUrl || '');
+  const [callScript, setCallScript] = useState(initialAction?.callScript || '');
+  const [dialerUrl, setDialerUrl] = useState(initialAction?.dialerUrl || '');
+  const [emailSubject, setEmailSubject] = useState(initialAction?.emailSubject || '');
+  const [emailBody, setEmailBody] = useState(initialAction?.emailBody || '');
+  const [emailTargetsText, setEmailTargetsText] = useState(initialAction?.emailTargets?.join(', ') || '');
+  const [canvassArea, setCanvassArea] = useState(initialAction?.canvassArea || '');
+  const [ecanvasserCampaignId, setEcanvasserCampaignId] = useState(initialAction?.ecanvasserCampaignId || '');
+  const [shareText, setShareText] = useState(initialAction?.shareText || '');
+  const [imageUrl, setImageUrl] = useState(initialAction?.graphics?.[0] || '');
+
+  useEffect(() => {
+    if (!initialAction) return;
+    setTitle(initialAction.title || '');
+    setDescription(initialAction.description || '');
+    setType(initialAction.type || 'EVENT');
+    setDueDate(defaultDate);
+    setEventTime(initialAction.eventTime?.slice(11, 16) || '');
+    setLocation(initialAction.location || '');
+    setLocationUrl(initialAction.locationUrl || '');
+    setCallScript(initialAction.callScript || '');
+    setDialerUrl(initialAction.dialerUrl || '');
+    setEmailSubject(initialAction.emailSubject || '');
+    setEmailBody(initialAction.emailBody || '');
+    setEmailTargetsText(initialAction.emailTargets?.join(', ') || '');
+    setCanvassArea(initialAction.canvassArea || '');
+    setEcanvasserCampaignId(initialAction.ecanvasserCampaignId || '');
+    setShareText(initialAction.shareText || '');
+    setImageUrl(initialAction.graphics?.[0] || '');
+  }, [defaultDate, initialAction]);
+
+  const emailTargets = useMemo(() => {
+    if (!emailTargetsText.trim()) return [];
+    return emailTargetsText
+      .split(',')
+      .map((target) => target.trim())
+      .filter(Boolean);
+  }, [emailTargetsText]);
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -55,34 +120,41 @@ export function CreateActionForm({ campaignId, onSuccess, onCancel }: CreateActi
         }
       }
 
-      const res = await fetch('/api/actions', {
-        method: 'POST',
+      const payload = {
+        title,
+        description: description || null,
+        type,
+        dueDate: dueDateISO,
+        ...(isEditing ? {} : { campaignId }),
+        // EVENT fields
+        location: type === 'EVENT' ? location || null : null,
+        eventTime: type === 'EVENT' && eventTime ? `${dueDate?.toString()}T${eventTime}:00.000Z` : null,
+        locationUrl: type === 'EVENT' ? locationUrl || null : null,
+        // PHONE fields
+        callScript: type === 'PHONE' ? callScript || null : null,
+        dialerUrl: type === 'PHONE' ? dialerUrl || null : null,
+        // EMAIL fields
+        emailSubject: type === 'EMAIL' ? emailSubject || null : null,
+        emailBody: type === 'EMAIL' ? emailBody || null : null,
+        emailTargets: type === 'EMAIL' ? emailTargets : [],
+        // CANVASS fields
+        canvassArea: type === 'CANVASS' ? canvassArea || null : null,
+        ecanvasserCampaignId: type === 'CANVASS' ? ecanvasserCampaignId || null : null,
+        graphics: imageUrl ? [imageUrl] : [],
+        shareText: shareText || null,
+      };
+
+      const url = isEditing ? `/api/actions/${actionId}` : '/api/actions';
+      const method = isEditing ? 'PATCH' : 'POST';
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title,
-          description: description || null,
-          type,
-          dueDate: dueDateISO,
-          campaignId,
-          // EVENT fields
-          location: type === 'EVENT' ? location || null : null,
-          eventTime: type === 'EVENT' && eventTime ? `${dueDate?.toString()}T${eventTime}:00.000Z` : null,
-          locationUrl: type === 'EVENT' ? locationUrl || null : null,
-          // PHONE fields
-          callScript: type === 'PHONE' ? callScript || null : null,
-          dialerUrl: type === 'PHONE' ? dialerUrl || null : null,
-          // EMAIL fields
-          emailSubject: type === 'EMAIL' ? emailSubject || null : null,
-          emailBody: type === 'EMAIL' ? emailBody || null : null,
-          // CANVASS fields
-          canvassArea: type === 'CANVASS' ? canvassArea || null : null,
-          ecanvasserCampaignId: type === 'CANVASS' ? ecanvasserCampaignId || null : null,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
         const error = await res.json();
-        throw new Error(error.error || 'Failed to create action');
+        throw new Error(error.error || `Failed to ${isEditing ? 'update' : 'create'} action`);
       }
       return res.json();
     },
@@ -90,15 +162,15 @@ export function CreateActionForm({ campaignId, onSuccess, onCancel }: CreateActi
       queryClient.invalidateQueries({ queryKey: ['campaign', campaignId] });
       showToast({
         type: 'success',
-        title: 'Action created!',
-        message: 'Members will be notified about this action.',
+        title: isEditing ? 'Action updated!' : 'Action created!',
+        message: isEditing ? 'Your changes are live.' : 'Members will be notified about this action.',
       });
       onSuccess?.();
     },
     onError: (error) => {
       showToast({
         type: 'error',
-        title: 'Failed to create action',
+        title: isEditing ? 'Failed to update action' : 'Failed to create action',
         message: error.message,
       });
     },
@@ -111,6 +183,14 @@ export function CreateActionForm({ campaignId, onSuccess, onCancel }: CreateActi
         type: 'error',
         title: 'Missing fields',
         message: 'Please fill in title and date.',
+      });
+      return;
+    }
+    if (isEditing && !actionId) {
+      showToast({
+        type: 'error',
+        title: 'Missing action id',
+        message: 'Unable to update this action right now.',
       });
       return;
     }
@@ -217,6 +297,13 @@ export function CreateActionForm({ campaignId, onSuccess, onCancel }: CreateActi
             placeholder="The email content participants should send"
             rows={5}
           />
+          <TextInput
+            label="Email Targets (comma-separated)"
+            name="emailTargets"
+            value={emailTargetsText}
+            onChange={(e) => setEmailTargetsText(e.target.value)}
+            placeholder="rep@example.gov, staff@example.gov"
+          />
         </>
       )}
 
@@ -240,6 +327,26 @@ export function CreateActionForm({ campaignId, onSuccess, onCancel }: CreateActi
         </>
       )}
 
+      <div className="rounded-lg border border-border bg-muted/30 p-4">
+        <h4 className="mb-2 text-sm font-semibold">Share Prompt (optional)</h4>
+        <TextInput
+          label="Share Image URL"
+          name="shareImageUrl"
+          type="url"
+          value={imageUrl}
+          onChange={(e) => setImageUrl(e.target.value)}
+          placeholder="https://..."
+        />
+        <Textarea
+          label="Suggested Share Text"
+          name="shareText"
+          value={shareText}
+          onChange={(e) => setShareText(e.target.value)}
+          placeholder="Copy for sharing after completion"
+          rows={3}
+        />
+      </div>
+
       {/* Submit */}
       <div className="flex gap-3 pt-2">
         {onCancel && (
@@ -248,7 +355,7 @@ export function CreateActionForm({ campaignId, onSuccess, onCancel }: CreateActi
           </Button>
         )}
         <Button type="submit" loading={createMutation.isPending} isDisabled={!title.trim() || !dueDate}>
-          Create Action
+          {isEditing ? 'Update Action' : 'Create Action'}
         </Button>
       </div>
     </form>

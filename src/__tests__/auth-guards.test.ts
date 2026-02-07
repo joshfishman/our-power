@@ -164,17 +164,18 @@ describe('Action Schema - Auth Guard Scenarios', () => {
 });
 
 describe('Rate Limiter', () => {
-  it('should allow requests under the limit', () => {
-    const result = checkRateLimit('test-ip-1', { limit: 5, windowSeconds: 60 });
+  it('should allow requests under the limit', async () => {
+    const result = await checkRateLimit('test-ip-1', { limit: 5, windowSeconds: 60 });
     expect(result).toBeNull();
   });
 
-  it('should block requests over the limit', () => {
+  it('should block requests over the limit', async () => {
     const ip = `test-ip-block-${Date.now()}`;
     for (let i = 0; i < 5; i += 1) {
-      checkRateLimit(ip, { limit: 5, windowSeconds: 60 });
+      // eslint-disable-next-line no-await-in-loop
+      await checkRateLimit(ip, { limit: 5, windowSeconds: 60 });
     }
-    const result = checkRateLimit(ip, { limit: 5, windowSeconds: 60 });
+    const result = await checkRateLimit(ip, { limit: 5, windowSeconds: 60 });
     expect(result).not.toBeNull();
     expect(result?.status).toBe(429);
   });

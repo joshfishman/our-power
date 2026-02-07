@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import prisma from '@/lib/prisma/prisma';
+import { enforceRateLimit } from '@/lib/api-utils';
+import { logError } from '@/lib/logger';
 
 // GET /api/me/campaigns - Get current user's campaigns
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const rateLimitResponse = await enforceRateLimit(request, { limit: 60, windowSeconds: 60 });
+    if (rateLimitResponse) return rateLimitResponse;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -32,7 +36,7 @@ export async function GET() {
 
     return NextResponse.json(campaigns);
   } catch (error) {
-    console.error('Error fetching user campaigns:', error);
+    logError('Error fetching user campaigns', error);
     return NextResponse.json({ error: 'Failed to fetch campaigns' }, { status: 500 });
   }
 }

@@ -2,21 +2,27 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import prisma from '@/lib/prisma/prisma';
 import { organizationSchema } from '@/lib/validations/organization';
-import { withCors, corsOptionsResponse, isRateLimited, rateLimitedResponse } from '@/lib/api-utils';
+import { withCors, corsOptionsResponse, enforceRateLimit } from '@/lib/api-utils';
+import { logError } from '@/lib/logger';
+import { z } from 'zod';
 
-export async function OPTIONS() {
-  return corsOptionsResponse();
+export async function OPTIONS(request: Request) {
+  return corsOptionsResponse(request);
 }
 
 // GET /api/organizations/[id] - Get single organization
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
-    const ip = request.headers.get('x-forwarded-for') || 'unknown';
-    if (isRateLimited(ip)) return rateLimitedResponse();
+    const rateLimitResponse = await enforceRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
     const session = await auth();
+    const organizationId = z.string().cuid().safeParse(params.id);
+    if (!organizationId.success) {
+      return NextResponse.json({ error: 'Invalid organization id' }, { status: 400 });
+    }
 
     const organization = await prisma.organization.findUnique({
-      where: { id: params.id },
+      where: { id: organizationId.data },
       include: {
         managers: {
           select: { id: true, name: true, image: true },
@@ -42,7 +48,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
     if (isManager) {
       // Re-fetch with emails for managers
       const withEmails = await prisma.organization.findUnique({
-        where: { id: params.id },
+        where: { id: organizationId.data },
         include: {
           managers: {
             select: { id: true, name: true, email: true, image: true },
@@ -58,28 +64,35 @@ export async function GET(request: Request, { params }: { params: { id: string }
           _count: { select: { campaigns: true } },
         },
       });
-      return withCors(NextResponse.json(withEmails));
+      return withCors(NextResponse.json(withEmails), request);
     }
 
-    return withCors(NextResponse.json(organization));
+    return withCors(NextResponse.json(organization), request);
   } catch (error) {
-    console.error('Error fetching organization:', error);
-    return withCors(NextResponse.json({ error: 'Failed to fetch organization' }, { status: 500 }));
+    logError('Error fetching organization', error);
+    return withCors(NextResponse.json({ error: 'Failed to fetch organization' }, { status: 500 }), request);
   }
 }
 
 // PATCH /api/organizations/[id] - Update organization
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
+    const rateLimitResponse = await enforceRateLimit(request, { limit: 30, windowSeconds: 60 });
+    if (rateLimitResponse) return rateLimitResponse;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const organizationId = z.string().cuid().safeParse(params.id);
+    if (!organizationId.success) {
+      return NextResponse.json({ error: 'Invalid organization id' }, { status: 400 });
+    }
+
     // Verify user is a manager
     const org = await prisma.organization.findFirst({
       where: {
-        id: params.id,
+        id: organizationId.data,
         managers: { some: { id: session.user.id } },
       },
     });
@@ -92,7 +105,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const validatedData = organizationSchema.partial().parse(body);
 
     const organization = await prisma.organization.update({
-      where: { id: params.id },
+      where: { id: organizationId.data },
       data: validatedData,
       include: {
         managers: {
@@ -103,7 +116,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
     return NextResponse.json(organization);
   } catch (error) {
-    console.error('Error updating organization:', error);
+    logError('Error updating organization', error);
     return NextResponse.json({ error: 'Failed to update organization' }, { status: 500 });
   }
 }
@@ -111,15 +124,22 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 // DELETE /api/organizations/[id] - Delete organization
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   try {
+    const rateLimitResponse = await enforceRateLimit(request, { limit: 20, windowSeconds: 60 });
+    if (rateLimitResponse) return rateLimitResponse;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const organizationId = z.string().cuid().safeParse(params.id);
+    if (!organizationId.success) {
+      return NextResponse.json({ error: 'Invalid organization id' }, { status: 400 });
+    }
+
     // Verify user is a manager
     const org = await prisma.organization.findFirst({
       where: {
-        id: params.id,
+        id: organizationId.data,
         managers: { some: { id: session.user.id } },
       },
     });
@@ -129,12 +149,12 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     }
 
     await prisma.organization.delete({
-      where: { id: params.id },
+      where: { id: organizationId.data },
     });
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting organization:', error);
+    logError('Error deleting organization', error);
     return NextResponse.json({ error: 'Failed to delete organization' }, { status: 500 });
   }
 }

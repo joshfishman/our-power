@@ -25,7 +25,7 @@ export function StatCard({ title, value, subtitle, trend, icon, className }: Sta
           {subtitle && <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>}
           {trend && (
             <div className="mt-2 flex items-center gap-1">
-              <span className={cn('text-sm font-medium', trend.isPositive ? 'text-green-600' : 'text-red-600')}>
+              <span className={cn('text-sm font-medium', trend.isPositive ? 'text-sky-600' : 'text-red-600')}>
                 {trend.isPositive ? '+' : '-'}
                 {Math.abs(trend.value)}%
               </span>

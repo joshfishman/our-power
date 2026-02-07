@@ -63,3 +63,46 @@ export async function convertMentionUsernamesToIds({
     usersMentioned,
   };
 }
+
+export async function convertMentionsBatch({
+  strings,
+  reverse = false,
+}: {
+  strings: string[];
+  reverse?: boolean;
+}): Promise<string[]> {
+  const pattern = /(^|\s)(@)(\w+|\w+)/g;
+  const matches = strings.flatMap(
+    (value) => value.match(pattern)?.map((match) => match.slice(match.charAt(1) === '@' ? 2 : 1)) || [],
+  );
+
+  if (matches.length === 0) return strings;
+
+  const matchesUnique = uniq(matches);
+  const usersMentioned = await prisma.user.findMany({
+    where: {
+      ...(!reverse
+        ? {
+            username: {
+              in: matchesUnique,
+            },
+          }
+        : {
+            id: {
+              in: matchesUnique,
+            },
+          }),
+    },
+    select: {
+      id: true,
+      username: true,
+    },
+  });
+
+  return strings.map((value) =>
+    value.replace(pattern, (match, space, char, word) => {
+      const user = usersMentioned.find((um) => (!reverse ? um.username : um.id) === word);
+      return `${space}${char}${user ? (!reverse ? user.id : user.username) : word}`;
+    }),
+  );
+}

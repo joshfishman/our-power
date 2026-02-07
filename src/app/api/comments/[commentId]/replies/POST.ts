@@ -13,13 +13,19 @@ import { toGetComment } from '@/lib/prisma/toGetComment';
 import { commentWriteSchema } from '@/lib/validations/comment';
 import { NextResponse } from 'next/server';
 import { GetComment } from '@/types/definitions';
+import { enforceRateLimit } from '@/lib/api-utils';
 import { z } from 'zod';
 
 export async function POST(request: Request, { params }: { params: { commentId: string } }) {
+  const rateLimitResponse = await enforceRateLimit(request, { limit: 30, windowSeconds: 60 });
+  if (rateLimitResponse) return rateLimitResponse;
   const [user] = await getServerUser();
   if (!user) return NextResponse.json({}, { status: 401 });
   const userId = user.id;
-  const commentId = parseInt(params.commentId, 10);
+  const commentId = z.coerce.number().int().positive().safeParse(params.commentId);
+  if (!commentId.success) {
+    return NextResponse.json({ error: 'Invalid comment id' }, { status: 400 });
+  }
 
   try {
     const body = await request.json();
@@ -31,7 +37,7 @@ export async function POST(request: Request, { params }: { params: { commentId: 
 
     const comment = await prisma.comment.findUnique({
       where: {
-        id: commentId,
+        id: commentId.data,
       },
       select: {
         userId: true,
@@ -45,7 +51,7 @@ export async function POST(request: Request, { params }: { params: { commentId: 
       data: {
         content,
         userId,
-        parentId: commentId,
+        parentId: commentId.data,
         postId: comment.postId,
       },
       include: includeToComment(userId),
@@ -59,7 +65,7 @@ export async function POST(request: Request, { params }: { params: { commentId: 
           type: 'CREATE_REPLY',
           sourceId: res.id,
           sourceUserId: userId,
-          targetId: commentId,
+          targetId: commentId.data,
           targetUserId: comment.userId,
         },
       });

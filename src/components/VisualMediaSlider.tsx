@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { Close } from '@/svg_components';
 import { useFocusManager } from 'react-aria';
 import { GetVisualMedia } from '@/types/definitions';
+import Image from 'next/image';
 import Button from './ui/Button';
 import { VisualMediaModalNavigationButton } from './VisualMediaModalNavigationButton';
 
@@ -65,9 +66,9 @@ export default function VisualMediaSlider({
       {visualMedia.map(({ type, url }) => {
         return (
           <SwiperSlide key={url}>
-            <div className="swiper-zoom-container">
+            <div className="swiper-zoom-container relative h-full w-full">
               {type === 'PHOTO' ? (
-                <img src={url} alt="Post" className="max-h-full" />
+                <Image src={url} alt="Post" fill sizes="100vw" className="object-contain" />
               ) : (
                 // eslint-disable-next-line jsx-a11y/media-has-caption
                 <video className="max-h-[75%]" autoPlay controls>

@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import prisma from '@/lib/prisma/prisma';
+import { enforceRateLimit } from '@/lib/api-utils';
+import { logError } from '@/lib/logger';
+import { logActionCompleted, logActionRSVP } from '@/lib/notifications/campaignNotifications';
 import { z } from 'zod';
 
 const participationSchema = z.object({
@@ -12,9 +15,16 @@ const participationSchema = z.object({
 // POST /api/actions/[id]/participate - RSVP or mark completion
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
+    const rateLimitResponse = await enforceRateLimit(request, { limit: 30, windowSeconds: 60 });
+    if (rateLimitResponse) return rateLimitResponse;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const actionId = z.string().cuid().safeParse(params.id);
+    if (!actionId.success) {
+      return NextResponse.json({ error: 'Invalid action id' }, { status: 400 });
     }
 
     const body = await request.json();
@@ -22,7 +32,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
     // Check if action exists
     const action = await prisma.action.findUnique({
-      where: { id: params.id },
+      where: { id: actionId.data },
       include: { campaign: { select: { id: true, name: true } } },
     });
 
@@ -47,12 +57,21 @@ export async function POST(request: Request, { params }: { params: { id: string 
       );
     }
 
+    const existingParticipation = await prisma.actionParticipation.findUnique({
+      where: {
+        userId_actionId: {
+          userId: session.user.id,
+          actionId: actionId.data,
+        },
+      },
+    });
+
     // Upsert participation
     const participation = await prisma.actionParticipation.upsert({
       where: {
         userId_actionId: {
           userId: session.user.id,
-          actionId: params.id,
+          actionId: actionId.data,
         },
       },
       update: {
@@ -63,13 +82,20 @@ export async function POST(request: Request, { params }: { params: { id: string 
       },
       create: {
         userId: session.user.id,
-        actionId: params.id,
+        actionId: actionId.data,
         willAttend: validatedData.willAttend ?? false,
         attended: validatedData.attended ?? false,
         completedAt: validatedData.attended ? new Date() : null,
         notes: validatedData.notes,
       },
     });
+
+    if (validatedData.willAttend && !existingParticipation?.willAttend) {
+      await logActionRSVP({ userId: session.user.id, actionId: action.id, campaignId: action.campaignId });
+    }
+    if (validatedData.attended && !existingParticipation?.attended) {
+      await logActionCompleted({ userId: session.user.id, actionId: action.id, campaignId: action.campaignId });
+    }
 
     return NextResponse.json({
       success: true,
@@ -81,7 +107,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
         : 'Participation updated',
     });
   } catch (error) {
-    console.error('Error updating participation:', error);
+    logError('Error updating participation', error);
     return NextResponse.json({ error: 'Failed to update participation' }, { status: 500 });
   }
 }
@@ -89,23 +115,30 @@ export async function POST(request: Request, { params }: { params: { id: string 
 // GET /api/actions/[id]/participate - Get user's participation status
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
+    const rateLimitResponse = await enforceRateLimit(request, { limit: 60, windowSeconds: 60 });
+    if (rateLimitResponse) return rateLimitResponse;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const actionId = z.string().cuid().safeParse(params.id);
+    if (!actionId.success) {
+      return NextResponse.json({ error: 'Invalid action id' }, { status: 400 });
     }
 
     const participation = await prisma.actionParticipation.findUnique({
       where: {
         userId_actionId: {
           userId: session.user.id,
-          actionId: params.id,
+          actionId: actionId.data,
         },
       },
     });
 
     return NextResponse.json(participation || { willAttend: false, attended: false });
   } catch (error) {
-    console.error('Error fetching participation:', error);
+    logError('Error fetching participation', error);
     return NextResponse.json({ error: 'Failed to fetch participation' }, { status: 500 });
   }
 }

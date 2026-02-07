@@ -6,6 +6,7 @@ import { useUpdateProfileAndCoverPhotoClient } from '@/hooks/useUpdateProfileAnd
 import { useVisualMediaModal } from '@/hooks/useVisualMediaModal';
 import { Camera } from '@/svg_components';
 import { useCallback } from 'react';
+import Image from 'next/image';
 
 export default function ProfilePhoto({
   isOwnProfile,
@@ -31,9 +32,9 @@ export default function ProfilePhoto({
   }, [photoUrl, showVisualMediaModal]);
 
   return (
-    <div className="absolute bottom-[-88px] h-44 w-44 border-white bg-cover">
+    <div className="absolute relative bottom-[-88px] h-44 w-44 border-white bg-cover">
       {photoUrl && (
-        <img src={photoUrl} alt="Profile" className="absolute h-full w-full rounded-full border-4 object-cover" />
+        <Image src={photoUrl} alt="Profile" fill sizes="176px" className="rounded-full border-4 object-cover" />
       )}
       {photoUrl ? (
         <button

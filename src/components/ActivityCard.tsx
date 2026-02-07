@@ -26,7 +26,7 @@ export function ActivityCard({ children, user, date, type, isRead, ...rest }: Ac
       ref={ref}
       className={cn(
         'mb-4 flex cursor-pointer gap-3 rounded-3xl bg-card p-4 last:mb-0 hover:bg-card/90 focus:outline-none',
-        isFocusVisible && 'ring ring-green-500 ring-offset-2',
+        isFocusVisible && 'ring ring-sky-500 ring-offset-2',
       )}
       aria-label="Open link"
       {...rest}>
@@ -42,7 +42,7 @@ export function ActivityCard({ children, user, date, type, isRead, ...rest }: Ac
 
       {!isRead && (
         <div className="grid place-items-center">
-          <div className="h-3 w-3 rounded-full bg-green-500" />
+          <div className="h-3 w-3 rounded-full bg-sky-500" />
         </div>
       )}
     </div>

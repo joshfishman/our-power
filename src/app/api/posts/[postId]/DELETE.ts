@@ -6,11 +6,19 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma/prisma';
 import { deleteObject } from '@/lib/storage/deleteObject';
+import { enforceRateLimit } from '@/lib/api-utils';
+import { z } from 'zod';
 import { verifyAccessToPost } from './verifyAccessToPost';
 
 export async function DELETE(request: Request, { params }: { params: { postId: string } }) {
-  const postId = parseInt(params.postId, 10);
-  if (!(await verifyAccessToPost(postId))) {
+  const rateLimitResponse = await enforceRateLimit(request, { limit: 20, windowSeconds: 60 });
+  if (rateLimitResponse) return rateLimitResponse;
+
+  const postId = z.coerce.number().int().positive().safeParse(params.postId);
+  if (!postId.success) {
+    return NextResponse.json({ error: 'Invalid post id' }, { status: 400 });
+  }
+  if (!(await verifyAccessToPost(postId.data))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 
@@ -21,7 +29,7 @@ export async function DELETE(request: Request, { params }: { params: { postId: s
       visualMedia: true,
     },
     where: {
-      id: postId,
+      id: postId.data,
     },
   });
 

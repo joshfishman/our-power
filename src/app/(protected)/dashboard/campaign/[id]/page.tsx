@@ -191,7 +191,7 @@ export default function CampaignDashboardPage() {
                     <td className="py-3 text-right">
                       <span
                         className={`font-medium ${
-                          rate >= 70 ? 'text-green-600' : rate >= 40 ? 'text-yellow-600' : 'text-red-600'
+                          rate >= 70 ? 'text-sky-600' : rate >= 40 ? 'text-yellow-600' : 'text-red-600'
                         }`}>
                         {rate}%
                       </span>
@@ -235,7 +235,7 @@ export default function CampaignDashboardPage() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Supporters</span>
-                      <span className="font-medium text-green-600">{action.canvassStats?.supporters || 0}</span>
+                      <span className="font-medium text-sky-600">{action.canvassStats?.supporters || 0}</span>
                     </div>
                   </div>
                 </div>

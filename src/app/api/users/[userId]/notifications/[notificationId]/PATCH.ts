@@ -6,6 +6,8 @@
 import { getServerUser } from '@/lib/getServerUser';
 import prisma from '@/lib/prisma/prisma';
 import { NextResponse } from 'next/server';
+import { enforceRateLimit } from '@/lib/api-utils';
+import { z } from 'zod';
 
 async function verifyAccessToNotification(notificationId: number) {
   const [user] = await getServerUser();
@@ -20,8 +22,20 @@ async function verifyAccessToNotification(notificationId: number) {
 }
 
 export async function PATCH(request: Request, { params }: { params: { userId: string; notificationId: string } }) {
-  const notificationId = parseInt(params.notificationId, 10);
-  if (!verifyAccessToNotification(notificationId)) return NextResponse.json({}, { status: 403 });
+  const rateLimitResponse = await enforceRateLimit(request, { limit: 60, windowSeconds: 60 });
+  if (rateLimitResponse) return rateLimitResponse;
+
+  const parsedUserId = z.string().cuid().safeParse(params.userId);
+  const parsedNotificationId = z.coerce.number().int().positive().safeParse(params.notificationId);
+  if (!parsedUserId.success || !parsedNotificationId.success) {
+    return NextResponse.json({ error: 'Invalid user or notification id' }, { status: 400 });
+  }
+
+  const [user] = await getServerUser();
+  if (!user || user.id !== parsedUserId.data) return NextResponse.json({}, { status: 403 });
+
+  const notificationId = parsedNotificationId.data;
+  if (!(await verifyAccessToNotification(notificationId))) return NextResponse.json({}, { status: 403 });
 
   await prisma.activity.update({
     where: {

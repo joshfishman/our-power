@@ -33,8 +33,7 @@ export function CauseSelector({ causes, selectedIds, onSelectionChange, minRequi
         <p className="text-sm text-muted-foreground">
           {minRequired > 0 ? `Select at least ${minRequired} causes` : 'Select causes that matter to you (optional)'}
         </p>
-        <span
-          className={cn('text-sm font-medium', selectedIds.length > 0 ? 'text-green-500' : 'text-muted-foreground')}>
+        <span className={cn('text-sm font-medium', selectedIds.length > 0 ? 'text-sky-500' : 'text-muted-foreground')}>
           {selectedIds.length} selected
         </span>
       </div>

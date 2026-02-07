@@ -9,10 +9,20 @@ import { getServerUser } from '@/lib/getServerUser';
 import { userAboutSchema } from '@/lib/validations/userAbout';
 import { toGetUser } from '@/lib/prisma/toGetUser';
 import { includeToUser } from '@/lib/prisma/includeToUser';
+import { enforceRateLimit } from '@/lib/api-utils';
+import { z } from 'zod';
 
 export async function PATCH(request: Request, { params }: { params: { userId: string } }) {
+  const rateLimitResponse = await enforceRateLimit(request, { limit: 20, windowSeconds: 60 });
+  if (rateLimitResponse) return rateLimitResponse;
+
+  const parsedUserId = z.string().cuid().safeParse(params.userId);
+  if (!parsedUserId.success) {
+    return NextResponse.json({ error: 'Invalid user id' }, { status: 400 });
+  }
+
   const [user] = await getServerUser();
-  if (!user || user.id !== params.userId) return NextResponse.json({}, { status: 401 });
+  if (!user || user.id !== parsedUserId.data) return NextResponse.json({}, { status: 401 });
 
   const userAbout = await request.json();
 

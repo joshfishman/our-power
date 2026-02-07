@@ -2,19 +2,25 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import prisma from '@/lib/prisma/prisma';
 import { campaignSchema } from '@/lib/validations/campaign';
-import { withCors, corsOptionsResponse, isRateLimited, rateLimitedResponse } from '@/lib/api-utils';
+import { withCors, corsOptionsResponse, enforceRateLimit } from '@/lib/api-utils';
+import { logError } from '@/lib/logger';
+import { z } from 'zod';
 
-export async function OPTIONS() {
-  return corsOptionsResponse();
+export async function OPTIONS(request: Request) {
+  return corsOptionsResponse(request);
 }
 
 // GET /api/campaigns/[id] - Get single campaign
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
-    const ip = request.headers.get('x-forwarded-for') || 'unknown';
-    if (isRateLimited(ip)) return rateLimitedResponse();
+    const rateLimitResponse = await enforceRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
+    const campaignId = z.string().cuid().safeParse(params.id);
+    if (!campaignId.success) {
+      return NextResponse.json({ error: 'Invalid campaign id' }, { status: 400 });
+    }
     const campaign = await prisma.campaign.findUnique({
-      where: { id: params.id },
+      where: { id: campaignId.data },
       include: {
         cause: { select: { id: true, name: true, icon: true, color: true } },
         org: { select: { id: true, name: true, logoUrl: true, description: true } },
@@ -35,6 +41,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
             // PHONE fields
             callScript: true,
             dialerUrl: true,
+            phoneNumbers: true,
             // EMAIL fields
             emailSubject: true,
             emailBody: true,
@@ -42,6 +49,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
             // CANVASS fields
             canvassArea: true,
             ecanvasserCampaignId: true,
+            graphics: true,
+            shareText: true,
             _count: { select: { participants: true } },
           },
         },
@@ -53,25 +62,32 @@ export async function GET(request: Request, { params }: { params: { id: string }
       return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
     }
 
-    return withCors(NextResponse.json(campaign));
+    return withCors(NextResponse.json(campaign), request);
   } catch (error) {
-    console.error('Error fetching campaign:', error);
-    return withCors(NextResponse.json({ error: 'Failed to fetch campaign' }, { status: 500 }));
+    logError('Error fetching campaign', error);
+    return withCors(NextResponse.json({ error: 'Failed to fetch campaign' }, { status: 500 }), request);
   }
 }
 
 // PATCH /api/campaigns/[id] - Update campaign
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
+    const rateLimitResponse = await enforceRateLimit(request, { limit: 30, windowSeconds: 60 });
+    if (rateLimitResponse) return rateLimitResponse;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const campaignId = z.string().cuid().safeParse(params.id);
+    if (!campaignId.success) {
+      return NextResponse.json({ error: 'Invalid campaign id' }, { status: 400 });
+    }
+
     // Verify user can edit this campaign
     const existingCampaign = await prisma.campaign.findFirst({
       where: {
-        id: params.id,
+        id: campaignId.data,
         org: { managers: { some: { id: session.user.id } } },
       },
     });
@@ -87,7 +103,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const validatedData = campaignSchema.partial().parse(body);
 
     const campaign = await prisma.campaign.update({
-      where: { id: params.id },
+      where: { id: campaignId.data },
       data: {
         ...validatedData,
         startDate: validatedData.startDate ? new Date(validatedData.startDate) : undefined,
@@ -101,7 +117,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
     return NextResponse.json(campaign);
   } catch (error) {
-    console.error('Error updating campaign:', error);
+    logError('Error updating campaign', error);
     return NextResponse.json({ error: 'Failed to update campaign' }, { status: 500 });
   }
 }
@@ -109,15 +125,22 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 // DELETE /api/campaigns/[id] - Delete campaign
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   try {
+    const rateLimitResponse = await enforceRateLimit(request, { limit: 20, windowSeconds: 60 });
+    if (rateLimitResponse) return rateLimitResponse;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const campaignId = z.string().cuid().safeParse(params.id);
+    if (!campaignId.success) {
+      return NextResponse.json({ error: 'Invalid campaign id' }, { status: 400 });
+    }
+
     // Verify user can delete this campaign
     const existingCampaign = await prisma.campaign.findFirst({
       where: {
-        id: params.id,
+        id: campaignId.data,
         org: { managers: { some: { id: session.user.id } } },
       },
     });
@@ -130,12 +153,12 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     }
 
     await prisma.campaign.delete({
-      where: { id: params.id },
+      where: { id: campaignId.data },
     });
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting campaign:', error);
+    logError('Error deleting campaign', error);
     return NextResponse.json({ error: 'Failed to delete campaign' }, { status: 500 });
   }
 }

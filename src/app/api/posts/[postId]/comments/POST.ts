@@ -14,12 +14,18 @@ import { includeToComment } from '@/lib/prisma/includeToComment';
 import { toGetComment } from '@/lib/prisma/toGetComment';
 import { convertMentionUsernamesToIds } from '@/lib/convertMentionUsernamesToIds';
 import { mentionsActivityLogger } from '@/lib/mentionsActivityLogger';
+import { enforceRateLimit } from '@/lib/api-utils';
 
 export async function POST(request: Request, { params }: { params: { postId: string } }) {
+  const rateLimitResponse = await enforceRateLimit(request, { limit: 30, windowSeconds: 60 });
+  if (rateLimitResponse) return rateLimitResponse;
   const [user] = await getServerUser();
   if (!user) return NextResponse.json({}, { status: 401 });
   const userId = user.id;
-  const postId = parseInt(params.postId, 10);
+  const postId = z.coerce.number().int().positive().safeParse(params.postId);
+  if (!postId.success) {
+    return NextResponse.json({ error: 'Invalid post id' }, { status: 400 });
+  }
 
   try {
     const body = await request.json();
@@ -33,7 +39,7 @@ export async function POST(request: Request, { params }: { params: { postId: str
       data: {
         content,
         userId,
-        postId,
+        postId: postId.data,
       },
       include: includeToComment(userId),
     });
@@ -42,7 +48,7 @@ export async function POST(request: Request, { params }: { params: { postId: str
     // Find the owner of the post
     const post = await prisma.post.findUnique({
       where: {
-        id: postId,
+        id: postId.data,
       },
       select: {
         userId: true,
@@ -54,7 +60,7 @@ export async function POST(request: Request, { params }: { params: { postId: str
           type: 'CREATE_COMMENT',
           sourceId: res.id,
           sourceUserId: userId,
-          targetId: postId,
+          targetId: postId.data,
           targetUserId: post.userId,
         },
       });

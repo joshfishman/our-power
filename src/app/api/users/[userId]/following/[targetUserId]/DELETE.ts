@@ -6,15 +6,26 @@
 import { getServerUser } from '@/lib/getServerUser';
 import prisma from '@/lib/prisma/prisma';
 import { NextResponse } from 'next/server';
+import { enforceRateLimit } from '@/lib/api-utils';
+import { z } from 'zod';
 
 export async function DELETE(request: Request, { params }: { params: { userId: string; targetUserId: string } }) {
+  const rateLimitResponse = await enforceRateLimit(request, { limit: 20, windowSeconds: 60 });
+  if (rateLimitResponse) return rateLimitResponse;
+
+  const parsedUserId = z.string().cuid().safeParse(params.userId);
+  const parsedTargetUserId = z.string().cuid().safeParse(params.targetUserId);
+  if (!parsedUserId.success || !parsedTargetUserId.success) {
+    return NextResponse.json({ error: 'Invalid user id' }, { status: 400 });
+  }
+
   const [user] = await getServerUser();
-  if (!user || user.id !== params.userId) return NextResponse.json({}, { status: 403 });
+  if (!user || user.id !== parsedUserId.data) return NextResponse.json({}, { status: 403 });
 
   const isFollowing = await prisma.follow.count({
     where: {
       followerId: user.id,
-      followingId: params.targetUserId,
+      followingId: parsedTargetUserId.data,
     },
   });
 
@@ -23,7 +34,7 @@ export async function DELETE(request: Request, { params }: { params: { userId: s
       where: {
         followerId_followingId: {
           followerId: user.id,
-          followingId: params.targetUserId,
+          followingId: parsedTargetUserId.data,
         },
       },
     });
@@ -34,7 +45,7 @@ export async function DELETE(request: Request, { params }: { params: { userId: s
         type: 'CREATE_FOLLOW',
         sourceId: res.id,
         sourceUserId: user.id,
-        targetUserId: params.targetUserId,
+        targetUserId: parsedTargetUserId.data,
       },
     });
 

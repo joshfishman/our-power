@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { ResponsiveContainer } from '@/components/ui/ResponsiveContainer';
 import { GenericLoading } from '@/components/GenericLoading';
 import Button from '@/components/ui/Button';
@@ -151,7 +152,13 @@ export default function OrganizationDetailPage() {
       {/* Header */}
       <div className="mb-6 flex items-start gap-4">
         {org.logoUrl ? (
-          <img src={org.logoUrl} alt={org.name} className="h-16 w-16 rounded-xl object-cover" />
+          <Image
+            src={org.logoUrl}
+            alt={org.name}
+            width={64}
+            height={64}
+            className="h-16 w-16 rounded-xl object-cover"
+          />
         ) : (
           <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-primary/10">
             <BuildingBusinessOffice className="h-8 w-8 text-primary" />
@@ -214,7 +221,13 @@ export default function OrganizationDetailPage() {
             <div key={manager.id} className="flex items-center justify-between rounded-lg border border-border p-3">
               <div className="flex items-center gap-3">
                 {manager.image ? (
-                  <img src={manager.image} alt="" className="h-8 w-8 rounded-full object-cover" />
+                  <Image
+                    src={manager.image}
+                    alt=""
+                    width={32}
+                    height={32}
+                    className="h-8 w-8 rounded-full object-cover"
+                  />
                 ) : (
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-sm">
                     {(manager.name || 'U')[0]}
@@ -266,7 +279,7 @@ export default function OrganizationDetailPage() {
                 <span
                   className={`rounded-full px-2 py-1 text-xs font-medium ${
                     campaign.status === 'ACTIVE'
-                      ? 'bg-green-500/10 text-green-500'
+                      ? 'bg-sky-500/10 text-sky-500'
                       : campaign.status === 'DRAFT'
                       ? 'bg-yellow-500/10 text-yellow-500'
                       : 'bg-muted text-muted-foreground'

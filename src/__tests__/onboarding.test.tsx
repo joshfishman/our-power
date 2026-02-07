@@ -11,11 +11,11 @@ void vi;
 
 // Mock causes data
 const mockCauses = [
-  { id: '1', name: 'Climate & Environment', icon: '🌍', color: '#22c55e', description: 'Climate action' },
+  { id: '1', name: 'Climate & Environment', icon: '🌍', color: '#0ea5e9', description: 'Climate action' },
   { id: '2', name: 'Education', icon: '📚', color: '#3b82f6', description: 'Public education' },
   { id: '3', name: 'Healthcare', icon: '🏥', color: '#ef4444', description: 'Healthcare access' },
   { id: '4', name: 'Housing', icon: '🏠', color: '#f97316', description: 'Affordable housing' },
-  { id: '5', name: 'Criminal Justice', icon: '⚖️', color: '#22c55e', description: 'Justice reform' },
+  { id: '5', name: 'Criminal Justice', icon: '⚖️', color: '#0ea5e9', description: 'Justice reform' },
 ];
 
 // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
@@ -155,7 +155,7 @@ describe('CauseSelector Component', () => {
     expect(onSelectionChange).toHaveBeenCalledWith([]);
   });
 
-  it('should show green text when causes are selected', () => {
+  it('should show sky text when causes are selected', () => {
     const onSelectionChange = vi.fn();
     render(
       <CauseSelector
@@ -167,6 +167,6 @@ describe('CauseSelector Component', () => {
     );
 
     const countText = screen.getByText('4 selected');
-    expect(countText).toHaveClass('text-green-500');
+    expect(countText).toHaveClass('text-sky-500');
   });
 });

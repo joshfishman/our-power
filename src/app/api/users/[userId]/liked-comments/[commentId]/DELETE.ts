@@ -7,12 +7,23 @@
 import { getServerUser } from '@/lib/getServerUser';
 import prisma from '@/lib/prisma/prisma';
 import { NextResponse } from 'next/server';
+import { enforceRateLimit } from '@/lib/api-utils';
+import { z } from 'zod';
 
 export async function DELETE(request: Request, { params }: { params: { userId: string; commentId: string } }) {
-  const [user] = await getServerUser();
-  if (!user || params.userId !== user.id) return NextResponse.json({}, { status: 401 });
+  const rateLimitResponse = await enforceRateLimit(request, { limit: 40, windowSeconds: 60 });
+  if (rateLimitResponse) return rateLimitResponse;
 
-  const commentId = parseInt(params.commentId, 10);
+  const parsedUserId = z.string().cuid().safeParse(params.userId);
+  const parsedCommentId = z.coerce.number().int().positive().safeParse(params.commentId);
+  if (!parsedUserId.success || !parsedCommentId.success) {
+    return NextResponse.json({ error: 'Invalid user or comment id' }, { status: 400 });
+  }
+
+  const [user] = await getServerUser();
+  if (!user || parsedUserId.data !== user.id) return NextResponse.json({}, { status: 401 });
+
+  const commentId = parsedCommentId.data;
 
   const isLiked = await prisma.commentLike.count({
     where: {

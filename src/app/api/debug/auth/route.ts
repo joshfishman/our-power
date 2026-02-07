@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
+import { enforceRateLimit } from '@/lib/api-utils';
 
 // Debug endpoint to check OAuth configuration - ONLY available in development
-export async function GET() {
+export async function GET(request: Request) {
   // Block access in production
   if (process.env.NODE_ENV === 'production') {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
+
+  const rateLimitResponse = await enforceRateLimit(request, { limit: 30, windowSeconds: 60 });
+  if (rateLimitResponse) return rateLimitResponse;
 
   const config = {
     google: {

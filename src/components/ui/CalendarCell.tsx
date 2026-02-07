@@ -46,20 +46,20 @@ export function CalendarCell({ state, date }: CalendarCellProps) {
             isDisabled && !isInvalid ? 'text-gray-400' : ''
           } ${
             // Focus ring, visible while the cell has keyboard focus.
-            isFocusVisible ? 'group-focus:z-2 ring-2 ring-green-600 ring-offset-2' : ''
+            isFocusVisible ? 'group-focus:z-2 ring-2 ring-sky-600 ring-offset-2' : ''
           } ${
             // Darker selection background for the start and end.
             isSelectionStart || isSelectionEnd
               ? isInvalid
                 ? 'bg-red-600 text-white hover:bg-red-700'
-                : 'bg-green-600 text-white hover:bg-green-700'
+                : 'bg-sky-600 text-white hover:bg-sky-700'
               : ''
           } ${
             // Hover state for cells in the middle of the range.
             isSelected && !isDisabled && !(isSelectionStart || isSelectionEnd)
               ? isInvalid
                 ? 'hover:bg-red-400'
-                : 'hover:bg-green-400'
+                : 'hover:bg-sky-400'
               : ''
           } ${
             // Hover state for non-selected cells.

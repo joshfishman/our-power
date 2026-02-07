@@ -5,6 +5,7 @@ import { useUpdateProfileAndCoverPhotoClient } from '@/hooks/useUpdateProfileAnd
 import { useVisualMediaModal } from '@/hooks/useVisualMediaModal';
 import SvgImage from '@/svg_components/Image';
 import { useCallback } from 'react';
+import Image from 'next/image';
 
 export default function CoverPhoto({ isOwnProfile, photoUrl }: { isOwnProfile: boolean; photoUrl: string | null }) {
   const { inputFileRef, openInput, handleChange, isPending } = useUpdateProfileAndCoverPhotoClient('cover');
@@ -24,8 +25,8 @@ export default function CoverPhoto({ isOwnProfile, photoUrl }: { isOwnProfile: b
   }, [photoUrl, showVisualMediaModal]);
 
   return (
-    <div className="h-full w-full">
-      {photoUrl && <img src={photoUrl} alt="" className="absolute h-full w-full object-cover" />}
+    <div className="relative h-full w-full">
+      {photoUrl && <Image src={photoUrl} alt="" fill sizes="100vw" className="object-cover" />}
       <button
         type="button"
         aria-label="Open cover photo"

@@ -20,13 +20,13 @@ const ACTION_TYPE_COLORS: Record<string, { bg: string; bar: string; label: strin
     label: 'Events',
   },
   PHONE: {
-    bg: 'bg-green-100 dark:bg-green-900/30',
-    bar: 'bg-green-500',
+    bg: 'bg-sky-100 dark:bg-sky-900/30',
+    bar: 'bg-sky-500',
     label: 'Phone Banking',
   },
   EMAIL: {
-    bg: 'bg-green-100 dark:bg-green-900/30',
-    bar: 'bg-green-500',
+    bg: 'bg-sky-100 dark:bg-sky-900/30',
+    bar: 'bg-sky-500',
     label: 'Email Actions',
   },
   CANVASS: {

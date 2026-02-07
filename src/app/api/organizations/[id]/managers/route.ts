@@ -2,19 +2,29 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import prisma from '@/lib/prisma/prisma';
 import { addManagerSchema } from '@/lib/validations/organization';
+import { enforceRateLimit } from '@/lib/api-utils';
+import { logError } from '@/lib/logger';
+import { z } from 'zod';
 
 // POST /api/organizations/[id]/managers - Add a manager to organization
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
+    const rateLimitResponse = await enforceRateLimit(request, { limit: 20, windowSeconds: 60 });
+    if (rateLimitResponse) return rateLimitResponse;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const organizationId = z.string().cuid().safeParse(params.id);
+    if (!organizationId.success) {
+      return NextResponse.json({ error: 'Invalid organization id' }, { status: 400 });
+    }
+
     // Verify current user is a manager
     const org = await prisma.organization.findFirst({
       where: {
-        id: params.id,
+        id: organizationId.data,
         managers: { some: { id: session.user.id } },
       },
     });
@@ -37,7 +47,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
     // Add user as manager
     const organization = await prisma.organization.update({
-      where: { id: params.id },
+      where: { id: organizationId.data },
       data: {
         managers: {
           connect: { id: userToAdd.id },
@@ -52,7 +62,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
     return NextResponse.json(organization);
   } catch (error) {
-    console.error('Error adding manager:', error);
+    logError('Error adding manager', error);
     return NextResponse.json({ error: 'Failed to add manager' }, { status: 500 });
   }
 }
@@ -60,15 +70,22 @@ export async function POST(request: Request, { params }: { params: { id: string 
 // DELETE /api/organizations/[id]/managers - Remove a manager from organization
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   try {
+    const rateLimitResponse = await enforceRateLimit(request, { limit: 20, windowSeconds: 60 });
+    if (rateLimitResponse) return rateLimitResponse;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const organizationId = z.string().cuid().safeParse(params.id);
+    if (!organizationId.success) {
+      return NextResponse.json({ error: 'Invalid organization id' }, { status: 400 });
+    }
+
     // Verify current user is a manager
     const org = await prisma.organization.findFirst({
       where: {
-        id: params.id,
+        id: organizationId.data,
         managers: { some: { id: session.user.id } },
       },
       include: {
@@ -87,6 +104,11 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
       return NextResponse.json({ error: 'userId is required' }, { status: 400 });
     }
 
+    const parsedUserIdToRemove = z.string().cuid().safeParse(userIdToRemove);
+    if (!parsedUserIdToRemove.success) {
+      return NextResponse.json({ error: 'Invalid user id' }, { status: 400 });
+    }
+
     // Prevent removing the last manager
     if (org.managers.length <= 1) {
       return NextResponse.json({ error: 'Cannot remove the last manager' }, { status: 400 });
@@ -94,10 +116,10 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
 
     // Remove user as manager
     const organization = await prisma.organization.update({
-      where: { id: params.id },
+      where: { id: organizationId.data },
       data: {
         managers: {
-          disconnect: { id: userIdToRemove },
+          disconnect: { id: parsedUserIdToRemove.data },
         },
       },
       include: {
@@ -109,7 +131,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
 
     return NextResponse.json(organization);
   } catch (error) {
-    console.error('Error removing manager:', error);
+    logError('Error removing manager', error);
     return NextResponse.json({ error: 'Failed to remove manager' }, { status: 500 });
   }
 }

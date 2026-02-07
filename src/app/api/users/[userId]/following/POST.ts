@@ -12,11 +12,20 @@ import prisma from '@/lib/prisma/prisma';
 import { followPostSchema } from '@/lib/validations/follow';
 import { Prisma } from '@/generated/prisma/client';
 import { NextResponse } from 'next/server';
+import { enforceRateLimit } from '@/lib/api-utils';
 import { z } from 'zod';
 
 export async function POST(request: Request, { params }: { params: { userId: string } }) {
+  const rateLimitResponse = await enforceRateLimit(request, { limit: 30, windowSeconds: 60 });
+  if (rateLimitResponse) return rateLimitResponse;
+
+  const parsedUserId = z.string().cuid().safeParse(params.userId);
+  if (!parsedUserId.success) {
+    return NextResponse.json({ error: 'Invalid user id' }, { status: 400 });
+  }
+
   const [user] = await getServerUser();
-  if (!user || user.id !== params.userId) return NextResponse.json({}, { status: 403 });
+  if (!user || user.id !== parsedUserId.data) return NextResponse.json({}, { status: 403 });
 
   try {
     const { userIdToFollow } = followPostSchema.parse(await request.json());

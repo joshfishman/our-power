@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createActionReminders } from '@/lib/notifications';
+import { logError } from '@/lib/logger';
 
 // This endpoint should be called by a cron job (e.g., Vercel Cron)
 // Add to vercel.json: { "crons": [{ "path": "/api/cron/reminders", "schedule": "0 9 * * *" }] }
@@ -21,7 +22,7 @@ export async function GET(request: Request) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('Cron job error:', error);
+    logError('Cron job error', error);
     return NextResponse.json({ error: 'Failed to create reminders' }, { status: 500 });
   }
 }

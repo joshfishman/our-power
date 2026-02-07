@@ -12,11 +12,12 @@ export function fileNameToUrl(fileName: string | null) {
 
   // If it's already a full URL (e.g., from old S3 or external source), return as-is
   if (fileName.startsWith('http://') || fileName.startsWith('https://')) {
-    return fileName;
+    return fileName.trim();
   }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const bucketName = process.env.SUPABASE_STORAGE_BUCKET_PRIVATE || 'user-uploads';
+  // Trim env vars to prevent stray newlines from breaking URLs
+  const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim();
+  const bucketName = (process.env.SUPABASE_STORAGE_BUCKET_PRIVATE || 'user-uploads').trim();
 
-  return `${supabaseUrl}/storage/v1/object/public/${bucketName}/${fileName}`;
+  return `${supabaseUrl}/storage/v1/object/public/${bucketName}/${fileName.trim()}`;
 }

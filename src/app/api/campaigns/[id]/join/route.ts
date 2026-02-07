@@ -1,18 +1,29 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import prisma from '@/lib/prisma/prisma';
+import { enforceRateLimit } from '@/lib/api-utils';
+import { logError } from '@/lib/logger';
+import { logCampaignJoin } from '@/lib/notifications/campaignNotifications';
+import { z } from 'zod';
 
 // POST /api/campaigns/[id]/join - Join a campaign
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
+    const rateLimitResponse = await enforceRateLimit(request, { limit: 20, windowSeconds: 60 });
+    if (rateLimitResponse) return rateLimitResponse;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const campaignId = z.string().cuid().safeParse(params.id);
+    if (!campaignId.success) {
+      return NextResponse.json({ error: 'Invalid campaign id' }, { status: 400 });
+    }
+
     // Check if campaign exists and is active
     const campaign = await prisma.campaign.findUnique({
-      where: { id: params.id },
+      where: { id: campaignId.data },
     });
 
     if (!campaign) {
@@ -28,7 +39,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       where: {
         userId_campaignId: {
           userId: session.user.id,
-          campaignId: params.id,
+          campaignId: campaignId.data,
         },
       },
     });
@@ -41,7 +52,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const membership = await prisma.campaignMember.create({
       data: {
         userId: session.user.id,
-        campaignId: params.id,
+        campaignId: campaignId.data,
         role: 'MEMBER',
       },
       include: {
@@ -49,13 +60,15 @@ export async function POST(request: Request, { params }: { params: { id: string 
       },
     });
 
+    await logCampaignJoin({ userId: session.user.id, campaignId: campaignId.data });
+
     return NextResponse.json({
       success: true,
       membership,
       message: `You've joined ${membership.campaign.name}!`,
     });
   } catch (error) {
-    console.error('Error joining campaign:', error);
+    logError('Error joining campaign', error);
     return NextResponse.json({ error: 'Failed to join campaign' }, { status: 500 });
   }
 }
@@ -63,16 +76,23 @@ export async function POST(request: Request, { params }: { params: { id: string 
 // GET /api/campaigns/[id]/join - Check membership status
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
+    const rateLimitResponse = await enforceRateLimit(request, { limit: 60, windowSeconds: 60 });
+    if (rateLimitResponse) return rateLimitResponse;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const campaignId = z.string().cuid().safeParse(params.id);
+    if (!campaignId.success) {
+      return NextResponse.json({ error: 'Invalid campaign id' }, { status: 400 });
     }
 
     const membership = await prisma.campaignMember.findUnique({
       where: {
         userId_campaignId: {
           userId: session.user.id,
-          campaignId: params.id,
+          campaignId: campaignId.data,
         },
       },
       include: {
@@ -91,7 +111,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
       campaignName: membership.campaign.name,
     });
   } catch (error) {
-    console.error('Error checking membership:', error);
+    logError('Error checking membership', error);
     return NextResponse.json({ error: 'Failed to check membership' }, { status: 500 });
   }
 }
@@ -99,16 +119,23 @@ export async function GET(request: Request, { params }: { params: { id: string }
 // DELETE /api/campaigns/[id]/join - Leave a campaign
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   try {
+    const rateLimitResponse = await enforceRateLimit(request, { limit: 20, windowSeconds: 60 });
+    if (rateLimitResponse) return rateLimitResponse;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const campaignId = z.string().cuid().safeParse(params.id);
+    if (!campaignId.success) {
+      return NextResponse.json({ error: 'Invalid campaign id' }, { status: 400 });
     }
 
     const membership = await prisma.campaignMember.findUnique({
       where: {
         userId_campaignId: {
           userId: session.user.id,
-          campaignId: params.id,
+          campaignId: campaignId.data,
         },
       },
     });
@@ -123,7 +150,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
 
     return NextResponse.json({ success: true, message: "You've left the campaign" });
   } catch (error) {
-    console.error('Error leaving campaign:', error);
+    logError('Error leaving campaign', error);
     return NextResponse.json({ error: 'Failed to leave campaign' }, { status: 500 });
   }
 }

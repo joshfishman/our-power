@@ -7,7 +7,7 @@ import { ActionCard } from '@/components/campaigns';
 import { GenericLoading } from '@/components/GenericLoading';
 import Button from '@/components/ui/Button';
 import { useToast } from '@/hooks/useToast';
-import { format, isToday, isTomorrow, isThisWeek } from 'date-fns';
+import { isToday, isTomorrow, isThisWeek } from 'date-fns';
 
 interface MyAction {
   id: string;
@@ -19,6 +19,10 @@ interface MyAction {
   eventTime: string | null;
   callScript: string | null;
   dialerUrl: string | null;
+  emailSubject?: string | null;
+  emailBody?: string | null;
+  emailTargets?: string[];
+  phoneNumbers?: string[];
   campaign: {
     id: string;
     name: string;
@@ -26,6 +30,8 @@ interface MyAction {
   };
   _count: { participants: number };
   participants: Array<{ willAttend: boolean; attended: boolean; completedAt: string | null }>;
+  graphics?: string[];
+  shareText?: string | null;
 }
 
 export default function MyActionsPage() {
@@ -46,7 +52,7 @@ export default function MyActionsPage() {
   });
 
   const participateMutation = useMutation({
-    mutationFn: async ({ actionId, data }: { actionId: string; data: any }) => {
+    mutationFn: async ({ actionId, data }: { actionId: string; data: Record<string, unknown> }) => {
       const res = await fetch(`/api/actions/${actionId}/participate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

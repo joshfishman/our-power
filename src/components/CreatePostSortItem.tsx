@@ -3,6 +3,7 @@ import { useSortable, defaultAnimateLayoutChanges, AnimateLayoutChanges } from '
 import { CSS } from '@dnd-kit/utilities';
 import { Delete, FullScreenExpandResize } from '@/svg_components';
 import { GetVisualMedia } from '@/types/definitions';
+import Image from 'next/image';
 
 const animateLayoutChanges: AnimateLayoutChanges = (args) => {
   const { isSorting, wasDragging } = args;
@@ -40,9 +41,9 @@ export function CreatePostSortItem({ type, url, onRemove }: GetVisualMedia & { o
         className="absolute left-[50%] top-[50%] z-10 inline-block translate-x-[-50%] translate-y-[-50%] cursor-move touch-none rounded-full bg-black/30 p-6">
         <FullScreenExpandResize stroke="white" strokeWidth={2} width={48} height={48} />
       </div>
-      <div className="h-[240px]">
+      <div className="relative h-[240px]">
         {type === 'PHOTO' ? (
-          <img src={url} alt="" className="h-full w-full rounded-md object-cover" />
+          <Image src={url} alt="" fill sizes="(max-width: 768px) 100vw, 480px" className="rounded-md object-cover" />
         ) : (
           // eslint-disable-next-line jsx-a11y/media-has-caption
           <video className="z-10 h-full w-full rounded-md object-cover">

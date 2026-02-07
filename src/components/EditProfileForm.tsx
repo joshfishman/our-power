@@ -14,6 +14,7 @@ import { useSessionUserDataMutation } from '@/hooks/mutations/useSessionUserData
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { logDebug } from '@/lib/logger';
 import { GenericLoading } from './GenericLoading';
 import { DatePicker } from './ui/DatePicker';
 import { Textarea } from './ui/Textarea';
@@ -79,8 +80,7 @@ export function EditProfileForm({ redirectTo }: { redirectTo?: string }) {
       },
     );
   };
-  // eslint-disable-next-line no-console
-  const onInvalid: SubmitErrorHandler<UserAboutSchema> = (errors) => console.log(errors);
+  const onInvalid: SubmitErrorHandler<UserAboutSchema> = (errors) => logDebug('Edit profile validation errors', errors);
   const resetForm = useCallback(() => reset(defaultValues), [reset, defaultValues]);
 
   useEffect(() => {

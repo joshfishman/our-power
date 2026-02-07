@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react';
 import { GetVisualMedia, GetPost, PostIds } from '@/types/definitions';
 import { POSTS_PER_PAGE } from '@/constants';
 import { revokeVisualMediaObjectUrls } from '@/lib/revokeVisualMediaObjectUrls';
+import { compressImage } from '@/lib/compressImage';
 import { useToast } from '../useToast';
 import { useErrorNotifier } from '../useErrorNotifier';
 
@@ -26,11 +27,23 @@ export function useWritePostMutations({
     const formData = new FormData();
     if (content) formData.append('content', content);
 
-    const visualMediaFilesPromises = visualMedia.map(async ({ url }) => {
+    const visualMediaFilesPromises = visualMedia.map(async ({ url, type }) => {
       if (url.startsWith('blob:')) {
         // If the url is a blob, fetch the blob and append it to the formData
-        const file = await fetch(url).then((r) => r.blob());
-        formData.append('files', file, file.name);
+        const blob = await fetch(url).then((r) => r.blob());
+        const file = new File([blob], blob.name || 'upload', { type: blob.type });
+
+        // Compress images before upload to stay within Vercel's body size limit
+        if (type === 'PHOTO' && file.type.startsWith('image/')) {
+          try {
+            const compressed = await compressImage(file, { maxWidth: 2048, maxHeight: 2048, quality: 0.85 });
+            formData.append('files', compressed, compressed.name);
+          } catch {
+            formData.append('files', file, file.name);
+          }
+        } else {
+          formData.append('files', file, file.name);
+        }
       } else {
         // If the url is a link, just append it to the formData
         formData.append('files', url);

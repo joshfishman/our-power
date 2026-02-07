@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { cn } from '@/lib/cn';
 import { BuildingBusinessOffice, TwoPeople } from '@/svg_components';
 
@@ -34,7 +35,13 @@ export function OrganizationCard({ organization, isManager }: OrganizationCardPr
         {/* Header with logo */}
         <div className="mb-3 flex items-start gap-3">
           {organization.logoUrl ? (
-            <img src={organization.logoUrl} alt={organization.name} className="h-12 w-12 rounded-lg object-cover" />
+            <Image
+              src={organization.logoUrl}
+              alt={organization.name}
+              width={48}
+              height={48}
+              className="h-12 w-12 rounded-lg object-cover"
+            />
           ) : (
             <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
               <BuildingBusinessOffice className="h-6 w-6 text-primary" />

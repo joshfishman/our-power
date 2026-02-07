@@ -12,16 +12,23 @@ import { includeToComment } from '@/lib/prisma/includeToComment';
 import { toGetComment } from '@/lib/prisma/toGetComment';
 import { convertMentionUsernamesToIds } from '@/lib/convertMentionUsernamesToIds';
 import { mentionsActivityLogger } from '@/lib/mentionsActivityLogger';
+import { enforceRateLimit } from '@/lib/api-utils';
 import { z } from 'zod';
 import { verifyAccessToComment } from './verifyAccessToComment';
 
 export async function PUT(request: Request, { params }: { params: { commentId: string } }) {
+  const rateLimitResponse = await enforceRateLimit(request, { limit: 20, windowSeconds: 60 });
+  if (rateLimitResponse) return rateLimitResponse;
+
   const [user] = await getServerUser();
   if (!user) return NextResponse.json({}, { status: 401 });
   const userId = user?.id;
-  const commentId = parseInt(params.commentId, 10);
+  const commentId = z.coerce.number().int().positive().safeParse(params.commentId);
+  if (!commentId.success) {
+    return NextResponse.json({ error: 'Invalid comment id' }, { status: 400 });
+  }
 
-  if (!verifyAccessToComment(commentId)) {
+  if (!verifyAccessToComment(commentId.data)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 
@@ -35,7 +42,7 @@ export async function PUT(request: Request, { params }: { params: { commentId: s
 
     const res: FindCommentResult = await prisma.comment.update({
       where: {
-        id: commentId,
+        id: commentId.data,
       },
       data: {
         content,

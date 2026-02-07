@@ -170,5 +170,57 @@ export function Activity({
     );
   }
 
+  if (type === 'CAMPAIGN_JOIN') {
+    return (
+      <ActivityCard
+        type={type}
+        user={userToDisplay}
+        date={new Date(createdAt)}
+        isRead={isRead}
+        onClick={navigate('/campaigns')}>
+        <SemiBold>{sourceProperNoun}</SemiBold> joined your campaign.
+      </ActivityCard>
+    );
+  }
+
+  if (type === 'ACTION_RSVP') {
+    return (
+      <ActivityCard
+        type={type}
+        user={userToDisplay}
+        date={new Date(createdAt)}
+        isRead={isRead}
+        onClick={navigate('/campaigns')}>
+        <SemiBold>{sourceProperNoun}</SemiBold> RSVP&apos;d to an action.
+      </ActivityCard>
+    );
+  }
+
+  if (type === 'ACTION_COMPLETED') {
+    return (
+      <ActivityCard
+        type={type}
+        user={userToDisplay}
+        date={new Date(createdAt)}
+        isRead={isRead}
+        onClick={navigate('/campaigns')}>
+        <SemiBold>{sourceProperNoun}</SemiBold> completed an action.
+      </ActivityCard>
+    );
+  }
+
+  if (type === 'ACTION_REMINDER') {
+    return (
+      <ActivityCard
+        type={type}
+        user={userToDisplay}
+        date={new Date(createdAt)}
+        isRead={isRead}
+        onClick={navigate('/my-actions')}>
+        Reminder: You have an upcoming action.
+      </ActivityCard>
+    );
+  }
+
   return null;
 }

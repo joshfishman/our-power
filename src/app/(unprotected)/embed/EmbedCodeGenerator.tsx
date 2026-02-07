@@ -54,7 +54,7 @@ export function EmbedCodeGenerator({ campaigns, siteUrl }: { campaigns: Campaign
             type="button"
             className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
               widgetType === 'campaign'
-                ? 'bg-green-600 text-white'
+                ? 'bg-sky-600 text-white'
                 : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300'
             }`}
             onClick={() => {
@@ -67,7 +67,7 @@ export function EmbedCodeGenerator({ campaigns, siteUrl }: { campaigns: Campaign
             type="button"
             className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
               widgetType === 'action'
-                ? 'bg-green-600 text-white'
+                ? 'bg-sky-600 text-white'
                 : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300'
             }`}
             onClick={() => setWidgetType('action')}>
@@ -127,7 +127,7 @@ export function EmbedCodeGenerator({ campaigns, siteUrl }: { campaigns: Campaign
             type="button"
             className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
               theme === ''
-                ? 'bg-green-600 text-white'
+                ? 'bg-sky-600 text-white'
                 : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300'
             }`}
             onClick={() => setTheme('')}>
@@ -137,7 +137,7 @@ export function EmbedCodeGenerator({ campaigns, siteUrl }: { campaigns: Campaign
             type="button"
             className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
               theme === 'dark'
-                ? 'bg-green-600 text-white'
+                ? 'bg-sky-600 text-white'
                 : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300'
             }`}
             onClick={() => setTheme('dark')}>
@@ -156,7 +156,7 @@ export function EmbedCodeGenerator({ campaigns, siteUrl }: { campaigns: Campaign
             </pre>
             <button
               type="button"
-              className="absolute right-2 top-2 rounded bg-green-600 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-green-700"
+              className="absolute right-2 top-2 rounded bg-sky-600 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-sky-700"
               onClick={handleCopy}>
               {copied ? 'Copied!' : 'Copy'}
             </button>

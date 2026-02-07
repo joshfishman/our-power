@@ -50,7 +50,7 @@ export function ToggleStepper({ Icon, quantity, noun, color, ...rest }: ToggleSt
       className={cn(
         'transition-transform active:scale-90',
         toggle({ color }),
-        isFocusVisible && 'ring-2 ring-green-500 ring-offset-2',
+        isFocusVisible && 'ring-2 ring-sky-500 ring-offset-2',
       )}>
       <Icon width={24} height={24} className={cn(state.isSelected ? icon({ color }) : 'stroke-muted-foreground')} />
       <p className="text-lg font-medium text-muted-foreground">
