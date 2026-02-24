@@ -1,61 +1,51 @@
-import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
-import { enforceRateLimit } from '@/lib/api-utils';
+import { apiError, enforceRateLimit, requestId } from '@/lib/api-utils';
 import { logError } from '@/lib/logger';
-
-const CIVIC_ENDPOINT = 'https://www.googleapis.com/civicinfo/v2/representatives';
+import { resolveRepresentatives } from '@/lib/integrations/representatives';
 
 // GET /api/civic/representatives?address=...
 export async function GET(request: Request) {
+  const reqId = requestId();
   try {
     const rateLimitResponse = await enforceRateLimit(request, { limit: 20, windowSeconds: 60 });
     if (rateLimitResponse) return rateLimitResponse;
+
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const civicKey = process.env.CIVIC_API_KEY;
-    if (!civicKey) {
-      return NextResponse.json({ error: 'Civic API key not configured' }, { status: 500 });
+      return apiError('Unauthorized', 401, reqId);
     }
 
     const { searchParams } = new URL(request.url);
     const address = searchParams.get('address');
     if (!address) {
-      return NextResponse.json({ error: 'Address is required' }, { status: 400 });
+      return apiError('Address is required', 400, reqId);
+    }
+    const normalizedInput = address
+      .replace(/\s+/g, ' ')
+      .replace(/\s*,\s*/g, ', ')
+      .trim();
+    const hasZip = /\b\d{5}(?:-\d{4})?\b/.test(normalizedInput);
+    const hasStreetLike = /^[^,]+,/.test(normalizedInput);
+    if (!hasZip || !hasStreetLike) {
+      return apiError('Use a full address: street, city, state zip', 400, reqId);
     }
 
-    const url = `${CIVIC_ENDPOINT}?key=${encodeURIComponent(civicKey)}&address=${encodeURIComponent(address)}`;
-    const response = await fetch(url);
-    if (!response.ok) {
-      const errorText = await response.text();
-      return NextResponse.json({ error: 'Failed to fetch representatives', details: errorText }, { status: 502 });
+    const { officials, normalizedAddress, error: resolveError } = await resolveRepresentatives(normalizedInput);
+    if (!normalizedAddress) {
+      const isTimeout = resolveError?.includes('timed out') || resolveError?.includes('TimeoutError');
+      if (isTimeout) {
+        return apiError('The Census geocoder is slow right now. Please try again in a moment.', 503, reqId);
+      }
+      return apiError(
+        'We could not validate this address with the Census geocoder. Please check your street, state, and zip code.',
+        422,
+        reqId,
+      );
     }
 
-    const data = await response.json();
-    const officials =
-      data.offices?.flatMap((office: { name: string; officialIndices: number[] }) =>
-        office.officialIndices.map((index) => {
-          const official = data.officials?.[index] || {};
-          return {
-            office: office.name,
-            name: official.name || 'Unknown',
-            party: official.party || null,
-            phones: official.phones || [],
-            urls: official.urls || [],
-            emails: official.emails || [],
-            photoUrl: official.photoUrl || null,
-          };
-        }),
-      ) || [];
-
-    return NextResponse.json({
-      normalizedAddress: data.normalizedInput || null,
-      officials,
-    });
+    return Response.json({ normalizedAddress, officials }, { headers: { 'X-Request-Id': reqId } });
   } catch (error) {
-    logError('Error fetching civic representatives', error);
-    return NextResponse.json({ error: 'Failed to fetch representatives' }, { status: 500 });
+    logError('Error fetching representatives', error);
+    return apiError('Failed to fetch representatives', 500, reqId);
   }
 }

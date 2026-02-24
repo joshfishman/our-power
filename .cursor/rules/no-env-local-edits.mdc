@@ -1,0 +1,9 @@
+---
+description: Do not edit .env.local unless user requests it
+alwaysApply: true
+---
+
+# .env.local edits
+
+- Do not modify `.env.local` unless the user explicitly asks for it.
+- Treat `.env.local` as sensitive; avoid reading or copying values unless required.

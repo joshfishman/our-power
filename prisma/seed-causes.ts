@@ -76,6 +76,12 @@ const DEFAULT_CAUSES = [
     color: '#0ea5e9',
     description: 'Campaign finance, ethics, and anti-corruption',
   },
+  {
+    name: 'Campaigns & Elections',
+    icon: '🗳️',
+    color: '#6366f1',
+    description: 'Electoral campaigns, candidate support, and voter mobilization',
+  },
 ];
 
 async function seedCauses() {

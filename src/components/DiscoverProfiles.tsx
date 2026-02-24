@@ -63,7 +63,7 @@ export function DiscoverProfiles({ followersOf, followingOf }: { followersOf?: s
       // This will serve as the offset, passed as `pageParam` to `queryFn`
       return pages.flat().length;
     },
-    defaultPageParam: 0,
+    initialPageParam: 0,
     staleTime: 60000 * 10,
     refetchOnWindowFocus: false,
     // https://tanstack.com/query/v5/docs/react/guides/paginated-queries

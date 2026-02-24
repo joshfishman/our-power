@@ -17,8 +17,9 @@ export function CalendarGrid({ state, ...props }: CalendarGridProps) {
     <table {...gridProps} cellPadding="0" className="flex-1">
       <thead {...headerProps}>
         <tr>
-          {weekDays.map((day) => (
-            <th className="text-center text-sm font-semibold text-muted-foreground" key={day}>
+          {weekDays.map((day, i) => (
+            // eslint-disable-next-line react/no-array-index-key
+            <th className="text-center text-sm font-semibold text-muted-foreground" key={i}>
               {day}
             </th>
           ))}

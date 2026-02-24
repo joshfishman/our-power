@@ -34,6 +34,8 @@ export async function POST(request: Request) {
       where: { id: session.user.id },
       data: {
         zipCode: validatedData.zipCode,
+        city: validatedData.city || null,
+        state: validatedData.state ? validatedData.state.toUpperCase() : null,
         streetAddress: validatedData.streetAddress,
         onboardingComplete: true,
         causes: {
@@ -50,6 +52,7 @@ export async function POST(request: Request) {
       user: {
         id: updatedUser.id,
         zipCode: updatedUser.zipCode,
+        state: updatedUser.state,
         onboardingComplete: updatedUser.onboardingComplete,
         causes: updatedUser.causes,
       },
@@ -79,6 +82,7 @@ export async function GET(request: Request) {
       where: { id: session.user.id },
       select: {
         zipCode: true,
+        state: true,
         streetAddress: true,
         onboardingComplete: true,
         causes: {

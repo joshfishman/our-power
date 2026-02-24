@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { act } from 'react';
 import { campaignSchema, actionSchema } from '@/lib/validations/campaign';
 import { CampaignCard } from '@/components/campaigns/CampaignCard';
 import { ActionCard } from '@/components/campaigns/ActionCard';
@@ -50,7 +49,6 @@ const mockAction = {
   location: null,
   eventTime: null,
   callScript: 'Hello, I am calling to urge support for...',
-  dialerUrl: 'https://scaletowin.com/campaign/123',
   _count: { participants: 45 },
   participants: [],
 };
@@ -206,7 +204,7 @@ describe('ActionCard Component', () => {
 
   it('should render action type label', () => {
     render(<ActionCard action={mockAction} />);
-    expect(screen.getByText('Phone Bank')).toBeInTheDocument();
+    expect(screen.getByText('Call in Support')).toBeInTheDocument();
   });
 
   it('should render participant count', () => {
@@ -222,12 +220,7 @@ describe('ActionCard Component', () => {
   it('should show RSVP button when not RSVPd', () => {
     const onRSVP = vi.fn();
     render(<ActionCard action={mockAction} onRSVP={onRSVP} />);
-    expect(screen.getByText("I'll do this")).toBeInTheDocument();
-  });
-
-  it('should show Open Dialer button for phone actions with dialerUrl', () => {
-    render(<ActionCard action={mockAction} />);
-    expect(screen.getByText('Open Dialer')).toBeInTheDocument();
+    expect(screen.getByText('Commit to this Action')).toBeInTheDocument();
   });
 
   it('should call onRSVP when RSVP button is clicked', async () => {
@@ -236,7 +229,7 @@ describe('ActionCard Component', () => {
     render(<ActionCard action={mockAction} onRSVP={onRSVP} />);
 
     await act(async () => {
-      await user.click(screen.getByText("I'll do this"));
+      await user.click(screen.getByText('Commit to this Action'));
     });
     expect(onRSVP).toHaveBeenCalledWith('action-1');
   });

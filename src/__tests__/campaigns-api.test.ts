@@ -30,7 +30,8 @@ describe('POST /api/campaigns', () => {
   });
 
   it('returns 401 when unauthenticated', async () => {
-    mockAuth.mockResolvedValueOnce(null);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockAuth.mockResolvedValueOnce(null as any);
     const request = new Request('http://localhost/api/campaigns', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

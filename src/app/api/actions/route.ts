@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import prisma from '@/lib/prisma/prisma';
+import { Prisma } from '@/generated/prisma/client';
 import { actionSchema } from '@/lib/validations/campaign';
 import { withCors, corsOptionsResponse, enforceRateLimit } from '@/lib/api-utils';
 import { logError } from '@/lib/logger';
-import { z } from 'zod';
+import { ZodError, z } from 'zod';
 
 const cacheHeaders = {
   'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=86400',
@@ -116,12 +117,17 @@ export async function POST(request: Request) {
         // PHONE fields
         callScript: validatedData.callScript,
         phoneNumbers: validatedData.phoneNumbers || [],
-        dialerUrl: validatedData.dialerUrl,
 
         // EMAIL fields
         emailSubject: validatedData.emailSubject,
         emailBody: validatedData.emailBody,
         emailTargets: validatedData.emailTargets || [],
+
+        // Support targeting
+        targetMode: validatedData.targetMode ?? null,
+        targetLevel: validatedData.targetLevel ?? null,
+        targetOffices: validatedData.targetOffices || [],
+        manualTargets: validatedData.manualTargets ?? Prisma.DbNull,
 
         // CANVASS fields
         canvassArea: validatedData.canvassArea,
@@ -141,8 +147,8 @@ export async function POST(request: Request) {
   } catch (error) {
     logError('Error creating action', error);
 
-    if (error instanceof Error && error.name === 'ZodError') {
-      return NextResponse.json({ error: 'Invalid data', details: error }, { status: 400 });
+    if (error instanceof ZodError) {
+      return NextResponse.json({ error: 'Invalid data' }, { status: 400 });
     }
 
     return NextResponse.json({ error: 'Failed to create action' }, { status: 500 });

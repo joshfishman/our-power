@@ -1,6 +1,6 @@
 /**
  * Shared utilities for public API endpoints.
- * Provides CORS headers and rate limiting.
+ * Provides CORS headers, rate limiting, error responses, and request IDs.
  */
 
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
@@ -68,6 +68,21 @@ export function withCors(response: Response, request: Request): Response {
     statusText: response.statusText,
     headers,
   });
+}
+
+/** Generate a short request correlation ID and attach it to the response headers. */
+export function requestId(): string {
+  return crypto.randomUUID();
+}
+
+/**
+ * Standard JSON error response with an optional X-Request-Id header.
+ * Use this instead of inline NextResponse.json({ error }) calls.
+ */
+export function apiError(message: string, status: number, reqId?: string): Response {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (reqId) headers['X-Request-Id'] = reqId;
+  return new Response(JSON.stringify({ error: message }), { status, headers });
 }
 
 export async function enforceRateLimit(

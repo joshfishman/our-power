@@ -68,6 +68,8 @@ model User {
 
   // Our Power specific fields
   zipCode              String?
+  city                 String?
+  state                String?
   streetAddress        String?
   onboardingComplete   Boolean               @default(false)
   causes               Cause[]               @relation("UserCauses")
@@ -319,12 +321,17 @@ model Action {
   // PHONE type fields
   callScript   String?  @db.Text
   phoneNumbers String[] // Target phone numbers
-  dialerUrl    String? // Deep link to Scale to Win/GetThru
 
   // EMAIL type fields
   emailSubject String?
   emailBody    String?  @db.Text
   emailTargets String[] // Target email addresses
+
+  // Support targeting (PHONE/EMAIL)
+  targetMode    ActionTargetMode?
+  targetLevel   ActionTargetLevel?
+  targetOffices String[]
+  manualTargets Json?
 
   // CANVASS type fields
   canvassArea          String? // Description of area
@@ -349,6 +356,18 @@ enum ActionType {
   PHONE // Phone banking / calling
   EMAIL // Email campaign
   CANVASS // Door-to-door canvassing
+}
+
+enum ActionTargetMode {
+  CIVIC
+  MANUAL
+  BOTH
+}
+
+enum ActionTargetLevel {
+  LOCAL
+  STATE
+  FEDERAL
 }
 
 model ActionParticipation {

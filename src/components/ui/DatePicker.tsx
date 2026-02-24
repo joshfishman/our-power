@@ -17,7 +17,7 @@ interface DatePickerProps extends AriaDatePickerProps<DateValue> {
    * this is useful for programmatic focusing, e.g. allows `react-hook-form`
    * to focus the date picker when there is an input error.
    */
-  triggerRef: RefCallback<HTMLButtonElement>;
+  triggerRef?: RefCallback<HTMLButtonElement>;
 }
 
 export function DatePicker({ triggerRef, ...props }: DatePickerProps) {
@@ -33,7 +33,7 @@ export function DatePicker({ triggerRef, ...props }: DatePickerProps) {
   }, [state]);
   const assignRef = useCallback(
     (node: HTMLButtonElement | null) => {
-      triggerRef(node);
+      triggerRef?.(node);
     },
     [triggerRef],
   );
@@ -42,8 +42,9 @@ export function DatePicker({ triggerRef, ...props }: DatePickerProps) {
     <>
       <div
         className={cn(
-          'relative flex-col rounded-2xl bg-input pb-2 pr-5 pt-8 text-left outline-none ring-foreground focus-within:ring-2',
-          isError && 'bg-destructive ring-destructive-foreground focus-within:ring-4',
+          'relative flex-col rounded-2xl bg-input pb-2 pr-5 pt-8 text-left outline-none ring-1 ring-muted-foreground/40 focus-within:ring-2 focus-within:ring-primary',
+          isError &&
+            'bg-destructive ring-destructive-foreground focus-within:ring-4 focus-within:ring-destructive-foreground',
         )}>
         <span
           {...labelProps}

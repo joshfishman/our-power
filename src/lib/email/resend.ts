@@ -16,6 +16,6 @@ export function getResend(): Resend {
 // Keep a lazy getter for backwards-compatible imports
 export const resend = new Proxy({} as Resend, {
   get(_target, prop) {
-    return (getResend() as Record<string | symbol, unknown>)[prop];
+    return (getResend() as unknown as Record<string | symbol, unknown>)[prop];
   },
 });

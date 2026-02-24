@@ -6,7 +6,15 @@ export const locationSchema = z.object({
     .min(5, 'Zip code must be at least 5 characters')
     .max(10, 'Zip code must be at most 10 characters')
     .regex(/^\d{5}(-\d{4})?$/, 'Please enter a valid US zip code'),
-  streetAddress: z.string().optional().nullable(),
+  city: z.string().trim().optional().nullable(),
+  state: z
+    .string()
+    .trim()
+    .transform((value) => value.toUpperCase())
+    .refine((value) => /^[A-Z]{2}$/.test(value), 'Please enter a valid 2-letter US state')
+    .optional()
+    .nullable(),
+  streetAddress: z.string().trim().optional().nullable(),
 });
 
 export const causesSchema = z.object({

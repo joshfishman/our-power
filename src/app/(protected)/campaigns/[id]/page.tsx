@@ -4,11 +4,16 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
 import { ResponsiveContainer } from '@/components/ui/ResponsiveContainer';
-import { ActionCard, CreateActionForm } from '@/components/campaigns';
+import dynamic from 'next/dynamic';
+import { ActionCard } from '@/components/campaigns';
 import { GenericLoading } from '@/components/GenericLoading';
 import Button from '@/components/ui/Button';
 import { useToast } from '@/hooks/useToast';
-import { BackArrow, TwoPeople, Calendar, ChartBar, ActionsPlus } from '@/svg_components';
+import BackArrow from '@/svg_components/BackArrow';
+import TwoPeople from '@/svg_components/TwoPeople';
+import Calendar from '@/svg_components/Calendar';
+import ChartBar from '@/svg_components/ChartBar';
+import ActionsPlus from '@/svg_components/ActionsPlus';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useSessionUserData } from '@/hooks/useSessionUserData';
@@ -18,6 +23,10 @@ import { Select } from '@/components/ui/Select';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { Item } from 'react-stately';
 import { today, getLocalTimeZone, parseDate, type DateValue } from '@internationalized/date';
+
+const CreateActionForm = dynamic(() =>
+  import('@/components/campaigns/CreateActionForm').then((m) => m.CreateActionForm),
+);
 
 interface Campaign {
   id: string;
@@ -48,8 +57,8 @@ interface Campaign {
     dueDate: string;
     location: string | null;
     eventTime: string | null;
+    eventEndTime: string | null;
     callScript: string | null;
-    dialerUrl: string | null;
     emailSubject: string | null;
     emailBody: string | null;
     emailTargets: string[];
@@ -98,6 +107,7 @@ export default function CampaignDetailPage() {
       if (!res.ok) throw new Error('Failed to fetch campaign');
       return res.json();
     },
+    staleTime: 30_000,
   });
 
   const { data: causes } = useQuery<Array<{ id: string; name: string; icon: string | null }>>({
@@ -107,6 +117,8 @@ export default function CampaignDetailPage() {
       if (!res.ok) throw new Error('Failed to fetch causes');
       return res.json();
     },
+    enabled: showEditCampaign,
+    staleTime: 5 * 60_000,
   });
 
   // Check if user is a member
@@ -120,6 +132,7 @@ export default function CampaignDetailPage() {
       return data.isMember ? data : null;
     },
     enabled: !!userData?.id,
+    staleTime: 30_000,
   });
 
   // Check if user is an org manager (can create actions)
@@ -131,6 +144,7 @@ export default function CampaignDetailPage() {
       return res.json();
     },
     enabled: !!userData?.id,
+    staleTime: 60_000,
   });
 
   const isOrgManager = campaign && managedOrgs?.some((org) => org.id === campaign.org.id);
@@ -138,8 +152,8 @@ export default function CampaignDetailPage() {
     () => campaign?.actions.find((action) => action.id === editingActionId) || null,
     [campaign?.actions, editingActionId],
   );
-  const editStartDate = campaign?.startDate ? parseDate(campaign.startDate.split('T')[0]) : null;
-  const editEndDate = campaign?.endDate ? parseDate(campaign.endDate.split('T')[0]) : null;
+  const editStartDateStr = campaign?.startDate?.split('T')[0] ?? null;
+  const editEndDateStr = campaign?.endDate?.split('T')[0] ?? null;
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editType, setEditType] = useState<string>('COMMUNITY');
@@ -147,7 +161,6 @@ export default function CampaignDetailPage() {
   const [editCauseId, setEditCauseId] = useState<string>('');
   const [editStart, setEditStart] = useState<DateValue | null>(null);
   const [editEnd, setEditEnd] = useState<DateValue | null>(null);
-  const triggerRef = useCallback(() => {}, []);
 
   useEffect(() => {
     if (!campaign) return;
@@ -156,9 +169,10 @@ export default function CampaignDetailPage() {
     setEditType(campaign.type);
     setEditStatus(campaign.status);
     setEditCauseId(campaign.cause.id);
-    setEditStart(editStartDate);
-    setEditEnd(editEndDate);
-  }, [campaign, editEndDate, editStartDate]);
+    setEditStart(editStartDateStr ? parseDate(editStartDateStr) : null);
+    setEditEnd(editEndDateStr ? parseDate(editEndDateStr) : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaign?.id, editStartDateStr, editEndDateStr]);
 
   // Join campaign mutation
   const joinMutation = useMutation({
@@ -201,6 +215,8 @@ export default function CampaignDetailPage() {
     },
   });
 
+  const isMember = !!membership;
+
   // Send email action mutation
   const sendEmailMutation = useMutation({
     mutationFn: async (actionId: string) => {
@@ -216,6 +232,7 @@ export default function CampaignDetailPage() {
     onSuccess: (data) => {
       showToast({ type: 'success', title: data.message });
       queryClient.invalidateQueries({ queryKey: ['campaign', campaignId] });
+      queryClient.invalidateQueries({ queryKey: ['my-actions'] });
     },
     onError: (err) => {
       showToast({ type: 'error', title: err.message });
@@ -245,11 +262,26 @@ export default function CampaignDetailPage() {
     onSuccess: (data) => {
       showToast({ type: 'success', title: data.message });
       queryClient.invalidateQueries({ queryKey: ['campaign', campaignId] });
+      queryClient.invalidateQueries({ queryKey: ['campaign-membership', campaignId] });
     },
     onError: (err) => {
       showToast({ type: 'error', title: err.message });
     },
   });
+
+  const handleRSVP = useCallback(
+    (actionId: string) => participateMutation.mutate({ actionId, data: { willAttend: true } }),
+    [participateMutation],
+  );
+  const handleComplete = useCallback(
+    (actionId: string) => participateMutation.mutate({ actionId, data: { attended: true } }),
+    [participateMutation],
+  );
+  const handleSendEmail = useCallback((actionId: string) => sendEmailMutation.mutate(actionId), [sendEmailMutation]);
+  const handleEditAction = useCallback((actionId: string) => {
+    setShowCreateAction(false);
+    setEditingActionId(actionId);
+  }, []);
 
   const updateCampaignMutation = useMutation({
     mutationFn: async (payload: Record<string, unknown>) => {
@@ -276,8 +308,6 @@ export default function CampaignDetailPage() {
   const publishCampaign = () => {
     updateCampaignMutation.mutate({ status: 'ACTIVE' });
   };
-
-  const isMember = !!membership;
 
   if (isLoading) {
     return <GenericLoading>Loading campaign...</GenericLoading>;
@@ -408,7 +438,7 @@ export default function CampaignDetailPage() {
               selectedKey={editCauseId}
               onSelectionChange={(key) => setEditCauseId(key as string)}>
               {(causes || []).map((cause) => (
-                <Item key={cause.id}>
+                <Item key={cause.id} textValue={cause.name}>
                   {cause.icon} {cause.name}
                 </Item>
               ))}
@@ -439,14 +469,12 @@ export default function CampaignDetailPage() {
                 value={editStart}
                 onChange={(value) => setEditStart(value)}
                 minValue={today(getLocalTimeZone())}
-                triggerRef={triggerRef}
               />
               <DatePicker
                 label="End Date (optional)"
                 value={editEnd}
                 onChange={(value) => setEditEnd(value)}
                 minValue={editStart ?? today(getLocalTimeZone())}
-                triggerRef={triggerRef}
               />
             </div>
             <div className="flex gap-2">
@@ -519,6 +547,7 @@ export default function CampaignDetailPage() {
             <h3 className="mb-4 text-lg font-semibold">Create New Action</h3>
             <CreateActionForm
               campaignId={campaignId}
+              orgId={campaign.org.id}
               onSuccess={() => setShowCreateAction(false)}
               onCancel={() => setShowCreateAction(false)}
             />
@@ -530,6 +559,7 @@ export default function CampaignDetailPage() {
             <h3 className="mb-4 text-lg font-semibold">Edit Action</h3>
             <CreateActionForm
               campaignId={campaignId}
+              orgId={campaign.org.id}
               mode="edit"
               actionId={editingAction.id}
               initialAction={editingAction}
@@ -545,16 +575,13 @@ export default function CampaignDetailPage() {
               <ActionCard
                 key={action.id}
                 action={action}
-                onRSVP={(actionId) => participateMutation.mutate({ actionId, data: { willAttend: true } })}
-                onComplete={(actionId) => participateMutation.mutate({ actionId, data: { attended: true } })}
-                onSendEmail={(actionId) => sendEmailMutation.mutate(actionId)}
+                onRSVP={handleRSVP}
+                onComplete={handleComplete}
+                onSendEmail={handleSendEmail}
                 isLoading={participateMutation.isPending}
                 isSendingEmail={sendEmailMutation.isPending}
                 canEdit={isOrgManager}
-                onEdit={(actionId) => {
-                  setShowCreateAction(false);
-                  setEditingActionId(actionId);
-                }}
+                onEdit={handleEditAction}
               />
             ))}
           </div>

@@ -24,7 +24,7 @@ export function Notifications({ userId }: { userId: string }) {
   const { data, error, isPending, isError, fetchNextPage, isFetchingNextPage, hasNextPage, fetchPreviousPage } =
     useInfiniteQuery<GetActivity[], Error, InfiniteData<GetActivity[], unknown>, QueryKey, number>({
       queryKey: ['users', userId, 'notifications'],
-      defaultPageParam: 0,
+      initialPageParam: 0,
       queryFn: async ({ pageParam: cursor, direction }) => {
         const activities = await getNotifications({
           userId,

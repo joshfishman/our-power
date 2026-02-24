@@ -45,7 +45,8 @@ describe('POST /api/actions/[id]/participate', () => {
   });
 
   it('returns 401 when unauthenticated', async () => {
-    mockAuth.mockResolvedValueOnce(null);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockAuth.mockResolvedValueOnce(null as any);
     const request = new Request('http://localhost/api/actions/action-1/participate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

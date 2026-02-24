@@ -140,7 +140,7 @@ export function CreateOrganizationForm({ onSuccess, onCancel }: CreateOrganizati
         value={name}
         onChange={setName}
         placeholder="e.g., Climate Action Coalition"
-        required
+        isRequired
       />
 
       <Textarea
@@ -149,7 +149,6 @@ export function CreateOrganizationForm({ onSuccess, onCancel }: CreateOrganizati
         value={description}
         onChange={setDescription}
         placeholder="What does this organization do?"
-        rows={3}
       />
 
       <TextInput

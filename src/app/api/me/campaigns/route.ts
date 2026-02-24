@@ -14,6 +14,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // 1. Campaigns the user has joined as a member
     const memberships = await prisma.campaignMember.findMany({
       where: { userId: session.user.id },
       include: {
@@ -28,11 +29,36 @@ export async function GET(request: Request) {
       orderBy: { joinedAt: 'desc' },
     });
 
-    const campaigns = memberships.map((m) => ({
+    const joinedCampaigns = memberships.map((m) => ({
       ...m.campaign,
       joinedAt: m.joinedAt,
       role: m.role,
     }));
+
+    // 2. Campaigns created by orgs the user manages (they are the creator/manager)
+    const managedCampaigns = await prisma.campaign.findMany({
+      where: {
+        org: { managers: { some: { id: session.user.id } } },
+      },
+      include: {
+        cause: { select: { id: true, name: true, icon: true, color: true } },
+        org: { select: { id: true, name: true, logoUrl: true } },
+        _count: { select: { members: true, actions: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Merge and deduplicate (joined campaigns take precedence for role/joinedAt)
+    const joinedIds = new Set(joinedCampaigns.map((c) => c.id));
+    const managerOnly = managedCampaigns
+      .filter((c) => !joinedIds.has(c.id))
+      .map((c) => ({
+        ...c,
+        joinedAt: c.createdAt,
+        role: 'MANAGER' as const,
+      }));
+
+    const campaigns = [...joinedCampaigns, ...managerOnly];
 
     return NextResponse.json(campaigns);
   } catch (error) {

@@ -103,7 +103,7 @@ export default function CampaignsPage() {
             selectedKey={selectedCauseId}
             onSelectionChange={(key) => setSelectedCauseId(key as string | null)}>
             {[{ id: '', name: 'All causes', icon: '' }, ...(causes || [])].map((cause) => (
-              <Item key={cause.id}>
+              <Item key={cause.id} textValue={cause.name}>
                 {cause.icon} {cause.name}
               </Item>
             ))}

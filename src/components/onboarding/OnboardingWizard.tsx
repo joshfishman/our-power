@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -39,14 +39,37 @@ export function OnboardingWizard() {
   });
 
   // Form setup
-  const { control, handleSubmit, trigger } = useForm<OnboardingSchema>({
+  const { control, handleSubmit, trigger, watch, setValue } = useForm<OnboardingSchema>({
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
       zipCode: '',
+      state: '',
       streetAddress: '',
       causeIds: [],
     },
   });
+
+  const zipCode = watch('zipCode');
+
+  useEffect(() => {
+    const zip = (zipCode || '').trim();
+    if (!/^\d{5}(-\d{4})?$/.test(zip)) return undefined;
+
+    const timeout = setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/me/zip-lookup?zip=${encodeURIComponent(zip.slice(0, 5))}`);
+        if (!response.ok) return;
+        const data = (await response.json()) as { state?: string };
+        if (data.state) {
+          setValue('state', data.state, { shouldValidate: true, shouldDirty: true });
+        }
+      } catch {
+        // Non-blocking autofill helper.
+      }
+    }, 300);
+
+    return () => clearTimeout(timeout);
+  }, [setValue, zipCode]);
 
   // Submit mutation
   const submitMutation = useMutation({
@@ -83,7 +106,7 @@ export function OnboardingWizard() {
   // Handle next step
   const handleNextStep = useCallback(async () => {
     if (step === 'location') {
-      const isValid = await trigger(['zipCode', 'streetAddress']);
+      const isValid = await trigger(['zipCode', 'state', 'streetAddress']);
       if (isValid) {
         setStep('causes');
       }
@@ -173,6 +196,21 @@ export function OnboardingWizard() {
                 />
               )}
             />
+
+            <Controller
+              control={control}
+              name="state"
+              render={({ field: { onChange, ref, value }, fieldState: { error } }) => (
+                <TextInput
+                  label="State *"
+                  value={value || ''}
+                  onChange={(v) => onChange(v.toUpperCase().slice(0, 2))}
+                  errorMessage={error?.message}
+                  ref={ref}
+                  placeholder="e.g., CA"
+                />
+              )}
+            />
           </div>
         )}
 
@@ -181,6 +219,17 @@ export function OnboardingWizard() {
             <div>
               <h2 className="mb-2 text-2xl font-bold">What causes matter to you?</h2>
               <p className="text-muted-foreground">We&apos;ll show you campaigns that align with your values.</p>
+              <div className="mt-3 rounded-lg border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
+                <p className="font-medium text-foreground">What you can do next</p>
+                <ul className="mt-2 list-disc space-y-1 pl-5">
+                  <li>Join campaigns and RSVP to actions.</li>
+                  <li>Send advocacy emails and complete action tasks.</li>
+                  <li>Track progress from your dashboard and notifications.</li>
+                </ul>
+                <a href="/help" className="mt-2 inline-block text-primary hover:underline">
+                  Open help center
+                </a>
+              </div>
             </div>
 
             <Controller

@@ -59,7 +59,7 @@ export function Posts({ type, hashtag, userId }: PostsProps) {
     isFetchingNextPage,
   } = useInfiniteQuery<PostIds, Error, InfiniteData<PostIds>, QueryKey, number>({
     queryKey,
-    defaultPageParam: 0,
+    initialPageParam: 0,
     queryFn: async ({ pageParam: cursor, direction }): Promise<PostIds> => {
       const isForwards = direction === 'forward';
       const isBackwards = !isForwards;

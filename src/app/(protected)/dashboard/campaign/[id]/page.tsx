@@ -51,8 +51,8 @@ interface CampaignDashboard {
 
 const ACTION_TYPE_LABELS: Record<string, string> = {
   EVENT: 'Event',
-  PHONE: 'Phone Banking',
-  EMAIL: 'Email Action',
+  PHONE: 'Call in Support',
+  EMAIL: 'Email in Support',
   CANVASS: 'Canvassing',
 };
 

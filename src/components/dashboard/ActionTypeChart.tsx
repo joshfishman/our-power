@@ -22,12 +22,12 @@ const ACTION_TYPE_COLORS: Record<string, { bg: string; bar: string; label: strin
   PHONE: {
     bg: 'bg-sky-100 dark:bg-sky-900/30',
     bar: 'bg-sky-500',
-    label: 'Phone Banking',
+    label: 'Call in Support',
   },
   EMAIL: {
     bg: 'bg-sky-100 dark:bg-sky-900/30',
     bar: 'bg-sky-500',
-    label: 'Email Actions',
+    label: 'Email in Support',
   },
   CANVASS: {
     bg: 'bg-orange-100 dark:bg-orange-900/30',

@@ -31,7 +31,7 @@ export function useWritePostMutations({
       if (url.startsWith('blob:')) {
         // If the url is a blob, fetch the blob and append it to the formData
         const blob = await fetch(url).then((r) => r.blob());
-        const file = new File([blob], blob.name || 'upload', { type: blob.type });
+        const file = new File([blob], 'upload', { type: blob.type });
 
         // Compress images before upload to stay within Vercel's body size limit
         if (type === 'PHOTO' && file.type.startsWith('image/')) {

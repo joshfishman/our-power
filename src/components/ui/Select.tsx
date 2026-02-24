@@ -65,9 +65,9 @@ export const Select = forwardRef(
             type="button"
             ref={ref}
             className={cn(
-              'w-full rounded-2xl bg-input pb-2 pl-5 pr-5 pt-8 text-left outline-none ring-foreground focus:ring-2',
+              'w-full rounded-2xl bg-input pb-2 pl-5 pr-5 pt-8 text-left outline-none ring-1 ring-muted-foreground/40 focus:ring-2 focus:ring-primary',
               Icon ? 'pl-16' : 'pl-5',
-              isError && 'bg-destructive ring-destructive-foreground focus:ring-4',
+              isError && 'bg-destructive ring-destructive-foreground focus:ring-4 focus:ring-destructive-foreground',
             )}>
             <span
               {...valueProps}

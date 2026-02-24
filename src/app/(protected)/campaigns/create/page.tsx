@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ResponsiveContainer } from '@/components/ui/ResponsiveContainer';
 import { TextInput } from '@/components/ui/TextInput';
@@ -12,7 +12,7 @@ import Button from '@/components/ui/Button';
 import { GenericLoading } from '@/components/GenericLoading';
 import { useToast } from '@/hooks/useToast';
 import { Item } from 'react-stately';
-import { today, getLocalTimeZone } from '@internationalized/date';
+import { DateValue, today, getLocalTimeZone } from '@internationalized/date';
 
 interface Organization {
   id: string;
@@ -42,6 +42,7 @@ const campaignStatuses = [
 export default function CreateCampaignPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const preselectedOrgId = searchParams.get('orgId');
   const { showToast } = useToast();
 
@@ -51,8 +52,8 @@ export default function CreateCampaignPage() {
   const [status, setStatus] = useState<string>('DRAFT');
   const [orgId, setOrgId] = useState<string>(preselectedOrgId || '');
   const [causeId, setCauseId] = useState<string>('');
-  const [startDate, setStartDate] = useState<ReturnType<typeof today> | null>(null);
-  const [endDate, setEndDate] = useState<ReturnType<typeof today> | null>(null);
+  const [startDate, setStartDate] = useState<DateValue | null>(null);
+  const [endDate, setEndDate] = useState<DateValue | null>(null);
 
   // Fetch organizations the user manages
   const { data: organizations, isLoading: loadingOrgs } = useQuery<Organization[]>({
@@ -106,6 +107,8 @@ export default function CreateCampaignPage() {
       return res.json();
     },
     onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['my-campaigns'] });
       showToast({
         type: 'success',
         title: 'Campaign created!',
@@ -171,25 +174,10 @@ export default function CreateCampaignPage() {
           </Select>
 
           {/* Campaign Name */}
-          <TextInput
-            label="Campaign Name *"
-            name="name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g., Clean Energy Act Support"
-            required
-          />
+          <TextInput label="Campaign Name *" name="name" value={name} onChange={setName} />
 
           {/* Description */}
-          <Textarea
-            label="Description *"
-            name="description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Describe the campaign goals and why people should join..."
-            rows={4}
-            required
-          />
+          <Textarea label="Description *" name="description" value={description} onChange={setDescription} />
 
           {/* Cause */}
           <Select
@@ -198,7 +186,7 @@ export default function CreateCampaignPage() {
             selectedKey={causeId}
             onSelectionChange={(key) => setCauseId(key as string)}>
             {(causes || []).map((cause) => (
-              <Item key={cause.id}>
+              <Item key={cause.id} textValue={cause.name}>
                 {cause.icon} {cause.name}
               </Item>
             ))}

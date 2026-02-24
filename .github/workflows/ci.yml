@@ -44,6 +44,38 @@ jobs:
       - run: npx prisma generate
       - run: npm run test:run
 
+  scorecard:
+    name: Agent-Native Scorecard
+    runs-on: ubuntu-latest
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --legacy-peer-deps
+      - run: npx prisma generate
+      # Visibility: emit scorecard JSON to logs and artifact
+      - name: Generate scorecard
+        run: |
+          npx vitest run src/__tests__/agent-native-scorecard.test.ts --reporter=json 2>/dev/null \
+            | node -e "
+                const chunks = [];
+                process.stdin.on('data', c => chunks.push(c));
+                process.stdin.on('end', () => {
+                  try {
+                    const r = JSON.parse(Buffer.concat(chunks));
+                    // Extract test names to confirm passage
+                    const tests = (r.testResults || []).flatMap(f => f.assertionResults || []);
+                    console.log('Scorecard tests:', tests.map(t => t.fullName + ' - ' + t.status).join('\n'));
+                  } catch { process.stdout.write(Buffer.concat(chunks)); }
+                });
+              " || true
+      # Soft gate: non-regression baseline enforced by the test suite itself
+      - name: Scorecard non-regression gate (soft)
+        run: npx vitest run src/__tests__/agent-native-scorecard.test.ts
+
   build:
     name: Build
     runs-on: ubuntu-latest

@@ -1,4 +1,4 @@
-export default {
+module.exports = {
   plugins: ['prettier-plugin-tailwindcss'],
   tailwindFunctions: ['clsx', 'cva', 'twMerge'],
   tailwindAttributes: ['class', 'className', 'iconClassName'],

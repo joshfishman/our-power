@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import prisma from '@/lib/prisma/prisma';
 import { enforceRateLimit } from '@/lib/api-utils';
 import { logError } from '@/lib/logger';
+import { startOfDay } from 'date-fns';
 
 // GET /api/me/actions - Get current user's upcoming actions
 export async function GET(request: Request) {
@@ -16,25 +17,39 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const includeCompleted = searchParams.get('completed') === 'true';
+    const committedOnly = searchParams.get('committed') === 'true';
 
-    // Get user's campaigns
-    const memberships = await prisma.campaignMember.findMany({
-      where: { userId: session.user.id },
-      select: { campaignId: true },
-    });
-
-    const campaignIds = memberships.map((m) => m.campaignId);
-
-    if (campaignIds.length === 0) {
-      return NextResponse.json([]);
+    let campaignIds: string[] = [];
+    if (!committedOnly) {
+      // For browse mode, scope to campaigns the user is currently in.
+      const memberships = await prisma.campaignMember.findMany({
+        where: { userId: session.user.id },
+        select: { campaignId: true },
+      });
+      campaignIds = memberships.map((m) => m.campaignId);
+      if (campaignIds.length === 0) {
+        return NextResponse.json([]);
+      }
     }
+
+    const shouldFilterToUpcoming = !committedOnly && !includeCompleted;
 
     // Get actions from user's campaigns
     const actions = await prisma.action.findMany({
       where: {
-        campaignId: { in: campaignIds },
+        ...(committedOnly ? {} : { campaignId: { in: campaignIds } }),
         isActive: true,
-        ...(includeCompleted ? {} : { dueDate: { gte: new Date() } }),
+        ...(shouldFilterToUpcoming ? { dueDate: { gte: startOfDay(new Date()) } } : {}),
+        ...(committedOnly
+          ? {
+              participants: {
+                some: {
+                  userId: session.user.id,
+                  OR: [{ willAttend: true }, { attended: true }, { completedAt: { not: null } }],
+                },
+              },
+            }
+          : {}),
       },
       include: {
         campaign: {

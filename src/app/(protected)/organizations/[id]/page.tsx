@@ -8,7 +8,6 @@ import Image from 'next/image';
 import { ResponsiveContainer } from '@/components/ui/ResponsiveContainer';
 import { GenericLoading } from '@/components/GenericLoading';
 import Button from '@/components/ui/Button';
-import { TextInput } from '@/components/ui/TextInput';
 import { useToast } from '@/hooks/useToast';
 import { useDialogs } from '@/hooks/useDialogs';
 import { BuildingBusinessOffice, ActionsPlus, Delete, WorldNet } from '@/svg_components';
@@ -304,13 +303,15 @@ export default function OrganizationDetailPage() {
 
         {showAddManager && (
           <div className="mb-4 flex gap-2 rounded-lg border border-border bg-card p-4">
-            <TextInput
-              name="email"
-              placeholder="Enter user email"
-              value={newManagerEmail}
-              onChange={(e) => setNewManagerEmail(e.target.value)}
-              className="flex-1"
-            />
+            <div className="flex-1">
+              <input
+                type="email"
+                placeholder="Enter user email"
+                value={newManagerEmail}
+                onChange={(e) => setNewManagerEmail(e.target.value)}
+                className="w-full rounded-xl border border-border bg-input px-4 py-3 text-foreground outline-none ring-foreground focus:ring-2"
+              />
+            </div>
             <Button
               onPress={() => addManagerMutation.mutate(newManagerEmail)}
               loading={addManagerMutation.isPending}

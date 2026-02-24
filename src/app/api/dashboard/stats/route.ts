@@ -1,19 +1,20 @@
-import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import prisma from '@/lib/prisma/prisma';
-import { enforceRateLimit } from '@/lib/api-utils';
+import { apiError, enforceRateLimit, requestId } from '@/lib/api-utils';
 import { logError } from '@/lib/logger';
 import { z } from 'zod';
 
 // GET: Get aggregated stats for dashboard
 export async function GET(request: Request) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const reqId = requestId();
 
   const rateLimitResponse = await enforceRateLimit(request, { limit: 60, windowSeconds: 60 });
   if (rateLimitResponse) return rateLimitResponse;
+
+  const session = await auth();
+  if (!session?.user?.id) {
+    return apiError('Unauthorized', 401, reqId);
+  }
 
   const { searchParams } = new URL(request.url);
   const campaignId = searchParams.get('campaignId');
@@ -24,13 +25,13 @@ export async function GET(request: Request) {
     if (orgId) {
       const parsedOrgId = z.string().min(1).safeParse(orgId);
       if (!parsedOrgId.success) {
-        return NextResponse.json({ error: 'Invalid organization id' }, { status: 400 });
+        return apiError('Invalid organization id', 400, reqId);
       }
     }
     if (campaignId) {
       const parsedCampaignId = z.string().min(1).safeParse(campaignId);
       if (!parsedCampaignId.success) {
-        return NextResponse.json({ error: 'Invalid campaign id' }, { status: 400 });
+        return apiError('Invalid campaign id', 400, reqId);
       }
     }
 
@@ -41,7 +42,7 @@ export async function GET(request: Request) {
         where: { id: orgId, managers: { some: { id: session.user.id } } },
       });
       if (!org) {
-        return NextResponse.json({ error: 'Not authorized to view these stats' }, { status: 403 });
+        return apiError('Not authorized to view these stats', 403, reqId);
       }
     }
     if (campaignId) {
@@ -49,7 +50,7 @@ export async function GET(request: Request) {
         where: { id: campaignId, org: { managers: { some: { id: session.user.id } } } },
       });
       if (!campaign) {
-        return NextResponse.json({ error: 'Not authorized to view these stats' }, { status: 403 });
+        return apiError('Not authorized to view these stats', 403, reqId);
       }
     }
     // Calculate date range
@@ -81,52 +82,51 @@ export async function GET(request: Request) {
     if (campaignId) campaignWhere.id = campaignId;
     if (orgId) campaignWhere.orgId = orgId;
 
-    // Get campaign stats
-    const campaigns = await prisma.campaign.findMany({
-      where: campaignWhere,
-      include: {
-        _count: {
-          select: {
-            members: true,
-            actions: true,
-          },
-        },
-      },
-    });
-
-    // Get action stats
-    const actions = await prisma.action.findMany({
-      where: actionWhere,
-      include: {
-        _count: {
-          select: {
-            participants: true,
-          },
-        },
-        participants: {
-          select: {
-            willAttend: true,
-            attended: true,
-          },
-        },
-      },
-    });
-
-    // Get participation stats
+    // Get participation where clause
     const participationWhere: { createdAt?: { gte: Date }; action?: { campaignId: string } } = {};
     if (startDate) participationWhere.createdAt = { gte: startDate };
     if (campaignId) {
       participationWhere.action = { campaignId };
     }
 
-    const participations = await prisma.actionParticipation.findMany({
-      where: participationWhere,
-      include: {
-        action: {
-          select: { type: true },
+    // Parallelize independent Prisma reads
+    const [campaigns, actions, participations] = await Promise.all([
+      prisma.campaign.findMany({
+        where: campaignWhere,
+        include: {
+          _count: {
+            select: {
+              members: true,
+              actions: true,
+            },
+          },
         },
-      },
-    });
+      }),
+      prisma.action.findMany({
+        where: actionWhere,
+        include: {
+          _count: {
+            select: {
+              participants: true,
+            },
+          },
+          participants: {
+            select: {
+              willAttend: true,
+              attended: true,
+            },
+          },
+        },
+      }),
+      prisma.actionParticipation.findMany({
+        where: participationWhere,
+        include: {
+          action: {
+            select: { type: true },
+          },
+        },
+      }),
+    ]);
 
     // Calculate aggregated stats
     const stats = {
@@ -172,9 +172,9 @@ export async function GET(request: Request) {
       timeframe,
     };
 
-    return NextResponse.json(stats);
+    return Response.json(stats, { headers: { 'X-Request-Id': reqId } });
   } catch (error) {
     logError('Dashboard stats error', error);
-    return NextResponse.json({ error: 'Failed to fetch dashboard stats' }, { status: 500 });
+    return apiError('Failed to fetch dashboard stats', 500, reqId);
   }
 }

@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { cn } from '@/lib/cn';
-import { TwoPeople, Calendar } from '@/svg_components';
+import TwoPeople from '@/svg_components/TwoPeople';
+import Calendar from '@/svg_components/Calendar';
 
 interface CampaignCardProps {
   campaign: {

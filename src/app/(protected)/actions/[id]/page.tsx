@@ -1,3 +1,5 @@
+/* eslint-disable consistent-return */
+
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -12,7 +14,8 @@ import { format, isPast, isToday, isTomorrow } from 'date-fns';
 import { cn } from '@/lib/cn';
 import { useSessionUserData } from '@/hooks/useSessionUserData';
 import { TextInput } from '@/components/ui/TextInput';
-import { useEffect, useState } from 'react';
+import { Textarea } from '@/components/ui/Textarea';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface ActionDetail {
   id: string;
@@ -26,11 +29,14 @@ interface ActionDetail {
   eventEndTime: string | null;
   locationUrl: string | null;
   callScript: string | null;
-  dialerUrl: string | null;
   phoneNumbers: string[];
   emailSubject: string | null;
   emailBody: string | null;
   emailTargets: string[];
+  targetMode?: 'CIVIC' | 'MANUAL' | 'BOTH' | null;
+  targetLevel?: 'LOCAL' | 'STATE' | 'FEDERAL' | null;
+  targetOffices?: string[];
+  manualTargets?: Array<{ name: string; email?: string | null; phone?: string | null }>;
   canvassArea: string | null;
   ecanvasserCampaignId: string | null;
   graphics: string[];
@@ -60,10 +66,40 @@ interface RepresentativeInfo {
 
 const typeConfig = {
   EVENT: { icon: Calendar, label: 'Event', color: 'text-blue-500', bgColor: 'bg-blue-500/10' },
-  PHONE: { icon: Phone, label: 'Phone Bank', color: 'text-sky-500', bgColor: 'bg-sky-500/10' },
-  EMAIL: { icon: Mail, label: 'Email', color: 'text-sky-500', bgColor: 'bg-sky-500/10' },
+  PHONE: { icon: Phone, label: 'Call in Support', color: 'text-sky-500', bgColor: 'bg-sky-500/10' },
+  EMAIL: { icon: Mail, label: 'Email in Support', color: 'text-sky-500', bgColor: 'bg-sky-500/10' },
   CANVASS: { icon: TwoPeople, label: 'Canvass', color: 'text-orange-500', bgColor: 'bg-orange-500/10' },
 };
+
+const GOOGLE_MAPS_SCRIPT_ID = 'google-maps-places-script';
+const ZIP_CODE_REGEX = /\b\d{5}(?:-\d{4})?\b/;
+
+const normalizeAddress = (value: string) =>
+  value
+    .replace(/\s+/g, ' ')
+    .replace(/\s*,\s*/g, ', ')
+    .trim();
+
+declare global {
+  interface Window {
+    google?: {
+      maps?: {
+        importLibrary?: (library: 'places') => Promise<{
+          PlaceAutocompleteElement: new (options?: {
+            componentRestrictions?: { country: string | string[] };
+            types?: string[];
+          }) => HTMLElement;
+        }>;
+        places?: {
+          PlaceAutocompleteElement: new (options?: {
+            componentRestrictions?: { country: string | string[] };
+            types?: string[];
+          }) => HTMLElement;
+        };
+      };
+    };
+  }
+}
 
 export default function ActionDetailPage() {
   const params = useParams();
@@ -75,15 +111,259 @@ export default function ActionDetailPage() {
 
   const [showRepLookup, setShowRepLookup] = useState(false);
   const [zipCode, setZipCode] = useState('');
+  const [cityName, setCityName] = useState('');
+  const [stateCode, setStateCode] = useState('');
   const [streetAddress, setStreetAddress] = useState('');
+  const [formattedLookupAddress, setFormattedLookupAddress] = useState('');
   const [repInfo, setRepInfo] = useState<RepresentativeInfo[] | null>(null);
   const [repLoading, setRepLoading] = useState(false);
   const [repError, setRepError] = useState<string | null>(null);
+  const [autocompleteError, setAutocompleteError] = useState<string | null>(null);
+  const [selectedRepEmails, setSelectedRepEmails] = useState<string[]>([]);
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
+  const [emailSubjectDraft, setEmailSubjectDraft] = useState('');
+  const [emailBodyDraft, setEmailBodyDraft] = useState('');
+  const placeAutocompleteContainerRef = useRef<HTMLDivElement>(null);
+  const placeAutocompleteElementRef = useRef<(HTMLElement & { value?: string }) | null>(null);
+  const autocompleteInitializedRef = useRef(false);
+  const autoLookupAttemptedKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (userData?.zipCode && !zipCode) setZipCode(userData.zipCode);
+    const userCity = (userData as { city?: string } | undefined)?.city;
+    if (userCity && !cityName) setCityName(userCity);
+    if ((userData as { state?: string } | undefined)?.state && !stateCode) {
+      setStateCode((userData as { state?: string }).state || '');
+    }
     if (userData?.streetAddress && !streetAddress) setStreetAddress(userData.streetAddress);
-  }, [streetAddress, userData?.streetAddress, userData?.zipCode, zipCode]);
+  }, [cityName, stateCode, streetAddress, userData, userData?.streetAddress, userData?.zipCode, zipCode]);
+
+  useEffect(() => {
+    if (!showRepLookup || !isEditingAddress || autocompleteInitializedRef.current) return;
+    setAutocompleteError(null);
+
+    const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    if (!mapsApiKey) {
+      setAutocompleteError('Google Maps API key is missing.');
+      console.error('[civic-autocomplete] Missing NEXT_PUBLIC_GOOGLE_MAPS_API_KEY');
+      return;
+    }
+
+    const logAutocomplete = (message: string, meta?: Record<string, unknown>) => {
+      // Keep this lightweight in prod but verbose in dev.
+      // eslint-disable-next-line no-console
+      console.info('[civic-autocomplete]', message, meta || {});
+    };
+
+    type ImportLibFn = NonNullable<NonNullable<NonNullable<typeof window.google>['maps']>['importLibrary']>;
+    const waitForImportLibrary = (): Promise<ImportLibFn> =>
+      new Promise((resolve, reject) => {
+        let elapsed = 0;
+        const interval = 100;
+        const maxWait = 10_000;
+        const check = () => {
+          if (typeof window.google?.maps?.importLibrary === 'function') {
+            resolve(window.google.maps.importLibrary);
+            return;
+          }
+          elapsed += interval;
+          if (elapsed >= maxWait) {
+            reject(new Error('google.maps.importLibrary not available after 10 s'));
+            return;
+          }
+          setTimeout(check, interval);
+        };
+        check();
+      });
+
+    const initializeAutocomplete = async () => {
+      const container = placeAutocompleteContainerRef.current;
+      if (!container) {
+        setAutocompleteError('Address field container was not found.');
+        logAutocomplete('Container missing');
+        return;
+      }
+      let placeAutocompleteCtor = window.google?.maps?.places?.PlaceAutocompleteElement;
+      if (!placeAutocompleteCtor) {
+        try {
+          const importLib = await waitForImportLibrary();
+          const placesLib = await importLib('places');
+          placeAutocompleteCtor = placesLib.PlaceAutocompleteElement;
+          logAutocomplete('Loaded places via importLibrary');
+        } catch (error) {
+          setAutocompleteError('Failed to import Google Places library.');
+          logAutocomplete('importLibrary failed', { error: String(error) });
+          return;
+        }
+      }
+      if (!placeAutocompleteCtor) {
+        setAutocompleteError('PlaceAutocompleteElement is unavailable in Google Maps script.');
+        logAutocomplete('Ctor missing', {
+          hasGoogle: Boolean(window.google),
+          hasMaps: Boolean(window.google?.maps),
+          hasPlaces: Boolean(window.google?.maps?.places),
+        });
+        return;
+      }
+      if (autocompleteInitializedRef.current) return;
+
+      const PlaceAutocompleteCtor = placeAutocompleteCtor;
+      const placeAutocompleteElement = new PlaceAutocompleteCtor({
+        componentRestrictions: { country: 'us' },
+        types: ['address'],
+      });
+      const initialAddress = streetAddress.trim();
+      placeAutocompleteElement.setAttribute('placeholder', initialAddress || 'Search for your street address');
+      if (initialAddress) {
+        placeAutocompleteElement.setAttribute('value', initialAddress);
+        placeAutocompleteElement.value = initialAddress;
+      }
+      placeAutocompleteElement.className = 'block w-full';
+      placeAutocompleteElement.setAttribute('style', 'width: 100%;');
+
+      const handlePlaceSelect = async (event: Event) => {
+        logAutocomplete('Place select event fired');
+        const prediction = (event as Event & { placePrediction?: { toPlace?: () => unknown; text?: unknown } })
+          .placePrediction;
+        const place =
+          typeof prediction?.toPlace === 'function'
+            ? (prediction.toPlace() as {
+                fetchFields?: (request: { fields: string[] }) => Promise<void>;
+                formattedAddress?: string;
+                addressComponents?: Array<{ longText?: string; shortText?: string; types?: string[] }>;
+              })
+            : null;
+
+        if (!place) return;
+        if (typeof place.fetchFields === 'function') {
+          await place.fetchFields({ fields: ['formattedAddress', 'addressComponents'] });
+        }
+
+        const components = Array.isArray(place.addressComponents) ? place.addressComponents : [];
+        const postalCode = components.find((component) => component.types?.includes('postal_code'))?.longText;
+        const locality =
+          components.find((component) => component.types?.includes('locality'))?.longText ||
+          components.find((component) => component.types?.includes('postal_town'))?.longText ||
+          components.find((component) => component.types?.includes('sublocality'))?.longText ||
+          components.find((component) => component.types?.includes('sublocality_level_1'))?.longText ||
+          components.find((component) => component.types?.includes('neighborhood'))?.longText;
+        const administrativeArea = components.find(
+          (component) => component.types?.includes('administrative_area_level_1'),
+        );
+        const streetNumber = components.find((component) => component.types?.includes('street_number'))?.longText;
+        const route = components.find((component) => component.types?.includes('route'))?.longText;
+        const formattedAddress = place.formattedAddress || '';
+        const predictionText =
+          prediction?.text && typeof prediction.text === 'object' && 'toString' in prediction.text
+            ? String((prediction.text as { toString: () => string }).toString())
+            : '';
+        const selectedStreetAddress =
+          [streetNumber, route].filter(Boolean).join(' ').trim() ||
+          predictionText.split(',')[0]?.trim() ||
+          formattedAddress.split(',')[0]?.trim() ||
+          '';
+        const fallbackZip = (formattedAddress || predictionText).match(ZIP_CODE_REGEX)?.[0];
+        const nextZip = postalCode || fallbackZip || '';
+        const nextState =
+          administrativeArea?.shortText?.toUpperCase() || administrativeArea?.longText?.toUpperCase() || '';
+
+        setFormattedLookupAddress(formattedAddress);
+        if (selectedStreetAddress) {
+          setStreetAddress(selectedStreetAddress);
+        }
+        if (locality) {
+          setCityName(locality);
+        }
+        if (nextZip) {
+          setZipCode(nextZip);
+          if (nextState && nextState.length === 2) {
+            setStateCode(nextState);
+          }
+        }
+        logAutocomplete('Place applied', {
+          selectedStreetAddress,
+          nextZip,
+          nextState,
+        });
+
+        const saveZip = nextZip || zipCode.trim();
+        if (saveZip && /^\d{5}(-\d{4})?$/.test(saveZip)) {
+          const saveState = (nextState || stateCode.trim()).toUpperCase();
+          const savePayload = {
+            zipCode: saveZip.slice(0, 5),
+            city: locality || cityName.trim() || null,
+            state: saveState && saveState.length === 2 ? saveState : null,
+            streetAddress: selectedStreetAddress || streetAddress.trim() || null,
+          };
+          logAutocomplete('Auto-saving address', savePayload);
+          fetch('/api/me/location', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(savePayload),
+          })
+            .then((res) => {
+              if (res.ok) {
+                queryClient.invalidateQueries({ queryKey: ['users'] });
+                logAutocomplete('Address auto-saved OK');
+              } else {
+                logAutocomplete('Address auto-save failed', { status: res.status });
+              }
+            })
+            .catch((err) => {
+              logAutocomplete('Address auto-save error', { error: String(err) });
+            });
+        }
+      };
+
+      placeAutocompleteElement.addEventListener('gmp-select', handlePlaceSelect);
+      placeAutocompleteElement.addEventListener('gmp-placeselect', handlePlaceSelect);
+      container.replaceChildren(placeAutocompleteElement);
+      placeAutocompleteElementRef.current = placeAutocompleteElement as HTMLElement & { value?: string };
+      autocompleteInitializedRef.current = true;
+      logAutocomplete('PlaceAutocompleteElement mounted');
+    };
+
+    if (!document.getElementById(GOOGLE_MAPS_SCRIPT_ID)) {
+      const script = document.createElement('script');
+      script.id = GOOGLE_MAPS_SCRIPT_ID;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(
+        mapsApiKey,
+      )}&libraries=places&loading=async&v=beta`;
+      script.async = true;
+      script.defer = true;
+      script.addEventListener('error', () => {
+        setAutocompleteError('Failed to load Google Maps script.');
+        logAutocomplete('Script failed to load');
+      });
+      logAutocomplete('Injecting Google Maps script');
+      document.head.appendChild(script);
+    }
+
+    void initializeAutocomplete();
+  }, [isEditingAddress, showRepLookup, streetAddress]);
+
+  useEffect(() => {
+    const normalizedZip = zipCode.trim();
+    if (!/^\d{5}(-\d{4})?$/.test(normalizedZip)) return;
+
+    const timeout = setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/me/zip-lookup?zip=${encodeURIComponent(normalizedZip.slice(0, 5))}`);
+        if (!response.ok) return;
+        const payload = (await response.json()) as { state?: string; city?: string };
+        if (payload.state) {
+          setStateCode(payload.state.toUpperCase());
+        }
+        if (payload.city && !cityName.trim()) {
+          setCityName(payload.city);
+        }
+      } catch {
+        // Non-blocking autofill helper.
+      }
+    }, 300);
+
+    return () => clearTimeout(timeout);
+  }, [cityName, zipCode]);
 
   const {
     data: action,
@@ -96,6 +376,7 @@ export default function ActionDetailPage() {
       if (!res.ok) throw new Error('Failed to fetch action');
       return res.json();
     },
+    staleTime: 30_000,
   });
 
   const participateMutation = useMutation({
@@ -123,11 +404,24 @@ export default function ActionDetailPage() {
 
   const sendEmailMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`/api/actions/${actionId}/send-email`, { method: 'POST' });
+      const body: { targets?: string[]; subject?: string; body?: string } = {
+        subject: emailSubjectDraft.trim(),
+        body: emailBodyDraft,
+      };
+      if (action?.targetMode === 'CIVIC' || action?.targetMode === 'BOTH') {
+        body.targets = selectedRepEmails;
+      }
+      const res = await fetch(`/api/actions/${actionId}/send-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
       if (!res.ok) throw new Error('Failed to send email');
       return res.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['action', actionId] });
+      queryClient.invalidateQueries({ queryKey: ['my-actions'] });
       showToast({ type: 'success', title: 'Email sent!' });
     },
     onError: (err: Error) => {
@@ -135,37 +429,232 @@ export default function ActionDetailPage() {
     },
   });
 
-  const fetchRepresentatives = async () => {
-    setRepError(null);
-    setRepLoading(true);
-    try {
-      if (!zipCode.trim()) {
-        setRepError('Add your zip code to find your representative.');
-        return;
-      }
-      const locationRes = await fetch('/api/me/location', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ zipCode: zipCode.trim(), streetAddress: streetAddress.trim() || null }),
-      });
-      if (!locationRes.ok) {
-        const errorData = await locationRes.json();
-        throw new Error(errorData.error || 'Failed to save your location');
-      }
-      const address = [streetAddress, zipCode].filter(Boolean).join(', ');
-      const res = await fetch(`/api/civic/representatives?address=${encodeURIComponent(address)}`);
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Failed to fetch representatives');
-      }
-      const data = await res.json();
-      setRepInfo(data.officials || []);
-    } catch (err) {
-      setRepError(err instanceof Error ? err.message : 'Failed to fetch representatives');
-    } finally {
-      setRepLoading(false);
+  const persistUserLocation = useCallback(async () => {
+    if (!zipCode.trim()) {
+      throw new Error('Add your zip code first.');
     }
-  };
+    const locationRes = await fetch('/api/me/location', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        zipCode: zipCode.trim(),
+        city: cityName.trim() || null,
+        state: stateCode.trim() || null,
+        streetAddress: streetAddress.trim() || null,
+      }),
+    });
+    if (!locationRes.ok) {
+      const errorData = await locationRes.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to save your location');
+    }
+  }, [cityName, stateCode, streetAddress, zipCode]);
+
+  const fallbackLookupAddress = useCallback(() => {
+    const street = streetAddress.trim();
+    const city = cityName.trim();
+    const state = stateCode.trim().toUpperCase();
+    const zip = zipCode.trim().slice(0, 5);
+    if (!street || !state || !/^\d{5}$/.test(zip)) return '';
+    return [street, city, `${state} ${zip}`].filter(Boolean).join(', ');
+  }, [cityName, stateCode, streetAddress, zipCode]);
+
+  const fetchRepresentatives = useCallback(
+    async (persistLocationFirst = false) => {
+      setRepError(null);
+      setRepLoading(true);
+      try {
+        if (persistLocationFirst) {
+          await persistUserLocation();
+          void queryClient.invalidateQueries({ queryKey: ['users'] });
+        }
+        let resolvedCity = cityName.trim();
+        let resolvedState = stateCode.trim();
+        const resolvedZip = zipCode.trim().slice(0, 5);
+        const resolvedStreet = streetAddress.trim();
+
+        if ((!resolvedCity || !resolvedState) && /^\d{5}$/.test(resolvedZip)) {
+          const zipLookupRes = await fetch(`/api/me/zip-lookup?zip=${encodeURIComponent(resolvedZip)}`);
+          if (zipLookupRes.ok) {
+            const zipPayload = (await zipLookupRes.json()) as { city?: string; state?: string };
+            if (!resolvedCity && zipPayload.city) {
+              resolvedCity = zipPayload.city;
+              setCityName(zipPayload.city);
+            }
+            if (!resolvedState && zipPayload.state) {
+              resolvedState = zipPayload.state.toUpperCase();
+              setStateCode(zipPayload.state.toUpperCase());
+            }
+          }
+        }
+
+        const googleSource = formattedLookupAddress.trim();
+        const address = googleSource
+          ? normalizeAddress(googleSource)
+          : resolvedStreet && resolvedState && /^\d{5}$/.test(resolvedZip)
+          ? normalizeAddress(
+              [resolvedStreet, resolvedCity, `${resolvedState.toUpperCase()} ${resolvedZip}`]
+                .filter(Boolean)
+                .join(', '),
+            )
+          : '';
+
+        if (!address || !/\d+\s+\S+/.test(address)) {
+          throw new Error('Add a full address (street, city, state, zip) before lookup.');
+        }
+
+        const res = await fetch(`/api/civic/representatives?address=${encodeURIComponent(address)}`);
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          const detailMessage =
+            (errorData?.details?.error?.message as string | undefined) ||
+            (typeof errorData?.details === 'string' ? errorData.details : undefined);
+          throw new Error(detailMessage || errorData.error || 'Failed to fetch representatives');
+        }
+        const data = await res.json();
+        setRepInfo(data.officials || []);
+      } catch (err) {
+        setRepError(err instanceof Error ? err.message : 'Failed to fetch representatives');
+      } finally {
+        setRepLoading(false);
+      }
+    },
+    [
+      cityName,
+      fallbackLookupAddress,
+      formattedLookupAddress,
+      persistUserLocation,
+      queryClient,
+      stateCode,
+      streetAddress,
+      zipCode,
+    ],
+  );
+
+  const saveAddressOnly = useCallback(async () => {
+    setRepError(null);
+    if (!zipCode.trim()) {
+      setRepError('Add your zip code before saving your address.');
+      return;
+    }
+    try {
+      await persistUserLocation();
+      void queryClient.invalidateQueries({ queryKey: ['users'] });
+      setIsEditingAddress(false);
+      showToast({ type: 'success', title: 'Address updated' });
+    } catch (err) {
+      setRepError(err instanceof Error ? err.message : 'Failed to save your location');
+    }
+  }, [persistUserLocation, queryClient, showToast, zipCode]);
+
+  const filteredRepInfo = (() => {
+    if (!repInfo || !action) return null;
+    const { targetLevel } = action;
+    const targetOffices = (action.targetOffices || []).map((office) => office.toLowerCase().trim()).filter(Boolean);
+
+    const getLevel = (officeName: string) => {
+      const normalized = officeName.toLowerCase();
+      if (
+        normalized.includes('united states') ||
+        normalized.includes('u.s.') ||
+        normalized.includes('us senate') ||
+        normalized.includes('senate') ||
+        normalized.includes('house of representatives') ||
+        normalized.includes('congress') ||
+        normalized.includes('president') ||
+        normalized.includes('vice president')
+      ) {
+        return 'FEDERAL';
+      }
+      if (
+        normalized.includes('state') ||
+        normalized.includes('governor') ||
+        normalized.includes('attorney general') ||
+        normalized.includes('secretary of state') ||
+        normalized.includes('treasurer') ||
+        normalized.includes('comptroller')
+      ) {
+        return 'STATE';
+      }
+      return 'LOCAL';
+    };
+
+    return repInfo.filter((rep) => {
+      if (targetLevel && getLevel(rep.office) !== targetLevel) return false;
+      if (!targetOffices.length) return true;
+      const officeName = rep.office.toLowerCase();
+      const repName = rep.name.toLowerCase();
+      return targetOffices.some((filter) => officeName.includes(filter) || repName.includes(filter));
+    });
+  })();
+
+  const civicEmailTargets = (() => {
+    if (!filteredRepInfo) return [];
+    const emails = filteredRepInfo.map((rep) => rep.emails?.[0]).filter((email): email is string => Boolean(email));
+    return Array.from(new Set(emails.map((email) => email.trim()).filter(Boolean)));
+  })();
+
+  useEffect(() => {
+    if (action?.type !== 'EMAIL' || (action?.targetMode !== 'CIVIC' && action?.targetMode !== 'BOTH')) return;
+    if (!civicEmailTargets.length) return;
+    if (selectedRepEmails.length === 0) {
+      setSelectedRepEmails(civicEmailTargets);
+    }
+  }, [action?.targetMode, action?.type, civicEmailTargets, selectedRepEmails.length]);
+
+  useEffect(() => {
+    if (action?.type !== 'EMAIL') return;
+    setEmailSubjectDraft(action.emailSubject || '');
+    setEmailBodyDraft(action.emailBody || '');
+  }, [action?.emailBody, action?.emailSubject, action?.id, action?.type]);
+
+  useEffect(() => {
+    if (!action) return;
+    const requiresRepresentativeLookup =
+      action.type === 'PHONE' ||
+      (action.type === 'EMAIL' && (action.targetMode === 'CIVIC' || action.targetMode === 'BOTH'));
+    if (!requiresRepresentativeLookup) return;
+    setShowRepLookup(true);
+  }, [action]);
+
+  useEffect(() => {
+    if (!action || repLoading || repInfo || !zipCode.trim()) return;
+    const requiresRepresentativeLookup =
+      action.type === 'PHONE' ||
+      (action.type === 'EMAIL' && (action.targetMode === 'CIVIC' || action.targetMode === 'BOTH'));
+    if (!requiresRepresentativeLookup) return;
+    if (!streetAddress.trim() && !stateCode.trim()) return;
+    const key = `${action.id}:${streetAddress.trim()}:${stateCode.trim()}:${zipCode.trim()}`;
+    if (autoLookupAttemptedKeyRef.current === key) return;
+    autoLookupAttemptedKeyRef.current = key;
+    void fetchRepresentatives(false);
+  }, [action, fetchRepresentatives, repInfo, repLoading, stateCode, streetAddress, zipCode]);
+
+  useEffect(() => {
+    if (!showRepLookup) return;
+    if (streetAddress.trim() || zipCode.trim()) {
+      setIsEditingAddress(false);
+      return;
+    }
+    setIsEditingAddress(true);
+  }, [showRepLookup, streetAddress, zipCode]);
+
+  useEffect(() => {
+    if (isEditingAddress) return;
+    autocompleteInitializedRef.current = false;
+    placeAutocompleteElementRef.current = null;
+    setAutocompleteError(null);
+  }, [isEditingAddress]);
+
+  useEffect(() => {
+    if (!showRepLookup || !isEditingAddress) return;
+    const element = placeAutocompleteElementRef.current;
+    if (!element) return;
+    const nextAddress = streetAddress.trim();
+    if (!nextAddress) return;
+    element.setAttribute('value', nextAddress);
+    element.setAttribute('placeholder', nextAddress);
+    element.value = nextAddress;
+  }, [isEditingAddress, showRepLookup, streetAddress]);
 
   if (isLoading) {
     return (
@@ -194,21 +683,36 @@ export default function ActionDetailPage() {
   const userParticipation = action.participants?.[0];
   const hasRSVPd = userParticipation?.willAttend;
   const hasCompleted = userParticipation?.attended;
+  const hasSpecificDueTime = dueDate.getHours() !== 23 || dueDate.getMinutes() !== 59;
 
   const getDateLabel = () => {
     if (isToday(dueDate)) return 'Today';
     if (isTomorrow(dueDate)) return 'Tomorrow';
     return format(dueDate, 'EEEE, MMMM d, yyyy');
   };
+  const getDueDateTimeLabel = () => {
+    const hasSpecificTime = dueDate.getHours() !== 23 || dueDate.getMinutes() !== 59;
+    return hasSpecificTime
+      ? `${format(dueDate, 'EEEE, MMMM d, yyyy')} at ${format(dueDate, 'h:mm a')}`
+      : format(dueDate, 'EEEE, MMMM d, yyyy');
+  };
 
-  const mailtoUrl = (() => {
-    if (!action.emailTargets?.length) return null;
-    const targets = action.emailTargets.join(',');
-    const p = new URLSearchParams();
-    if (action.emailSubject) p.set('subject', action.emailSubject);
-    if (action.emailBody) p.set('body', action.emailBody);
-    return `mailto:${targets}?${p.toString()}`;
-  })();
+  const manualEmailTargets =
+    action?.targetMode === 'MANUAL' || action?.targetMode === 'BOTH'
+      ? (action.manualTargets || [])
+          .map((target) => target.email?.trim())
+          .filter((target): target is string => Boolean(target))
+      : [];
+
+  const hasEmailTargets =
+    action?.type === 'EMAIL' &&
+    (action.targetMode === 'CIVIC'
+      ? selectedRepEmails.length > 0
+      : action.targetMode === 'MANUAL'
+      ? manualEmailTargets.length > 0
+      : action.targetMode === 'BOTH'
+      ? manualEmailTargets.length > 0 || selectedRepEmails.length > 0
+      : action.emailTargets?.length);
 
   const sharePayload = (() => {
     const text = action.shareText?.trim();
@@ -272,6 +776,9 @@ export default function ActionDetailPage() {
                 {action.eventEndTime && ` — ${format(new Date(action.eventEndTime), 'h:mm a')}`}
               </span>
             )}
+            {!action.eventTime && hasSpecificDueTime && (
+              <span className="text-sm text-muted-foreground">Due at {format(dueDate, 'h:mm a')}</span>
+            )}
           </div>
 
           {/* Participants */}
@@ -280,57 +787,59 @@ export default function ActionDetailPage() {
           </p>
 
           {/* Status */}
-          {hasCompleted && (
+          {hasCompleted && action.type !== 'EVENT' && (
             <div className="mb-4 rounded-md bg-sky-500/10 px-4 py-2 text-sm font-medium text-sky-500">
               ✓ You completed this action
             </div>
           )}
-          {hasRSVPd && !hasCompleted && (
+          {hasRSVPd && action.type === 'EVENT' && (
+            <div className="mb-4 rounded-md bg-sky-500/10 px-4 py-2 text-sm font-medium text-sky-500">
+              You&apos;re RSVP&apos;d
+            </div>
+          )}
+          {hasRSVPd && !hasCompleted && action.type !== 'EVENT' && (
             <div className="mb-4 rounded-md bg-yellow-500/10 px-4 py-2 text-sm font-medium text-yellow-600">
-              You&apos;ve signed up — mark it complete when you&apos;re done!
+              Committed to complete by {getDueDateTimeLabel()}
             </div>
           )}
 
           {/* Action buttons */}
           <div className="flex flex-wrap gap-2">
-            {!hasCompleted && (
-              <>
-                {!hasRSVPd ? (
-                  <Button
-                    size="small"
-                    onPress={() => participateMutation.mutate({ willAttend: true })}
-                    loading={participateMutation.isPending}
-                    isDisabled={isPastDue}>
-                    {action.type === 'EVENT' ? 'RSVP' : "I'll do this"}
-                  </Button>
-                ) : (
-                  <Button
-                    size="small"
-                    onPress={() => participateMutation.mutate({ attended: true })}
-                    loading={participateMutation.isPending}>
-                    Mark Complete
-                  </Button>
-                )}
-              </>
-            )}
+            {action.type === 'EVENT' ? (
+              !hasRSVPd && (
+                <Button
+                  size="small"
+                  onPress={() => participateMutation.mutate({ willAttend: true })}
+                  loading={participateMutation.isPending}
+                  isDisabled={isPastDue}>
+                  RSVP
+                </Button>
+              )
+            ) : !hasCompleted ? (
+              !hasRSVPd ? (
+                <Button
+                  size="small"
+                  onPress={() => participateMutation.mutate({ willAttend: true })}
+                  loading={participateMutation.isPending}
+                  isDisabled={isPastDue}>
+                  Commit to this Action
+                </Button>
+              ) : (
+                <Button
+                  size="small"
+                  onPress={() => participateMutation.mutate({ attended: true })}
+                  loading={participateMutation.isPending}>
+                  Mark Complete
+                </Button>
+              )
+            ) : null}
 
-            {action.type === 'PHONE' && action.dialerUrl && (
-              <Button size="small" mode="secondary" onPress={() => window.open(action.dialerUrl!, '_blank')}>
-                Open Dialer
-              </Button>
-            )}
-
-            {action.type === 'EMAIL' && mailtoUrl && (
-              <Button size="small" mode="secondary" onPress={() => window.open(mailtoUrl, '_blank')}>
-                Compose Email
-              </Button>
-            )}
-
-            {action.type === 'EMAIL' && action.emailTargets?.length && !hasCompleted && (
+            {action.type === 'EMAIL' && hasEmailTargets && !hasCompleted && (
               <Button
                 size="small"
                 mode="secondary"
                 loading={sendEmailMutation.isPending}
+                isDisabled={!emailSubjectDraft.trim() || !emailBodyDraft.trim()}
                 onPress={() => sendEmailMutation.mutate()}>
                 Send Email
               </Button>
@@ -395,6 +904,25 @@ export default function ActionDetailPage() {
         )}
 
         {/* Phone numbers */}
+        {action.type === 'PHONE' && action.manualTargets?.length ? (
+          <div className="rounded-lg border border-border bg-card p-6">
+            <h2 className="mb-3 text-lg font-semibold">Call Targets</h2>
+            <div className="flex flex-wrap gap-2">
+              {action.manualTargets
+                .filter((target) => target.phone)
+                .map((target) => (
+                  <Button
+                    key={`${target.name}-${target.phone}`}
+                    size="small"
+                    mode="secondary"
+                    onPress={() => window.open(`tel:${target.phone}`, '_self')}>
+                    {target.name ? `${target.name} (${target.phone})` : target.phone}
+                  </Button>
+                ))}
+            </div>
+          </div>
+        ) : null}
+
         {action.type === 'PHONE' && action.phoneNumbers?.length > 0 && (
           <div className="rounded-lg border border-border bg-card p-6">
             <h2 className="mb-3 text-lg font-semibold">Call Targets</h2>
@@ -409,57 +937,145 @@ export default function ActionDetailPage() {
         )}
 
         {/* Find Representative (Phone) */}
-        {action.type === 'PHONE' && (
+        {(action.type === 'PHONE' ||
+          (action.type === 'EMAIL' && (action.targetMode === 'CIVIC' || action.targetMode === 'BOTH'))) && (
           <div className="rounded-lg border border-border bg-card p-6">
-            <button
-              type="button"
-              onClick={() => setShowRepLookup((prev) => !prev)}
-              className="text-lg font-semibold hover:text-sky-500">
-              {showRepLookup ? 'Hide Representatives ▲' : 'Find Your Representative ▼'}
-            </button>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-lg font-semibold">Your Representatives</h2>
+              <Button
+                size="small"
+                mode="ghost"
+                onPress={() =>
+                  setIsEditingAddress((prev) => {
+                    const next = !prev;
+                    if (next) {
+                      setFormattedLookupAddress('');
+                      setRepInfo(null);
+                      setRepError(null);
+                    }
+                    return next;
+                  })
+                }>
+                {isEditingAddress ? 'Cancel address edit' : 'Edit address'}
+              </Button>
+            </div>
             {showRepLookup && (
               <div className="mt-4 space-y-3">
-                <TextInput
-                  label="Street Address (optional)"
-                  name="streetAddress"
-                  value={streetAddress}
-                  onChange={(e) => setStreetAddress(e.target.value)}
-                  placeholder="123 Main St"
-                />
-                <TextInput
-                  label="Zip Code *"
-                  name="zipCode"
-                  value={zipCode}
-                  onChange={(e) => setZipCode(e.target.value)}
-                  placeholder="90001"
-                />
-                <Button size="small" onPress={fetchRepresentatives} loading={repLoading}>
-                  Find Representatives
-                </Button>
+                {!isEditingAddress && (
+                  <p className="text-sm text-muted-foreground">
+                    {[streetAddress, stateCode, zipCode].filter(Boolean).join(', ') || 'No saved address yet.'}
+                  </p>
+                )}
+                {isEditingAddress && (
+                  <>
+                    <div className="space-y-1">
+                      {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+                      <label className="block text-sm text-muted-foreground">Street Address</label>
+                      <div
+                        ref={placeAutocompleteContainerRef}
+                        className="rounded-2xl bg-input pb-2 pr-5 pt-4 ring-1 ring-muted-foreground/40 focus-within:ring-2 focus-within:ring-primary"
+                      />
+                    </div>
+                    {autocompleteError && <p className="text-sm text-red-500">{autocompleteError}</p>}
+                    <div className="rounded-md border border-border bg-muted/20 p-3 text-sm text-muted-foreground">
+                      <p>
+                        <span className="font-medium text-foreground">City:</span> {cityName || '—'}
+                      </p>
+                      <p>
+                        <span className="font-medium text-foreground">State:</span> {stateCode || '—'}
+                      </p>
+                      <p>
+                        <span className="font-medium text-foreground">Zip:</span> {zipCode || '—'}
+                      </p>
+                      {!formattedLookupAddress.trim() && (
+                        <p className="mt-2 text-xs text-yellow-600">
+                          Select an address suggestion to populate all fields, or keep your saved full address.
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="small" onPress={saveAddressOnly}>
+                        Save Address
+                      </Button>
+                      <Button
+                        size="small"
+                        mode="secondary"
+                        onPress={() => fetchRepresentatives(true)}
+                        loading={repLoading}
+                        isDisabled={!(formattedLookupAddress.trim() || fallbackLookupAddress())}>
+                        Save & Find Representatives
+                      </Button>
+                    </div>
+                  </>
+                )}
+                {!isEditingAddress && (
+                  <Button size="small" onPress={() => fetchRepresentatives(false)} loading={repLoading}>
+                    Refresh Representatives
+                  </Button>
+                )}
                 {repError && <p className="text-sm text-red-500">{repError}</p>}
-                {repInfo && repInfo.length > 0 && (
+                {filteredRepInfo && filteredRepInfo.length > 0 && (
                   <div className="space-y-3">
-                    {repInfo.map((rep) => (
+                    {filteredRepInfo.map((rep) => (
                       <div
                         key={`${rep.office}-${rep.name}`}
-                        className="rounded-md border border-border bg-muted/20 p-4">
-                        <p className="font-semibold">{rep.office}</p>
-                        <p className="text-sm">{rep.name}</p>
-                        {rep.party && <p className="text-xs text-muted-foreground">{rep.party}</p>}
-                        <div className="mt-2 flex gap-2">
+                        className="flex gap-4 rounded-md border border-border bg-muted/20 p-4">
+                        <div className="flex-shrink-0">
+                          {rep.photoUrl ? (
+                            <img
+                              src={rep.photoUrl}
+                              alt={rep.name}
+                              className="h-16 w-16 rounded-full border border-border object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted text-2xl font-bold text-muted-foreground">
+                              {rep.name.charAt(0)}
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-base font-semibold">{rep.name}</p>
+                          <p className="text-sm text-muted-foreground">{rep.office}</p>
+                          {rep.party && <p className="text-xs text-muted-foreground">{rep.party}</p>}
                           {rep.phones[0] && (
-                            <Button
-                              size="small"
-                              mode="secondary"
-                              onPress={() => window.open(`tel:${rep.phones[0]}`, '_self')}>
-                              Call {rep.phones[0]}
-                            </Button>
+                            <a
+                              href={`tel:${rep.phones[0]}`}
+                              className="mt-1 inline-block text-sm font-medium text-sky-500 hover:underline">
+                              {rep.phones[0]}
+                            </a>
                           )}
-                          {rep.urls[0] && (
-                            <Button size="small" mode="ghost" onPress={() => window.open(rep.urls[0], '_blank')}>
-                              Website
-                            </Button>
-                          )}
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {action.type === 'PHONE' && rep.phones[0] && (
+                              <Button
+                                size="small"
+                                mode="secondary"
+                                onPress={() => window.open(`tel:${rep.phones[0]}`, '_self')}>
+                                Call
+                              </Button>
+                            )}
+                            {action.type === 'EMAIL' && rep.emails?.[0] && (
+                              <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedRepEmails.includes(rep.emails[0])}
+                                  onChange={(event) => {
+                                    const { checked } = event.target;
+                                    setSelectedRepEmails((prev) =>
+                                      checked
+                                        ? Array.from(new Set([...prev, rep.emails![0]]))
+                                        : prev.filter((e) => e !== rep.emails![0]),
+                                    );
+                                  }}
+                                />
+                                {rep.emails[0]}
+                              </label>
+                            )}
+                            {rep.urls[0] && (
+                              <Button size="small" mode="ghost" onPress={() => window.open(rep.urls[0], '_blank')}>
+                                Website
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -471,13 +1087,37 @@ export default function ActionDetailPage() {
         )}
 
         {/* Email body (Email) */}
-        {action.type === 'EMAIL' && action.emailBody && (
+        {action.type === 'EMAIL' && (
           <div className="rounded-lg border border-border bg-card p-6">
-            <h2 className="mb-2 text-lg font-semibold">Email Content</h2>
-            {action.emailSubject && <p className="mb-2 text-sm font-medium">Subject: {action.emailSubject}</p>}
-            <p className="whitespace-pre-wrap text-sm text-muted-foreground">{action.emailBody}</p>
+            <h2 className="mb-2 text-lg font-semibold">Review Your Email</h2>
+            <div className="space-y-3">
+              <TextInput
+                label="Subject"
+                name="emailSubject"
+                value={emailSubjectDraft}
+                onChange={setEmailSubjectDraft}
+              />
+              <Textarea label="Message" value={emailBodyDraft} onChange={setEmailBodyDraft} />
+            </div>
           </div>
         )}
+
+        {action.type === 'EMAIL' &&
+        (action.targetMode === 'MANUAL' || action.targetMode === 'BOTH') &&
+        action.manualTargets?.length ? (
+          <div className="rounded-lg border border-border bg-card p-6">
+            <h2 className="mb-2 text-lg font-semibold">Email Targets</h2>
+            <div className="space-y-2 text-sm text-muted-foreground">
+              {action.manualTargets
+                .filter((target) => target.email)
+                .map((target) => (
+                  <p key={`${target.name}-${target.email}`}>
+                    {target.name ? `${target.name} — ${target.email}` : target.email}
+                  </p>
+                ))}
+            </div>
+          </div>
+        ) : null}
 
         {/* Share section */}
         {hasCompleted && sharePayload && (

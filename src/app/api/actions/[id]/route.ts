@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import prisma from '@/lib/prisma/prisma';
-import { actionSchema } from '@/lib/validations/campaign';
+import { actionSchemaBase } from '@/lib/validations/campaign';
 import { enforceRateLimit } from '@/lib/api-utils';
 import { logError } from '@/lib/logger';
 import { z } from 'zod';
@@ -72,7 +72,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     }
 
     const body = await request.json();
-    const validatedData = actionSchema.partial().omit({ campaignId: true }).parse(body);
+    const validatedData = actionSchemaBase.partial().omit({ campaignId: true }).parse(body);
 
     const existingAction = await prisma.action.findFirst({
       where: {
@@ -102,5 +102,47 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       return NextResponse.json({ error: 'Invalid data', details: error }, { status: 400 });
     }
     return NextResponse.json({ error: 'Failed to update action' }, { status: 500 });
+  }
+}
+
+// DELETE /api/actions/[id] - Soft-delete an action
+export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+  try {
+    const rateLimitResponse = await enforceRateLimit(request, { limit: 20, windowSeconds: 60 });
+    if (rateLimitResponse) return rateLimitResponse;
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const actionId = z.string().min(1).safeParse(params.id);
+    if (!actionId.success) {
+      return NextResponse.json({ error: 'Invalid action id' }, { status: 400 });
+    }
+
+    const existingAction = await prisma.action.findFirst({
+      where: {
+        id: actionId.data,
+        campaign: { org: { managers: { some: { id: session.user.id } } } },
+      },
+      select: { id: true },
+    });
+
+    if (!existingAction) {
+      return NextResponse.json(
+        { error: 'Action not found or you do not have permission to delete it' },
+        { status: 403 },
+      );
+    }
+
+    const action = await prisma.action.update({
+      where: { id: actionId.data },
+      data: { isActive: false },
+    });
+
+    return NextResponse.json(action);
+  } catch (error) {
+    logError('Error deleting action', error);
+    return NextResponse.json({ error: 'Failed to delete action' }, { status: 500 });
   }
 }

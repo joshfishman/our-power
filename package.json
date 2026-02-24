@@ -2,7 +2,6 @@
   "name": "our-power",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "lint-staged": {
     "*.{ts,tsx}": [
       "prettier --write",
@@ -31,6 +30,7 @@
     "prisma:deploy": "npx prisma migrate deploy",
     "prisma:seed": "npx prisma db seed",
     "prisma:mock": "npx prisma migrate reset && npx tsx ./scripts/createMockUsers.ts",
+    "congress:update": "npx tsx scripts/update-congress-data.ts",
     "prisma:studio": "npx prisma studio",
     "prepm2": "npm run build",
     "pm2": "pm2 start next --name 'our-power' -- start -p 3000"
@@ -55,8 +55,8 @@
     "@sentry/nextjs": "^10.38.0",
     "@supabase/supabase-js": "^2.94.1",
     "@tailwindcss/typography": "^0.5.19",
-    "@tanstack/react-query": "^5.0.0-beta.16",
-    "@tanstack/react-query-devtools": "^5.0.0-beta.16",
+    "@tanstack/react-query": "^5.90.21",
+    "@tanstack/react-query-devtools": "^5.91.3",
     "@types/lodash": "^4.14.195",
     "@types/node": "^20.0.0",
     "@types/react": "^18.0.37",

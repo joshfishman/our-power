@@ -3,7 +3,7 @@ import { auth } from '@/auth';
 import prisma from '@/lib/prisma/prisma';
 import { enforceRateLimit } from '@/lib/api-utils';
 import { logError } from '@/lib/logger';
-import { logActionCompleted, logActionRSVP } from '@/lib/notifications/campaignNotifications';
+import { logActionCompleted, logActionRSVP, logCampaignJoin } from '@/lib/notifications/campaignNotifications';
 import { z } from 'zod';
 
 const participationSchema = z.object({
@@ -33,14 +33,18 @@ export async function POST(request: Request, { params }: { params: { id: string 
     // Check if action exists
     const action = await prisma.action.findUnique({
       where: { id: actionId.data },
-      include: { campaign: { select: { id: true, name: true } } },
+      include: { campaign: { select: { id: true, name: true, status: true } } },
     });
 
     if (!action) {
       return NextResponse.json({ error: 'Action not found' }, { status: 404 });
     }
 
-    // Check if user is a campaign member
+    if (action.type === 'EVENT' && validatedData.attended) {
+      return NextResponse.json({ error: 'Event actions only support RSVP' }, { status: 400 });
+    }
+
+    // Auto-join the campaign if not already a member
     const membership = await prisma.campaignMember.findUnique({
       where: {
         userId_campaignId: {
@@ -51,10 +55,13 @@ export async function POST(request: Request, { params }: { params: { id: string 
     });
 
     if (!membership) {
-      return NextResponse.json(
-        { error: 'You must join the campaign first to participate in actions' },
-        { status: 400 },
-      );
+      if (action.campaign.status !== 'ACTIVE') {
+        return NextResponse.json({ error: 'This campaign is not currently accepting members' }, { status: 400 });
+      }
+      await prisma.campaignMember.create({
+        data: { userId: session.user.id, campaignId: action.campaignId, role: 'MEMBER' },
+      });
+      await logCampaignJoin({ userId: session.user.id, campaignId: action.campaignId });
     }
 
     const existingParticipation = await prisma.actionParticipation.findUnique({

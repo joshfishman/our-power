@@ -2,7 +2,10 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { StatCard, ActionTypeChart } from '@/components/dashboard';
-import { Bullhorn, TwoPeople, Calendar, CheckCircle } from '@/svg_components';
+import Bullhorn from '@/svg_components/Bullhorn';
+import TwoPeople from '@/svg_components/TwoPeople';
+import Calendar from '@/svg_components/Calendar';
+import CheckCircle from '@/svg_components/CheckCircle';
 import { useState } from 'react';
 
 interface DashboardStats {
@@ -59,6 +62,7 @@ export default function DashboardPage() {
         <div className="flex gap-2">
           {['7d', '30d', '90d', 'all'].map((tf) => (
             <button
+              type="button"
               key={tf}
               onClick={() => setTimeframe(tf)}
               className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
@@ -140,6 +144,15 @@ export default function DashboardPage() {
               <div>
                 <p className="font-medium">My Actions</p>
                 <p className="text-sm text-muted-foreground">View your upcoming actions</p>
+              </div>
+            </a>
+            <a
+              href="/help"
+              className="flex items-center gap-3 rounded-lg border border-border p-3 transition-colors hover:bg-muted">
+              <CheckCircle className="h-5 w-5 text-primary" />
+              <div>
+                <p className="font-medium">Help Center</p>
+                <p className="text-sm text-muted-foreground">Learn key actions and platform workflows</p>
               </div>
             </a>
           </div>

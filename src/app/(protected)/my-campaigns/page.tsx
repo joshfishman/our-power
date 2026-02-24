@@ -59,21 +59,43 @@ export default function MyCampaignsPage() {
     );
   }
 
+  const managed = campaigns?.filter((c) => c.role === 'MANAGER') || [];
+  const joined = campaigns?.filter((c) => c.role !== 'MANAGER') || [];
+
   return (
     <ResponsiveContainer className="py-6">
       {/* Header */}
       <div className="mb-6">
         <h1 className="mb-2 text-2xl font-bold">My Campaigns</h1>
-        <p className="text-muted-foreground">Campaigns you've joined and are taking action on.</p>
+        <p className="text-muted-foreground">Campaigns you manage and have joined.</p>
       </div>
 
-      {/* Campaign grid */}
       {campaigns && campaigns.length > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {campaigns.map((campaign) => (
-            <CampaignCard key={campaign.id} campaign={campaign} />
-          ))}
-        </div>
+        <>
+          {/* Managed campaigns */}
+          {managed.length > 0 && (
+            <div className="mb-8">
+              <h2 className="mb-3 text-lg font-semibold">Campaigns I Manage</h2>
+              <div className="grid gap-4">
+                {managed.map((campaign) => (
+                  <CampaignCard key={campaign.id} campaign={campaign} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Joined campaigns */}
+          {joined.length > 0 && (
+            <div className="mb-8">
+              <h2 className="mb-3 text-lg font-semibold">Campaigns I&apos;ve Joined</h2>
+              <div className="grid gap-4">
+                {joined.map((campaign) => (
+                  <CampaignCard key={campaign.id} campaign={campaign} />
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       ) : (
         <div className="rounded-xl bg-muted/30 py-12 text-center">
           <div className="mb-4 text-4xl">📢</div>

@@ -37,10 +37,10 @@ export async function GET(request: Request, { params }: { params: { id: string }
             // EVENT fields
             location: true,
             eventTime: true,
+            eventEndTime: true,
             locationUrl: true,
             // PHONE fields
             callScript: true,
-            dialerUrl: true,
             phoneNumbers: true,
             // EMAIL fields
             emailSubject: true,

@@ -1,4 +1,4 @@
-import { Logo } from '@/svg_components';
+import Logo from '@/svg_components/Logo';
 
 export default function Navbar() {
   return (

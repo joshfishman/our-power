@@ -18,7 +18,6 @@ interface MyAction {
   location: string | null;
   eventTime: string | null;
   callScript: string | null;
-  dialerUrl: string | null;
   emailSubject?: string | null;
   emailBody?: string | null;
   emailTargets?: string[];
@@ -45,7 +44,7 @@ export default function MyActionsPage() {
   } = useQuery<MyAction[]>({
     queryKey: ['my-actions'],
     queryFn: async () => {
-      const res = await fetch('/api/me/actions');
+      const res = await fetch('/api/me/actions?committed=true&completed=true');
       if (!res.ok) throw new Error('Failed to fetch actions');
       return res.json();
     },
@@ -105,9 +104,7 @@ export default function MyActionsPage() {
       {/* Header */}
       <div className="mb-6">
         <h1 className="mb-2 text-2xl font-bold">My Actions</h1>
-        <p className="text-muted-foreground">
-          Upcoming actions from your campaigns. Take action and make a difference!
-        </p>
+        <p className="text-muted-foreground">Actions you&apos;ve committed to. Follow through and make a difference!</p>
       </div>
 
       {hasActions ? (
@@ -118,17 +115,13 @@ export default function MyActionsPage() {
               <h2 className="mb-3 text-lg font-semibold text-red-500">🔥 Today</h2>
               <div className="grid gap-4">
                 {groupedActions.today.map((action) => (
-                  <div key={action.id}>
-                    <p className="mb-2 text-xs text-muted-foreground">
-                      {action.campaign.cause.icon} {action.campaign.name}
-                    </p>
-                    <ActionCard
-                      action={action}
-                      onRSVP={(actionId) => participateMutation.mutate({ actionId, data: { willAttend: true } })}
-                      onComplete={(actionId) => participateMutation.mutate({ actionId, data: { attended: true } })}
-                      isLoading={participateMutation.isPending}
-                    />
-                  </div>
+                  <ActionCard
+                    key={action.id}
+                    action={action}
+                    onRSVP={(actionId) => participateMutation.mutate({ actionId, data: { willAttend: true } })}
+                    onComplete={(actionId) => participateMutation.mutate({ actionId, data: { attended: true } })}
+                    isLoading={participateMutation.isPending}
+                  />
                 ))}
               </div>
             </section>
@@ -140,17 +133,13 @@ export default function MyActionsPage() {
               <h2 className="mb-3 text-lg font-semibold text-yellow-500">⏰ Tomorrow</h2>
               <div className="grid gap-4">
                 {groupedActions.tomorrow.map((action) => (
-                  <div key={action.id}>
-                    <p className="mb-2 text-xs text-muted-foreground">
-                      {action.campaign.cause.icon} {action.campaign.name}
-                    </p>
-                    <ActionCard
-                      action={action}
-                      onRSVP={(actionId) => participateMutation.mutate({ actionId, data: { willAttend: true } })}
-                      onComplete={(actionId) => participateMutation.mutate({ actionId, data: { attended: true } })}
-                      isLoading={participateMutation.isPending}
-                    />
-                  </div>
+                  <ActionCard
+                    key={action.id}
+                    action={action}
+                    onRSVP={(actionId) => participateMutation.mutate({ actionId, data: { willAttend: true } })}
+                    onComplete={(actionId) => participateMutation.mutate({ actionId, data: { attended: true } })}
+                    isLoading={participateMutation.isPending}
+                  />
                 ))}
               </div>
             </section>
@@ -162,17 +151,13 @@ export default function MyActionsPage() {
               <h2 className="mb-3 text-lg font-semibold">📅 This Week</h2>
               <div className="grid gap-4">
                 {groupedActions.thisWeek.map((action) => (
-                  <div key={action.id}>
-                    <p className="mb-2 text-xs text-muted-foreground">
-                      {action.campaign.cause.icon} {action.campaign.name}
-                    </p>
-                    <ActionCard
-                      action={action}
-                      onRSVP={(actionId) => participateMutation.mutate({ actionId, data: { willAttend: true } })}
-                      onComplete={(actionId) => participateMutation.mutate({ actionId, data: { attended: true } })}
-                      isLoading={participateMutation.isPending}
-                    />
-                  </div>
+                  <ActionCard
+                    key={action.id}
+                    action={action}
+                    onRSVP={(actionId) => participateMutation.mutate({ actionId, data: { willAttend: true } })}
+                    onComplete={(actionId) => participateMutation.mutate({ actionId, data: { attended: true } })}
+                    isLoading={participateMutation.isPending}
+                  />
                 ))}
               </div>
             </section>
@@ -184,17 +169,13 @@ export default function MyActionsPage() {
               <h2 className="mb-3 text-lg font-semibold text-muted-foreground">🗓️ Later</h2>
               <div className="grid gap-4">
                 {groupedActions.later.map((action) => (
-                  <div key={action.id}>
-                    <p className="mb-2 text-xs text-muted-foreground">
-                      {action.campaign.cause.icon} {action.campaign.name}
-                    </p>
-                    <ActionCard
-                      action={action}
-                      onRSVP={(actionId) => participateMutation.mutate({ actionId, data: { willAttend: true } })}
-                      onComplete={(actionId) => participateMutation.mutate({ actionId, data: { attended: true } })}
-                      isLoading={participateMutation.isPending}
-                    />
-                  </div>
+                  <ActionCard
+                    key={action.id}
+                    action={action}
+                    onRSVP={(actionId) => participateMutation.mutate({ actionId, data: { willAttend: true } })}
+                    onComplete={(actionId) => participateMutation.mutate({ actionId, data: { attended: true } })}
+                    isLoading={participateMutation.isPending}
+                  />
                 ))}
               </div>
             </section>
@@ -203,8 +184,8 @@ export default function MyActionsPage() {
       ) : (
         <div className="rounded-xl bg-muted/30 py-12 text-center">
           <div className="mb-4 text-4xl">✊</div>
-          <p className="mb-2 text-lg font-medium">No upcoming actions</p>
-          <p className="mb-6 text-muted-foreground">Join campaigns to see actions you can take to make a difference.</p>
+          <p className="mb-2 text-lg font-medium">No committed actions</p>
+          <p className="mb-6 text-muted-foreground">RSVP or commit to an action to track it here.</p>
           <Link href="/campaigns">
             <Button>Browse Campaigns</Button>
           </Link>

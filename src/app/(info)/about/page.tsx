@@ -30,10 +30,10 @@ export default function AboutPage() {
           <strong>Events</strong> &mdash; Show up at hearings, rallies, town halls, and community meetings.
         </li>
         <li>
-          <strong>Phone Banking</strong> &mdash; Call your representatives with guided scripts and integrated dialers.
+          <strong>Call in Support</strong> &mdash; Call your representatives with guided scripts and integrated dialers.
         </li>
         <li>
-          <strong>Email Campaigns</strong> &mdash; Send advocacy emails to elected officials with one click.
+          <strong>Email in Support</strong> &mdash; Send advocacy emails to elected officials with one click.
         </li>
         <li>
           <strong>Canvassing</strong> &mdash; Go door-to-door to organize your neighbors.
@@ -78,6 +78,9 @@ export default function AboutPage() {
           Contributing Guide
         </a>{' '}
         to get started.
+      </p>
+      <p>
+        Need a quick walkthrough? Visit the <a href="/help">Help Center</a> for step-by-step guidance.
       </p>
     </article>
   );

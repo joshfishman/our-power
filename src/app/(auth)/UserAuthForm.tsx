@@ -3,7 +3,12 @@
 import Button from '@/components/ui/Button';
 import { TextInput } from '@/components/ui/TextInput';
 import { useToast } from '@/hooks/useToast';
-import { AtSign, Facebook, Github, Google, Instagram, LogInSquare } from '@/svg_components';
+import AtSign from '@/svg_components/AtSign';
+import Facebook from '@/svg_components/Facebook';
+import Github from '@/svg_components/Github';
+import Google from '@/svg_components/Google';
+import Instagram from '@/svg_components/Instagram';
+import LogInSquare from '@/svg_components/LogInSquare';
 import { signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useState } from 'react';

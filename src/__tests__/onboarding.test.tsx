@@ -65,6 +65,25 @@ describe('Location Schema Validation', () => {
     });
     expect(result.success).toBe(true);
   });
+
+  it('should validate a valid 2-letter state', () => {
+    const result = locationSchema.safeParse({
+      zipCode: '90210',
+      state: 'ca',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.state).toBe('CA');
+    }
+  });
+
+  it('should reject an invalid state code', () => {
+    const result = locationSchema.safeParse({
+      zipCode: '90210',
+      state: 'California',
+    });
+    expect(result.success).toBe(false);
+  });
 });
 
 describe('Causes Schema Validation', () => {

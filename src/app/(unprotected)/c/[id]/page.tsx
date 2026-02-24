@@ -59,8 +59,8 @@ const ACTION_TYPE_ICONS: Record<string, string> = {
 
 const ACTION_TYPE_LABELS: Record<string, string> = {
   EVENT: 'Event',
-  PHONE: 'Phone Bank',
-  EMAIL: 'Email Campaign',
+  PHONE: 'Call in Support',
+  EMAIL: 'Email in Support',
   CANVASS: 'Canvassing',
 };
 

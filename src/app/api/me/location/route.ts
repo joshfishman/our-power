@@ -4,8 +4,9 @@ import prisma from '@/lib/prisma/prisma';
 import { enforceRateLimit } from '@/lib/api-utils';
 import { logError } from '@/lib/logger';
 import { locationSchema } from '@/lib/validations/onboarding';
+import { ZodError } from 'zod';
 
-// POST /api/me/location - Update user's location (zip + street address)
+// POST /api/me/location - Update user's location (zip + state + street address)
 export async function POST(request: Request) {
   try {
     const rateLimitResponse = await enforceRateLimit(request, { limit: 20, windowSeconds: 60 });
@@ -22,16 +23,18 @@ export async function POST(request: Request) {
       where: { id: session.user.id },
       data: {
         zipCode: validated.zipCode,
+        city: validated.city || null,
+        state: validated.state ? validated.state.toUpperCase() : null,
         streetAddress: validated.streetAddress || null,
       },
-      select: { id: true, zipCode: true, streetAddress: true },
+      select: { id: true, zipCode: true, city: true, state: true, streetAddress: true },
     });
 
     return NextResponse.json({ success: true, user });
   } catch (error) {
     logError('Error updating user location', error);
-    if (error instanceof Error && error.name === 'ZodError') {
-      return NextResponse.json({ error: 'Invalid data', details: error }, { status: 400 });
+    if (error instanceof ZodError) {
+      return NextResponse.json({ error: 'Invalid data' }, { status: 400 });
     }
     return NextResponse.json({ error: 'Failed to update location' }, { status: 500 });
   }
