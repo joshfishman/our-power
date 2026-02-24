@@ -60,6 +60,17 @@ describe('GET /api/civic/representatives', () => {
     expect(data.error).toMatch(/address/i);
   });
 
+  it('returns 400 when address is missing zip or street comma', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockAuth.mockResolvedValueOnce({ user: { id: 'user-1' } } as any);
+
+    const request = new Request('http://localhost/api/civic/representatives?address=123+Main+St+Portland+OR');
+    const response = await GET(request);
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error).toMatch(/full address/i);
+  });
+
   it('returns 200 with officials array on success', async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mockAuth.mockResolvedValueOnce({ user: { id: 'user-1' } } as any);
@@ -79,7 +90,7 @@ describe('GET /api/civic/representatives', () => {
       normalizedAddress: '123 Main St, Portland, OR 97201',
     });
 
-    const request = new Request('http://localhost/api/civic/representatives?address=123+Main+St+Portland+OR');
+    const request = new Request('http://localhost/api/civic/representatives?address=123+Main+St,+Portland,+OR+97201');
     const response = await GET(request);
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -93,19 +104,19 @@ describe('GET /api/civic/representatives', () => {
     mockAuth.mockResolvedValueOnce({ user: { id: 'user-1' } } as any);
     mockResolveRepresentatives.mockRejectedValueOnce(new Error('Unexpected failure'));
 
-    const request = new Request('http://localhost/api/civic/representatives?address=123+Main+St');
+    const request = new Request('http://localhost/api/civic/representatives?address=123+Main+St,+Portland,+OR+97201');
     const response = await GET(request);
     expect(response.status).toBe(500);
   });
 
-  it('passes the address string correctly to resolveRepresentatives', async () => {
+  it('passes the normalized address string to resolveRepresentatives', async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mockAuth.mockResolvedValueOnce({ user: { id: 'user-1' } } as any);
     mockResolveRepresentatives.mockResolvedValueOnce({ officials: [], normalizedAddress: null });
 
-    const request = new Request('http://localhost/api/civic/representatives?address=456+Oak+Ave+Austin+TX');
+    const request = new Request('http://localhost/api/civic/representatives?address=456+Oak+Ave,+Austin,+TX+78701');
     await GET(request);
-    expect(mockResolveRepresentatives).toHaveBeenCalledWith('456 Oak Ave Austin TX');
+    expect(mockResolveRepresentatives).toHaveBeenCalledWith('456 Oak Ave, Austin, TX 78701');
   });
 
   it('returns empty officials array when no representatives found', async () => {
@@ -113,9 +124,11 @@ describe('GET /api/civic/representatives', () => {
     mockAuth.mockResolvedValueOnce({ user: { id: 'user-1' } } as any);
     mockResolveRepresentatives.mockResolvedValueOnce({ officials: [], normalizedAddress: 'Unknown Address' });
 
-    const request = new Request('http://localhost/api/civic/representatives?address=nowhere');
+    const request = new Request(
+      'http://localhost/api/civic/representatives?address=999+Nowhere+St,+Fakeville,+ZZ+00000',
+    );
     const response = await GET(request);
-    expect(response.status).btoBe(200);
+    expect(response.status).toBe(200);
     const data = await response.json();
     expect(data.officials).toEqual([]);
   });

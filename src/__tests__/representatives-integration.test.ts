@@ -169,11 +169,11 @@ describe('censusGeocoder.geocodeAddress', () => {
     await expect(geocodeAddress('123 Main St')).rejects.toThrow('Census Geocoder error: 500');
   });
 
-  it('uses 10-second timeout', async () => {
+  it('uses 15-second timeout', async () => {
     mockFetch.mockResolvedValueOnce(mockResponse(censusMockSuccess));
 
     await geocodeAddress('123 Main St, Portland, OR');
-    expect(mockFetch).toHaveBeenCalledWith(expect.any(String), {}, 10_000);
+    expect(mockFetch).toHaveBeenCalledWith(expect.any(String), {}, 15_000);
   });
 
   it('handles at-large congressional districts', async () => {
