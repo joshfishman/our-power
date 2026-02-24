@@ -79,7 +79,7 @@ describe('GET /api/civic/representatives', () => {
       normalizedAddress: '123 Main St, Portland, OR 97201',
     });
 
-    const request = new Request('http://localhost/api/civic/representatives?address=123+Main+St+Portland+OR');
+    const request = new Request('http://localhost/api/civic/representatives?address=123+Main+St,+Portland,+OR+97201');
     const response = await GET(request);
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -93,7 +93,7 @@ describe('GET /api/civic/representatives', () => {
     mockAuth.mockResolvedValueOnce({ user: { id: 'user-1' } } as any);
     mockResolveRepresentatives.mockRejectedValueOnce(new Error('Unexpected failure'));
 
-    const request = new Request('http://localhost/api/civic/representatives?address=123+Main+St');
+    const request = new Request('http://localhost/api/civic/representatives?address=123+Main+St,+Portland,+OR+97201');
     const response = await GET(request);
     expect(response.status).toBe(500);
   });
@@ -103,9 +103,9 @@ describe('GET /api/civic/representatives', () => {
     mockAuth.mockResolvedValueOnce({ user: { id: 'user-1' } } as any);
     mockResolveRepresentatives.mockResolvedValueOnce({ officials: [], normalizedAddress: null });
 
-    const request = new Request('http://localhost/api/civic/representatives?address=456+Oak+Ave+Austin+TX');
+    const request = new Request('http://localhost/api/civic/representatives?address=456+Oak+Ave,+Austin,+TX+78701');
     await GET(request);
-    expect(mockResolveRepresentatives).toHaveBeenCalledWith('456 Oak Ave Austin TX');
+    expect(mockResolveRepresentatives).toHaveBeenCalledWith('456 Oak Ave, Austin, TX 78701');
   });
 
   it('returns empty officials array when no representatives found', async () => {
@@ -113,9 +113,11 @@ describe('GET /api/civic/representatives', () => {
     mockAuth.mockResolvedValueOnce({ user: { id: 'user-1' } } as any);
     mockResolveRepresentatives.mockResolvedValueOnce({ officials: [], normalizedAddress: 'Unknown Address' });
 
-    const request = new Request('http://localhost/api/civic/representatives?address=nowhere');
+    const request = new Request(
+      'http://localhost/api/civic/representatives?address=999+Nowhere+St,+Fakeville,+ZZ+00000',
+    );
     const response = await GET(request);
-    expect(response.status).btoBe(200);
+    expect(response.status).toBe(200);
     const data = await response.json();
     expect(data.officials).toEqual([]);
   });
