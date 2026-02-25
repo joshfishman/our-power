@@ -74,9 +74,11 @@ const typeConfig = {
 const GOOGLE_MAPS_SCRIPT_ID = 'google-maps-places-script';
 const ZIP_CODE_REGEX = /\b\d{5}(?:-\d{4})?\b/;
 const REP_CACHE_KEY = 'civic-rep-cache';
+const REP_CACHE_VERSION = 2;
 const REP_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
 interface RepCache {
+  version: number;
   address: string;
   officials: RepresentativeInfo[];
   timestamp: number;
@@ -87,6 +89,7 @@ function getCachedReps(address: string): RepresentativeInfo[] | null {
     const raw = sessionStorage.getItem(REP_CACHE_KEY);
     if (!raw) return null;
     const cache: RepCache = JSON.parse(raw);
+    if (cache.version !== REP_CACHE_VERSION) return null;
     if (cache.address !== address) return null;
     if (Date.now() - cache.timestamp > REP_CACHE_TTL) return null;
     return cache.officials;
@@ -97,7 +100,7 @@ function getCachedReps(address: string): RepresentativeInfo[] | null {
 
 function setCachedReps(address: string, officials: RepresentativeInfo[]) {
   try {
-    const cache: RepCache = { address, officials, timestamp: Date.now() };
+    const cache: RepCache = { version: REP_CACHE_VERSION, address, officials, timestamp: Date.now() };
     sessionStorage.setItem(REP_CACHE_KEY, JSON.stringify(cache));
   } catch {
     /* quota exceeded — non-critical */
@@ -489,10 +492,10 @@ export default function ActionDetailPage() {
   }, [cityName, stateCode, streetAddress, zipCode]);
 
   const fetchRepresentatives = useCallback(
-    async (persistLocationFirst = false) => {
+    async (persistLocationFirst = false, skipCache = false) => {
       setRepError(null);
       setRepLoading(true);
-      console.info('[rep-lookup] Starting representative lookup', { persistLocationFirst });
+      console.info('[rep-lookup] Starting representative lookup', { persistLocationFirst, skipCache });
       try {
         if (persistLocationFirst) {
           await persistUserLocation();
@@ -542,7 +545,7 @@ export default function ActionDetailPage() {
           throw new Error('Add a full address (street, city, state, zip) before lookup.');
         }
 
-        if (!persistLocationFirst) {
+        if (!persistLocationFirst && !skipCache) {
           const cached = getCachedReps(address);
           if (cached) {
             console.info('[rep-lookup] Using cached representatives', { count: cached.length, address });
@@ -1183,7 +1186,11 @@ export default function ActionDetailPage() {
                   </div>
                 )}
                 {!isEditingAddress && (
-                  <Button size="small" mode="ghost" onPress={() => fetchRepresentatives(false)} loading={repLoading}>
+                  <Button
+                    size="small"
+                    mode="ghost"
+                    onPress={() => fetchRepresentatives(false, true)}
+                    loading={repLoading}>
                     {repInfo ? 'Refresh Representatives' : 'Find Representatives'}
                   </Button>
                 )}
