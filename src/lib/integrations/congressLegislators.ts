@@ -38,7 +38,7 @@ function toOfficial(legislator: Legislator, lastTerm: Term): Official {
     urls,
     emails: [], // Congress members use contact forms, not direct email
     photoUrl: legislator.id?.bioguide
-      ? `https://theunitedstates.io/images/congress/225x275/${legislator.id.bioguide}.jpg`
+      ? `https://raw.githubusercontent.com/unitedstates/images/gh-pages/congress/225x275/${legislator.id.bioguide}.jpg`
       : null,
   };
 }
