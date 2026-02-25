@@ -1089,102 +1089,144 @@ export default function ActionDetailPage() {
                     No representatives found for this address. Try editing your address to make sure it&apos;s complete.
                   </p>
                 )}
-                {filteredRepInfo && filteredRepInfo.length > 0 && (
-                  <div className="space-y-3">
-                    {filteredRepInfo.map((rep) => {
-                      const contactUrl = rep.urls.find((u) => /contact/i.test(u));
-                      const websiteUrl = rep.urls.find((u) => !/contact/i.test(u)) || rep.urls[0];
-                      return (
-                        <div
-                          key={`${rep.office}-${rep.name}`}
-                          className="flex gap-4 rounded-md border border-border bg-muted/20 p-4">
-                          <div className="relative h-16 w-16 flex-shrink-0">
-                            {rep.photoUrl ? (
-                              <img
-                                src={rep.photoUrl}
-                                alt={rep.name}
-                                className="absolute inset-0 h-16 w-16 rounded-full border border-border object-cover opacity-0 transition-opacity duration-300"
-                                onLoad={(e) => {
-                                  e.currentTarget.classList.replace('opacity-0', 'opacity-100');
-                                  (e.currentTarget.nextElementSibling as HTMLElement | null)?.remove();
-                                }}
-                                onError={(e) => {
-                                  e.currentTarget.remove();
-                                  const fallback = e.currentTarget.parentElement?.querySelector('[data-fallback]');
-                                  if (fallback) (fallback as HTMLElement).classList.replace('opacity-0', 'opacity-100');
-                                }}
-                              />
-                            ) : null}
-                            <div
-                              data-fallback=""
-                              className={`flex h-16 w-16 items-center justify-center rounded-full bg-muted text-2xl font-bold text-muted-foreground transition-opacity duration-300 ${
-                                rep.photoUrl ? 'opacity-0' : 'opacity-100'
-                              }`}>
-                              {rep.name.charAt(0)}
+                {filteredRepInfo &&
+                  filteredRepInfo.length > 0 &&
+                  (() => {
+                    const getRepLevel = (office: string) => {
+                      const n = office.toLowerCase();
+                      if (
+                        n.startsWith('ca state') ||
+                        n.startsWith('ca assembly') ||
+                        n.includes('state senator') ||
+                        n.includes('state representative') ||
+                        n.includes('assembly member')
+                      )
+                        return 'STATE';
+                      if (
+                        n.includes('u.s.') ||
+                        n.includes('united states') ||
+                        n.includes('senate') ||
+                        n.includes('congress') ||
+                        n.includes('representative')
+                      )
+                        return 'FEDERAL';
+                      return 'LOCAL';
+                    };
+                    const groups: { label: string; level: string; reps: RepresentativeInfo[] }[] = [];
+                    const levelOrder = ['FEDERAL', 'STATE', 'LOCAL'] as const;
+                    const levelLabels: Record<string, string> = { FEDERAL: 'Federal', STATE: 'State', LOCAL: 'Local' };
+                    for (const level of levelOrder) {
+                      const reps = filteredRepInfo.filter((r) => getRepLevel(r.office) === level);
+                      if (reps.length) groups.push({ label: levelLabels[level], level, reps });
+                    }
+                    return (
+                      <div className="space-y-5">
+                        {groups.map((group) => (
+                          <div key={group.level}>
+                            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                              {group.label}
+                            </h3>
+                            <div className="space-y-3">
+                              {group.reps.map((rep) => {
+                                const contactUrl = rep.urls.find((u) => /contact/i.test(u));
+                                const websiteUrl = rep.urls.find((u) => !/contact/i.test(u)) || rep.urls[0];
+                                return (
+                                  <div
+                                    key={`${rep.office}-${rep.name}`}
+                                    className="flex gap-4 rounded-md border border-border bg-muted/20 p-4">
+                                    <div className="relative h-16 w-16 flex-shrink-0">
+                                      {rep.photoUrl ? (
+                                        <img
+                                          src={rep.photoUrl}
+                                          alt={rep.name}
+                                          className="absolute inset-0 h-16 w-16 rounded-full border border-border object-cover opacity-0 transition-opacity duration-300"
+                                          onLoad={(e) => {
+                                            e.currentTarget.classList.replace('opacity-0', 'opacity-100');
+                                            (e.currentTarget.nextElementSibling as HTMLElement | null)?.remove();
+                                          }}
+                                          onError={(e) => {
+                                            e.currentTarget.remove();
+                                            const fallback =
+                                              e.currentTarget.parentElement?.querySelector('[data-fallback]');
+                                            if (fallback)
+                                              (fallback as HTMLElement).classList.replace('opacity-0', 'opacity-100');
+                                          }}
+                                        />
+                                      ) : null}
+                                      <div
+                                        data-fallback=""
+                                        className={`flex h-16 w-16 items-center justify-center rounded-full bg-muted text-2xl font-bold text-muted-foreground transition-opacity duration-300 ${
+                                          rep.photoUrl ? 'opacity-0' : 'opacity-100'
+                                        }`}>
+                                        {rep.name.charAt(0)}
+                                      </div>
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-base font-semibold">{rep.name}</p>
+                                      <p className="text-sm text-muted-foreground">{rep.office}</p>
+                                      {rep.party && <p className="text-xs text-muted-foreground">{rep.party}</p>}
+                                      {rep.phones[0] && (
+                                        <a
+                                          href={`tel:${rep.phones[0]}`}
+                                          className="mt-1 inline-block text-sm font-medium text-sky-500 hover:underline">
+                                          {rep.phones[0]}
+                                        </a>
+                                      )}
+                                      <div className="mt-2 flex flex-wrap gap-2">
+                                        {action.type === 'PHONE' && rep.phones[0] && (
+                                          <Button
+                                            size="small"
+                                            mode="secondary"
+                                            onPress={() => window.open(`tel:${rep.phones[0]}`, '_self')}>
+                                            Call
+                                          </Button>
+                                        )}
+                                        {action.type === 'EMAIL' && rep.emails?.[0] && (
+                                          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                                            <input
+                                              type="checkbox"
+                                              checked={selectedRepEmails.includes(rep.emails[0])}
+                                              onChange={(event) => {
+                                                const { checked } = event.target;
+                                                setSelectedRepEmails((prev) =>
+                                                  checked
+                                                    ? Array.from(new Set([...prev, rep.emails![0]]))
+                                                    : prev.filter((e) => e !== rep.emails![0]),
+                                                );
+                                              }}
+                                            />
+                                            {rep.emails[0]}
+                                          </label>
+                                        )}
+                                        {(contactUrl || websiteUrl) && (
+                                          <a
+                                            href={contactUrl || websiteUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-sm font-medium text-sky-500 hover:underline">
+                                            Email
+                                          </a>
+                                        )}
+                                        {contactUrl && websiteUrl && websiteUrl !== contactUrl && (
+                                          <a
+                                            href={websiteUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-sm text-muted-foreground hover:underline">
+                                            Website
+                                          </a>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-base font-semibold">{rep.name}</p>
-                            <p className="text-sm text-muted-foreground">{rep.office}</p>
-                            {rep.party && <p className="text-xs text-muted-foreground">{rep.party}</p>}
-                            {rep.phones[0] && (
-                              <a
-                                href={`tel:${rep.phones[0]}`}
-                                className="mt-1 inline-block text-sm font-medium text-sky-500 hover:underline">
-                                {rep.phones[0]}
-                              </a>
-                            )}
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              {action.type === 'PHONE' && rep.phones[0] && (
-                                <Button
-                                  size="small"
-                                  mode="secondary"
-                                  onPress={() => window.open(`tel:${rep.phones[0]}`, '_self')}>
-                                  Call
-                                </Button>
-                              )}
-                              {action.type === 'EMAIL' && rep.emails?.[0] && (
-                                <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedRepEmails.includes(rep.emails[0])}
-                                    onChange={(event) => {
-                                      const { checked } = event.target;
-                                      setSelectedRepEmails((prev) =>
-                                        checked
-                                          ? Array.from(new Set([...prev, rep.emails![0]]))
-                                          : prev.filter((e) => e !== rep.emails![0]),
-                                      );
-                                    }}
-                                  />
-                                  {rep.emails[0]}
-                                </label>
-                              )}
-                              {(contactUrl || websiteUrl) && (
-                                <a
-                                  href={contactUrl || websiteUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-sm font-medium text-sky-500 hover:underline">
-                                  Email
-                                </a>
-                              )}
-                              {contactUrl && websiteUrl && websiteUrl !== contactUrl && (
-                                <a
-                                  href={websiteUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-sm text-muted-foreground hover:underline">
-                                  Website
-                                </a>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                        ))}
+                      </div>
+                    );
+                  })()}
                 {!isEditingAddress && (
                   <Button
                     size="small"
