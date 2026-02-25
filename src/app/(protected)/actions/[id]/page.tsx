@@ -462,6 +462,7 @@ export default function ActionDetailPage() {
     async (persistLocationFirst = false) => {
       setRepError(null);
       setRepLoading(true);
+      console.info('[rep-lookup] Starting representative lookup', { persistLocationFirst });
       try {
         if (persistLocationFirst) {
           await persistUserLocation();
@@ -498,22 +499,40 @@ export default function ActionDetailPage() {
             )
           : '';
 
+        console.info('[rep-lookup] Resolved address', {
+          address,
+          googleSource,
+          resolvedStreet,
+          resolvedCity,
+          resolvedState,
+          resolvedZip,
+        });
+
         if (!address || !/\d+\s+\S+/.test(address)) {
           throw new Error('Add a full address (street, city, state, zip) before lookup.');
         }
 
         const res = await fetch(`/api/civic/representatives?address=${encodeURIComponent(address)}`);
+        console.info('[rep-lookup] API response', { status: res.status, ok: res.ok });
         if (!res.ok) {
           const errorData = await res.json().catch(() => ({}));
+          console.error('[rep-lookup] API error', errorData);
           const detailMessage =
             (errorData?.details?.error?.message as string | undefined) ||
             (typeof errorData?.details === 'string' ? errorData.details : undefined);
           throw new Error(detailMessage || errorData.error || 'Failed to fetch representatives');
         }
         const data = await res.json();
-        setRepInfo(data.officials || []);
+        const officials = data.officials || [];
+        console.info('[rep-lookup] Found representatives', {
+          count: officials.length,
+          normalizedAddress: data.normalizedAddress,
+        });
+        setRepInfo(officials);
       } catch (err) {
-        setRepError(err instanceof Error ? err.message : 'Failed to fetch representatives');
+        const message = err instanceof Error ? err.message : 'Failed to fetch representatives';
+        console.error('[rep-lookup] Error', message);
+        setRepError(message);
       } finally {
         setRepLoading(false);
       }
@@ -1010,10 +1029,15 @@ export default function ActionDetailPage() {
                 )}
                 {!isEditingAddress && (
                   <Button size="small" onPress={() => fetchRepresentatives(false)} loading={repLoading}>
-                    Refresh Representatives
+                    {repInfo ? 'Refresh Representatives' : 'Find Representatives'}
                   </Button>
                 )}
                 {repError && <p className="text-sm text-red-500">{repError}</p>}
+                {filteredRepInfo && filteredRepInfo.length === 0 && !repLoading && !repError && (
+                  <p className="text-sm text-muted-foreground">
+                    No representatives found for this address. Try editing your address to make sure it&apos;s complete.
+                  </p>
+                )}
                 {filteredRepInfo && filteredRepInfo.length > 0 && (
                   <div className="space-y-3">
                     {filteredRepInfo.map((rep) => (
