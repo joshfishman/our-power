@@ -73,6 +73,36 @@ const typeConfig = {
 
 const GOOGLE_MAPS_SCRIPT_ID = 'google-maps-places-script';
 const ZIP_CODE_REGEX = /\b\d{5}(?:-\d{4})?\b/;
+const REP_CACHE_KEY = 'civic-rep-cache';
+const REP_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
+interface RepCache {
+  address: string;
+  officials: RepresentativeInfo[];
+  timestamp: number;
+}
+
+function getCachedReps(address: string): RepresentativeInfo[] | null {
+  try {
+    const raw = sessionStorage.getItem(REP_CACHE_KEY);
+    if (!raw) return null;
+    const cache: RepCache = JSON.parse(raw);
+    if (cache.address !== address) return null;
+    if (Date.now() - cache.timestamp > REP_CACHE_TTL) return null;
+    return cache.officials;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedReps(address: string, officials: RepresentativeInfo[]) {
+  try {
+    const cache: RepCache = { address, officials, timestamp: Date.now() };
+    sessionStorage.setItem(REP_CACHE_KEY, JSON.stringify(cache));
+  } catch {
+    /* quota exceeded — non-critical */
+  }
+}
 
 const normalizeAddress = (value: string) =>
   value
@@ -512,6 +542,15 @@ export default function ActionDetailPage() {
           throw new Error('Add a full address (street, city, state, zip) before lookup.');
         }
 
+        if (!persistLocationFirst) {
+          const cached = getCachedReps(address);
+          if (cached) {
+            console.info('[rep-lookup] Using cached representatives', { count: cached.length, address });
+            setRepInfo(cached);
+            return;
+          }
+        }
+
         const res = await fetch(`/api/civic/representatives?address=${encodeURIComponent(address)}`);
         console.info('[rep-lookup] API response', { status: res.status, ok: res.ok });
         if (!res.ok) {
@@ -528,6 +567,7 @@ export default function ActionDetailPage() {
           count: officials.length,
           normalizedAddress: data.normalizedAddress,
         });
+        setCachedReps(address, officials);
         setRepInfo(officials);
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to fetch representatives';
@@ -1040,11 +1080,6 @@ export default function ActionDetailPage() {
                     </div>
                   </>
                 )}
-                {!isEditingAddress && (
-                  <Button size="small" onPress={() => fetchRepresentatives(false)} loading={repLoading}>
-                    {repInfo ? 'Refresh Representatives' : 'Find Representatives'}
-                  </Button>
-                )}
                 {repError && <p className="text-sm text-red-500">{repError}</p>}
                 {filteredRepInfo && filteredRepInfo.length === 0 && !repLoading && !repError && (
                   <p className="text-sm text-muted-foreground">
@@ -1124,6 +1159,11 @@ export default function ActionDetailPage() {
                       </div>
                     ))}
                   </div>
+                )}
+                {!isEditingAddress && (
+                  <Button size="small" mode="ghost" onPress={() => fetchRepresentatives(false)} loading={repLoading}>
+                    {repInfo ? 'Refresh Representatives' : 'Find Representatives'}
+                  </Button>
                 )}
               </div>
             )}
