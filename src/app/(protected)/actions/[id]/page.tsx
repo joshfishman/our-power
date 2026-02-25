@@ -216,7 +216,7 @@ export default function ActionDetailPage() {
       placeAutocompleteElement.setAttribute('placeholder', initialAddress || 'Search for your street address');
       if (initialAddress) {
         placeAutocompleteElement.setAttribute('value', initialAddress);
-        placeAutocompleteElement.value = initialAddress;
+        (placeAutocompleteElement as unknown as HTMLInputElement).value = initialAddress;
       }
       placeAutocompleteElement.className = 'block w-full';
       placeAutocompleteElement.setAttribute('style', 'width: 100%;');
