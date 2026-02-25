@@ -1063,12 +1063,19 @@ export default function ActionDetailPage() {
                               src={rep.photoUrl}
                               alt={rep.name}
                               className="h-16 w-16 rounded-full border border-border object-cover"
+                              onError={(e) => {
+                                const target = e.currentTarget;
+                                target.style.display = 'none';
+                                target.nextElementSibling?.classList.remove('hidden');
+                              }}
                             />
-                          ) : (
-                            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted text-2xl font-bold text-muted-foreground">
-                              {rep.name.charAt(0)}
-                            </div>
-                          )}
+                          ) : null}
+                          <div
+                            className={`flex h-16 w-16 items-center justify-center rounded-full bg-muted text-2xl font-bold text-muted-foreground${
+                              rep.photoUrl ? 'hidden' : ''
+                            }`}>
+                            {rep.name.charAt(0)}
+                          </div>
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-base font-semibold">{rep.name}</p>
