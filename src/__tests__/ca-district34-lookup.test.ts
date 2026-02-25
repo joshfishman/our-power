@@ -1,7 +1,7 @@
 /**
  * Verifies the representative lookup pipeline works for a real CA address.
- * Uses the actual bundled congress-legislators JSON (not mocked) to confirm
- * federal reps are returned for California's 34th congressional district.
+ * Uses the actual bundled congress + CA state legislators JSON (not mocked)
+ * to confirm federal and state reps are returned for CA-34 / SD-26 / AD-54.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
@@ -30,7 +30,9 @@ const censusMockLA = {
         coordinates: { x: -118.2275, y: 34.0839 },
         geographies: {
           States: [{ STUSAB: 'CA' }],
-          'Congressional Districts': [{ BASENAME: '34' }],
+          '119th Congressional Districts': [{ BASENAME: '34' }],
+          '2024 State Legislative Districts - Upper': [{ BASENAME: '26' }],
+          '2024 State Legislative Districts - Lower': [{ BASENAME: '54' }],
         },
       },
     ],
@@ -43,42 +45,61 @@ describe('CA District 34 representative lookup (131 N Ave 25, LA)', () => {
     delete process.env.OPENSTATES_API_KEY;
   });
 
-  it('returns at least 3 federal reps for a CA-34 address', async () => {
+  it('returns federal + CA state reps for a CA-34/SD-26/AD-54 address', async () => {
     mockFetch.mockResolvedValueOnce(mockResponse(censusMockLA));
 
     const { officials, normalizedAddress } = await resolveRepresentatives('131 North Avenue 25, Los Angeles, CA 90031');
 
     expect(normalizedAddress).toBe('131 N AVE 25, LOS ANGELES, CA, 90031');
-    expect(officials.length).toBeGreaterThanOrEqual(3);
+    expect(officials.length).toBeGreaterThanOrEqual(5);
   });
 
-  it('includes both CA senators', async () => {
+  it('includes both CA U.S. senators', async () => {
     mockFetch.mockResolvedValueOnce(mockResponse(censusMockLA));
 
     const { officials } = await resolveRepresentatives('131 North Avenue 25, Los Angeles, CA 90031');
 
-    const senators = officials.filter((o) => o.office.includes('Senator'));
-    expect(senators.length).toBe(2);
+    const usSenators = officials.filter((o) => o.office.includes('U.S. Senator'));
+    expect(usSenators.length).toBe(2);
 
-    const names = senators.map((s) => s.name);
+    const names = usSenators.map((s) => s.name);
     expect(names).toContain('Adam B. Schiff');
     expect(names).toContain('Alex Padilla');
   });
 
-  it('includes the district 34 House representative', async () => {
+  it('includes the district 34 U.S. House representative', async () => {
     mockFetch.mockResolvedValueOnce(mockResponse(censusMockLA));
 
     const { officials } = await resolveRepresentatives('131 North Avenue 25, Los Angeles, CA 90031');
 
-    const houseReps = officials.filter((o) => o.office.includes('Representative'));
-    expect(houseReps.length).toBeGreaterThanOrEqual(1);
-
-    const districtRep = houseReps.find((r) => r.office.includes('District 34'));
+    const districtRep = officials.find((o) => o.office.includes('U.S. Representative') && o.office.includes('34'));
     expect(districtRep).toBeDefined();
     expect(districtRep!.name).toBe('Jimmy Gomez');
   });
 
-  it('all officials have proper shape with office, name, party', async () => {
+  it('includes CA state senator for district 26', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse(censusMockLA));
+
+    const { officials } = await resolveRepresentatives('131 North Avenue 25, Los Angeles, CA 90031');
+
+    const stateSenator = officials.find((o) => o.office.includes('CA State Senator') && o.office.includes('26'));
+    expect(stateSenator).toBeDefined();
+    expect(stateSenator!.name).toContain('Durazo');
+    expect(stateSenator!.emails.length).toBeGreaterThan(0);
+  });
+
+  it('includes CA assembly member for district 54', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse(censusMockLA));
+
+    const { officials } = await resolveRepresentatives('131 North Avenue 25, Los Angeles, CA 90031');
+
+    const assemblyMember = officials.find((o) => o.office.includes('CA Assembly Member') && o.office.includes('54'));
+    expect(assemblyMember).toBeDefined();
+    expect(assemblyMember!.name).toContain('Gonz');
+    expect(assemblyMember!.emails.length).toBeGreaterThan(0);
+  });
+
+  it('all officials have proper shape', async () => {
     mockFetch.mockResolvedValueOnce(mockResponse(censusMockLA));
 
     const { officials } = await resolveRepresentatives('131 North Avenue 25, Los Angeles, CA 90031');
@@ -93,30 +114,19 @@ describe('CA District 34 representative lookup (131 N Ave 25, LA)', () => {
     }
   });
 
-  it('includes state legislators when OpenStates is configured', async () => {
+  it('deduplicates when OpenStates returns same legislators', async () => {
     process.env.OPENSTATES_API_KEY = 'test-key';
-    // Census geocoder
     mockFetch.mockResolvedValueOnce(mockResponse(censusMockLA));
-    // OpenStates
     mockFetch.mockResolvedValueOnce(
       mockResponse({
         results: [
           {
-            name: 'CA State Senator',
+            name: 'María Elena Durazo',
             party: 'Democrat',
-            current_role: { title: 'Senator', org_classification: 'legislature', district: '24' },
-            contact_details: [{ type: 'voice', value: '213-555-0001' }],
-            links: [],
-            email: 'senator@ca.gov',
-            photo_url: null,
-          },
-          {
-            name: 'CA Assembly Member',
-            party: 'Democrat',
-            current_role: { title: 'Assembly Member', org_classification: 'legislature', district: '51' },
+            current_role: { title: 'Senator', org_classification: 'legislature', district: '26' },
             contact_details: [],
             links: [],
-            email: 'assembly@ca.gov',
+            email: 'senator.durazo@senate.ca.gov',
             photo_url: null,
           },
         ],
@@ -125,10 +135,7 @@ describe('CA District 34 representative lookup (131 N Ave 25, LA)', () => {
 
     const { officials } = await resolveRepresentatives('131 North Avenue 25, Los Angeles, CA 90031');
 
-    expect(officials.length).toBeGreaterThanOrEqual(5);
-
-    const stateNames = officials.map((o) => o.name);
-    expect(stateNames).toContain('CA State Senator');
-    expect(stateNames).toContain('CA Assembly Member');
+    const durazoCount = officials.filter((o) => o.name.includes('Durazo')).length;
+    expect(durazoCount).toBe(1);
   });
 });

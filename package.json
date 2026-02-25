@@ -31,6 +31,7 @@
     "prisma:seed": "npx prisma db seed",
     "prisma:mock": "npx prisma migrate reset && npx tsx ./scripts/createMockUsers.ts",
     "congress:update": "npx tsx scripts/update-congress-data.ts",
+    "ca-legislators:update": "npx tsx scripts/update-ca-legislators.ts",
     "prisma:studio": "npx prisma studio",
     "prepm2": "npm run build",
     "pm2": "pm2 start next --name 'our-power' -- start -p 3000"

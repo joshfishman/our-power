@@ -9,6 +9,10 @@ export interface GeoResult {
   stateAbbr: string;
   /** Congressional district number, or 0 for at-large districts */
   congressionalDistrict: number;
+  /** State senate (upper chamber) district number, or null if unavailable */
+  stateSenateDistrict: number | null;
+  /** State house/assembly (lower chamber) district number, or null if unavailable */
+  stateHouseDistrict: number | null;
   normalizedAddress: string;
 }
 
@@ -61,15 +65,29 @@ export async function geocodeAddress(address: string): Promise<GeoResult> {
     throw new Error('Could not determine state from address');
   }
 
-  const cdKey = Object.keys(match.geographies ?? {}).find((k) => k.toLowerCase().includes('congressional district'));
+  const geoKeys = Object.keys(match.geographies ?? {});
+
+  const cdKey = geoKeys.find((k) => k.toLowerCase().includes('congressional district'));
   const districtBasename = (cdKey ? match.geographies[cdKey]?.[0]?.BASENAME : undefined) ?? '0';
   const congressionalDistrict = districtBasename === 'At Large' ? 0 : parseInt(districtBasename, 10) || 0;
+
+  const upperKey = geoKeys.find((k) => /legislative.*upper/i.test(k));
+  const lowerKey = geoKeys.find((k) => /legislative.*lower/i.test(k));
+  const parseDistrict = (key: string | undefined) => {
+    if (!key) return null;
+    const val = match.geographies[key]?.[0]?.BASENAME;
+    if (!val) return null;
+    const num = parseInt(val, 10);
+    return Number.isNaN(num) ? null : num;
+  };
 
   return {
     lat: match.coordinates.y,
     lng: match.coordinates.x,
     stateAbbr,
     congressionalDistrict,
+    stateSenateDistrict: parseDistrict(upperKey),
+    stateHouseDistrict: parseDistrict(lowerKey),
     normalizedAddress: match.matchedAddress,
   };
 }

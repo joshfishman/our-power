@@ -134,6 +134,8 @@ const censusMockSuccess = {
         geographies: {
           States: [{ STUSAB: 'OR' }],
           'Congressional Districts': [{ BASENAME: '1' }],
+          '2024 State Legislative Districts - Upper': [{ BASENAME: '17' }],
+          '2024 State Legislative Districts - Lower': [{ BASENAME: '33' }],
         },
       },
     ],
@@ -154,9 +156,34 @@ describe('censusGeocoder.geocodeAddress', () => {
     const result = await geocodeAddress('123 Main St, Portland, OR');
     expect(result.stateAbbr).toBe('OR');
     expect(result.congressionalDistrict).toBe(1);
+    expect(result.stateSenateDistrict).toBe(17);
+    expect(result.stateHouseDistrict).toBe(33);
     expect(result.lat).toBe(45.5231);
     expect(result.lng).toBe(-122.6765);
     expect(result.normalizedAddress).toBe('123 MAIN ST, PORTLAND, OR 97201');
+  });
+
+  it('returns null for state districts when not present in response', async () => {
+    mockFetch.mockResolvedValueOnce(
+      mockResponse({
+        result: {
+          addressMatches: [
+            {
+              matchedAddress: '123 MAIN ST, PORTLAND, OR 97201',
+              coordinates: { x: -122.6765, y: 45.5231 },
+              geographies: {
+                States: [{ STUSAB: 'OR' }],
+                'Congressional Districts': [{ BASENAME: '1' }],
+              },
+            },
+          ],
+        },
+      }),
+    );
+
+    const result = await geocodeAddress('123 Main St, Portland, OR');
+    expect(result.stateSenateDistrict).toBeNull();
+    expect(result.stateHouseDistrict).toBeNull();
   });
 
   it('throws "Address not found" when no matches returned', async () => {

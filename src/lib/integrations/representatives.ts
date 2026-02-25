@@ -1,5 +1,6 @@
 import { logError, logInfo } from '@/lib/logger';
 import { geocodeAddress } from './censusGeocoder';
+import { getCaStateLegislators } from './caStateLegislators';
 import { getFederalLegislators } from './congressLegislators';
 import { getStateLegislators } from './openStates';
 
@@ -15,7 +16,8 @@ export interface Official {
 
 /**
  * Resolves all federal + state elected officials for a given US address.
- * Combines the Census Geocoder, congress-legislators static JSON, and OpenStates API.
+ * Combines the Census Geocoder, congress-legislators static JSON,
+ * bundled CA state legislators, and OpenStates API.
  * Returns an empty array (not throws) if the address cannot be geocoded.
  */
 export async function resolveRepresentatives(
@@ -29,20 +31,28 @@ export async function resolveRepresentatives(
     return { officials: [], normalizedAddress: null, error: error instanceof Error ? error.message : String(error) };
   }
 
-  const [federal, state] = await Promise.all([
-    Promise.resolve(getFederalLegislators(geo.stateAbbr, geo.congressionalDistrict)),
-    getStateLegislators(geo.lat, geo.lng),
-  ]);
+  const federal = getFederalLegislators(geo.stateAbbr, geo.congressionalDistrict);
 
-  const officials = [...federal, ...state];
+  const bundledState =
+    geo.stateAbbr === 'CA' ? getCaStateLegislators(geo.stateSenateDistrict, geo.stateHouseDistrict) : [];
+
+  const openStatesState = await getStateLegislators(geo.lat, geo.lng);
+
+  const bundledNames = new Set(bundledState.map((o) => o.name));
+  const deduped = openStatesState.filter((o) => !bundledNames.has(o.name));
+
+  const officials = [...federal, ...bundledState, ...deduped];
 
   logInfo('Representatives resolved', {
     address,
     normalizedAddress: geo.normalizedAddress,
     stateAbbr: geo.stateAbbr,
     district: geo.congressionalDistrict,
+    stateSenateDistrict: geo.stateSenateDistrict,
+    stateHouseDistrict: geo.stateHouseDistrict,
     federalCount: federal.length,
-    stateCount: state.length,
+    bundledStateCount: bundledState.length,
+    openStatesCount: deduped.length,
   });
 
   return { officials, normalizedAddress: geo.normalizedAddress };
