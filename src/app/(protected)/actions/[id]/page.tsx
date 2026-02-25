@@ -573,6 +573,18 @@ export default function ActionDetailPage() {
     const getLevel = (officeName: string) => {
       const normalized = officeName.toLowerCase();
       if (
+        normalized.startsWith('state ') ||
+        normalized.includes('state senator') ||
+        normalized.includes('state representative') ||
+        normalized.includes('governor') ||
+        normalized.includes('attorney general') ||
+        normalized.includes('secretary of state') ||
+        normalized.includes('treasurer') ||
+        normalized.includes('comptroller')
+      ) {
+        return 'STATE';
+      }
+      if (
         normalized.includes('united states') ||
         normalized.includes('u.s.') ||
         normalized.includes('us senate') ||
@@ -584,26 +596,27 @@ export default function ActionDetailPage() {
       ) {
         return 'FEDERAL';
       }
-      if (
-        normalized.includes('state') ||
-        normalized.includes('governor') ||
-        normalized.includes('attorney general') ||
-        normalized.includes('secretary of state') ||
-        normalized.includes('treasurer') ||
-        normalized.includes('comptroller')
-      ) {
-        return 'STATE';
-      }
       return 'LOCAL';
     };
 
-    return repInfo.filter((rep) => {
+    const filtered = repInfo.filter((rep) => {
       if (targetLevel && getLevel(rep.office) !== targetLevel) return false;
       if (!targetOffices.length) return true;
       const officeName = rep.office.toLowerCase();
       const repName = rep.name.toLowerCase();
       return targetOffices.some((filter) => officeName.includes(filter) || repName.includes(filter));
     });
+
+    if (filtered.length === 0 && repInfo.length > 0) {
+      console.info('[rep-lookup] Target filter removed all reps — showing all instead', {
+        targetLevel,
+        targetOffices,
+        reps: repInfo.map((r) => ({ name: r.name, office: r.office, level: getLevel(r.office) })),
+      });
+      return repInfo;
+    }
+
+    return filtered;
   })();
 
   const civicEmailTargets = (() => {
