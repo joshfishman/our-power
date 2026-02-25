@@ -36,7 +36,9 @@ beforeAll(async () => {
 });
 
 describe('GET /api/civic/representatives', () => {
-  beforeEach(() => vi.resetAllMocks());
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
 
   it('returns 401 when unauthenticated', async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -83,7 +83,9 @@ const baseAction = {
 };
 
 describe('GET /api/actions', () => {
-  beforeEach(() => vi.resetAllMocks());
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
 
   it('returns actions list without authentication', async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -142,7 +144,9 @@ describe('GET /api/actions', () => {
 });
 
 describe('POST /api/actions', () => {
-  beforeEach(() => vi.resetAllMocks());
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
 
   const validEventPayload = {
     title: 'New Event Action',
@@ -271,7 +275,9 @@ describe('POST /api/actions', () => {
 });
 
 describe('GET /api/actions/[id]', () => {
-  beforeEach(() => vi.resetAllMocks());
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
 
   it('returns action with 200', async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -307,7 +313,9 @@ describe('GET /api/actions/[id]', () => {
 });
 
 describe('PATCH /api/actions/[id]', () => {
-  beforeEach(() => vi.resetAllMocks());
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
 
   it('returns 401 when unauthenticated', async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -354,7 +362,9 @@ describe('PATCH /api/actions/[id]', () => {
 });
 
 describe('DELETE /api/actions/[id]', () => {
-  beforeEach(() => vi.resetAllMocks());
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
 
   it('returns 401 when unauthenticated', async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

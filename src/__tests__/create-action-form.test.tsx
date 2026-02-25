@@ -14,12 +14,12 @@ import { CreateActionForm } from '@/components/campaigns/CreateActionForm';
 vi.mock('@/components/ui/Select', () => ({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   Select: ({ label, selectedKey, onSelectionChange, children }: any) => {
-    const options = React.Children.toArray(children).map(
-      (child: React.ReactElement<{ children?: React.ReactNode }>) => ({
-        value: child.key?.replace(/^\.\$/, '') || '',
+    const options = React.Children.toArray(children)
+      .filter((child): child is React.ReactElement<{ children?: React.ReactNode }> => React.isValidElement(child))
+      .map((child) => ({
+        value: String(child.key ?? '').replace(/^\.\$/, ''),
         text: child.props?.children ?? '',
-      }),
-    );
+      }));
     return (
       <select
         aria-label={label}

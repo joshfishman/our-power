@@ -144,7 +144,9 @@ const censusMockSuccess = {
 // censusGeocoder tests
 // ─────────────────────────────────────────────
 describe('censusGeocoder.geocodeAddress', () => {
-  beforeEach(() => vi.resetAllMocks());
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
 
   it('returns GeoResult on successful geocode', async () => {
     mockFetch.mockResolvedValueOnce(mockResponse(censusMockSuccess));
