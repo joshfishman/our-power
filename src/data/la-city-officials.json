@@ -1,0 +1,146 @@
+[
+  {
+    "office": "Mayor of Los Angeles",
+    "name": "Karen Bass",
+    "district": null,
+    "email": null,
+    "phone": "(213) 978-0600",
+    "website": "https://mayor.lacity.gov/"
+  },
+  {
+    "office": "LA City Controller",
+    "name": "Kenneth Mejia",
+    "district": null,
+    "email": "controller.mejia@lacity.org",
+    "phone": "(213) 978-7200",
+    "website": "https://controller.lacity.gov/"
+  },
+  {
+    "office": "LA City Attorney",
+    "name": "Hydee Feldstein Soto",
+    "district": null,
+    "email": "cityatty.help@lacity.org",
+    "phone": "(213) 978-8100",
+    "website": "https://cityattorney.lacity.gov/"
+  },
+  {
+    "office": "LA City Council - District 1",
+    "name": "Eunisses Hernandez",
+    "district": 1,
+    "email": "councilmember.hernandez@lacity.org",
+    "phone": "(213) 473-7001",
+    "website": "https://cd1.lacity.gov/"
+  },
+  {
+    "office": "LA City Council - District 2",
+    "name": "Adrin Nazarian",
+    "district": 2,
+    "email": null,
+    "phone": "(213) 473-7002",
+    "website": "https://cd2.lacity.gov/"
+  },
+  {
+    "office": "LA City Council - District 3",
+    "name": "Bob Blumenfield",
+    "district": 3,
+    "email": "councilmember.blumenfield@lacity.org",
+    "phone": "(213) 473-7003",
+    "website": "https://cd3.lacity.gov/"
+  },
+  {
+    "office": "LA City Council - District 4",
+    "name": "Nithya Raman",
+    "district": 4,
+    "email": "contactCD4@lacity.org",
+    "phone": "(213) 473-7004",
+    "website": "https://cd4.lacity.gov/"
+  },
+  {
+    "office": "LA City Council - District 5",
+    "name": "Katy Yaroslavsky",
+    "district": 5,
+    "email": "councilmember.yaroslavsky@lacity.org",
+    "phone": "(213) 473-7005",
+    "website": "https://cd5.lacity.gov/"
+  },
+  {
+    "office": "LA City Council - District 6",
+    "name": "Imelda Padilla",
+    "district": 6,
+    "email": "councilmember.padilla@lacity.org",
+    "phone": "(213) 473-7006",
+    "website": "https://cd6.lacity.gov/"
+  },
+  {
+    "office": "LA City Council - District 7",
+    "name": "Monica Rodriguez",
+    "district": 7,
+    "email": "councilmember.rodriguez@lacity.org",
+    "phone": "(213) 473-7007",
+    "website": "https://cd7.lacity.gov/"
+  },
+  {
+    "office": "LA City Council - District 8",
+    "name": "Marqueece Harris-Dawson",
+    "district": 8,
+    "email": "councilmember.harris-dawson@lacity.org",
+    "phone": "(213) 473-7008",
+    "website": "https://cd8.lacity.gov/"
+  },
+  {
+    "office": "LA City Council - District 9",
+    "name": "Curren D. Price, Jr.",
+    "district": 9,
+    "email": "councilmember.price@lacity.org",
+    "phone": "(213) 473-7009",
+    "website": "https://cd9.lacity.gov/"
+  },
+  {
+    "office": "LA City Council - District 10",
+    "name": "Heather Hutt",
+    "district": 10,
+    "email": "cd10@lacity.org",
+    "phone": "(213) 473-7010",
+    "website": "https://cd10.lacity.gov/"
+  },
+  {
+    "office": "LA City Council - District 11",
+    "name": "Traci Park",
+    "district": 11,
+    "email": "councilmember.park@lacity.org",
+    "phone": "(213) 473-7011",
+    "website": "https://cd11.lacity.gov/"
+  },
+  {
+    "office": "LA City Council - District 12",
+    "name": "John Lee",
+    "district": 12,
+    "email": "councilmember.Lee@lacity.org",
+    "phone": "(213) 473-7012",
+    "website": "https://cd12.lacity.gov/"
+  },
+  {
+    "office": "LA City Council - District 13",
+    "name": "Hugo Soto-Martinez",
+    "district": 13,
+    "email": "councilmember.soto-martinez@lacity.org",
+    "phone": "(213) 473-7013",
+    "website": "https://cd13.lacity.gov/"
+  },
+  {
+    "office": "LA City Council - District 14",
+    "name": "Ysabel Jurado",
+    "district": 14,
+    "email": null,
+    "phone": "(213) 473-7014",
+    "website": "https://cd14.lacity.gov/"
+  },
+  {
+    "office": "LA City Council - District 15",
+    "name": "Tim McOsker",
+    "district": 15,
+    "email": "councilmember.mcosker@lacity.org",
+    "phone": "(213) 473-7015",
+    "website": "https://cd15.lacity.gov/"
+  }
+]

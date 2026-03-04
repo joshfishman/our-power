@@ -76,6 +76,11 @@ model User {
   managedOrganizations Organization[]        @relation("OrgManagers")
   campaignMemberships  CampaignMember[]
   actionParticipations ActionParticipation[]
+
+  // Cached representative lookup results
+  cachedRepresentatives Json?
+  repsLookedUpAt        DateTime?
+  repsLookupAddress     String?
 }
 
 model VerificationToken {

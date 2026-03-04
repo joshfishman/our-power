@@ -572,6 +572,12 @@ export default function ActionDetailPage() {
         });
         setCachedReps(address, officials);
         setRepInfo(officials);
+
+        fetch('/api/me/representatives', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ representatives: officials, address }),
+        }).catch(() => {});
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to fetch representatives';
         console.error('[rep-lookup] Error', message);
@@ -692,17 +698,25 @@ export default function ActionDetailPage() {
   }, [action]);
 
   useEffect(() => {
-    if (!action || repLoading || repInfo || !zipCode.trim()) return;
+    if (!action || repLoading || repInfo) return;
     const requiresRepresentativeLookup =
       action.type === 'PHONE' ||
       (action.type === 'EMAIL' && (action.targetMode === 'CIVIC' || action.targetMode === 'BOTH'));
     if (!requiresRepresentativeLookup) return;
+
+    const cached = userData?.cachedRepresentatives as RepresentativeInfo[] | null | undefined;
+    if (Array.isArray(cached) && cached.length > 0) {
+      setRepInfo(cached);
+      return;
+    }
+
+    if (!zipCode.trim()) return;
     if (!streetAddress.trim() && !stateCode.trim()) return;
     const key = `${action.id}:${streetAddress.trim()}:${stateCode.trim()}:${zipCode.trim()}`;
     if (autoLookupAttemptedKeyRef.current === key) return;
     autoLookupAttemptedKeyRef.current = key;
     void fetchRepresentatives(false);
-  }, [action, fetchRepresentatives, repInfo, repLoading, stateCode, streetAddress, zipCode]);
+  }, [action, fetchRepresentatives, repInfo, repLoading, stateCode, streetAddress, userData, zipCode]);
 
   useEffect(() => {
     if (!showRepLookup) return;
@@ -1016,7 +1030,14 @@ export default function ActionDetailPage() {
           (action.type === 'EMAIL' && (action.targetMode === 'CIVIC' || action.targetMode === 'BOTH'))) && (
           <div className="rounded-lg border border-border bg-card p-6">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-lg font-semibold">Your Representatives</h2>
+              <div>
+                <h2 className="text-lg font-semibold">Your Representatives</h2>
+                {repInfo && userData?.repsLookedUpAt && (
+                  <p className="text-xs text-muted-foreground">
+                    Last updated {format(new Date(userData.repsLookedUpAt as unknown as string), 'MMM d, yyyy h:mm a')}
+                  </p>
+                )}
+              </div>
               <Button
                 size="small"
                 mode="ghost"

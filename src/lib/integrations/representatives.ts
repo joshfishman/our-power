@@ -2,6 +2,7 @@ import { logError, logInfo } from '@/lib/logger';
 import { geocodeAddress } from './censusGeocoder';
 import { getCaStateLegislators } from './caStateLegislators';
 import { getFederalLegislators } from './congressLegislators';
+import { getLaCityCouncilDistrict, getLaCityOfficials } from './laCityOfficials';
 import { getStateLegislators } from './openStates';
 
 export interface Official {
@@ -41,7 +42,15 @@ export async function resolveRepresentatives(
   const bundledNames = new Set(bundledState.map((o) => o.name));
   const deduped = openStatesState.filter((o) => !bundledNames.has(o.name));
 
-  const officials = [...federal, ...bundledState, ...deduped];
+  let laCity: Official[] = [];
+  if (geo.stateAbbr === 'CA') {
+    const laDistrict = await getLaCityCouncilDistrict(geo.lat, geo.lng);
+    if (laDistrict !== null) {
+      laCity = getLaCityOfficials(laDistrict);
+    }
+  }
+
+  const officials = [...federal, ...bundledState, ...deduped, ...laCity];
 
   logInfo('Representatives resolved', {
     address,
@@ -53,6 +62,7 @@ export async function resolveRepresentatives(
     federalCount: federal.length,
     bundledStateCount: bundledState.length,
     openStatesCount: deduped.length,
+    laCityCount: laCity.length,
   });
 
   return { officials, normalizedAddress: geo.normalizedAddress };

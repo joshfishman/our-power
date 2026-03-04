@@ -202,25 +202,25 @@ describe('CreateActionForm — type-specific field rendering', () => {
     expect(screen.queryByText('Call Script')).not.toBeInTheDocument();
   });
 
-  it('shows support targeting section for EMAIL type', () => {
+  it('shows representative targeting section for EMAIL type', () => {
     render(<CreateActionForm campaignId="campaign-1" initialAction={{ ...baseInitialAction, type: 'EMAIL' }} />, {
       wrapper: createWrapper(),
     });
-    expect(screen.getByText('Support Targeting')).toBeInTheDocument();
+    expect(screen.getByText('Representative Targeting')).toBeInTheDocument();
   });
 
-  it('shows support targeting section for PHONE type', () => {
+  it('shows representative targeting section for PHONE type', () => {
     render(<CreateActionForm campaignId="campaign-1" initialAction={{ ...baseInitialAction, type: 'PHONE' }} />, {
       wrapper: createWrapper(),
     });
-    expect(screen.getByText('Support Targeting')).toBeInTheDocument();
+    expect(screen.getByText('Representative Targeting')).toBeInTheDocument();
   });
 
-  it('does not show support targeting for EVENT type', () => {
+  it('does not show representative targeting for EVENT type', () => {
     render(<CreateActionForm campaignId="campaign-1" initialAction={{ ...baseInitialAction, type: 'EVENT' }} />, {
       wrapper: createWrapper(),
     });
-    expect(screen.queryByText('Support Targeting')).not.toBeInTheDocument();
+    expect(screen.queryByText('Representative Targeting')).not.toBeInTheDocument();
   });
 });
 

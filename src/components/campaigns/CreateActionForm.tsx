@@ -97,25 +97,24 @@ export function CreateActionForm({
   const [callScript, setCallScript] = useState(initialAction?.callScript || '');
   const [emailSubject, setEmailSubject] = useState(initialAction?.emailSubject || '');
   const [emailBody, setEmailBody] = useState(initialAction?.emailBody || '');
-  const [useCivicTargets, setUseCivicTargets] = useState(() => {
-    if (initialAction?.targetMode === 'BOTH') return true;
-    if (initialAction?.targetMode === 'CIVIC') return true;
-    if (initialAction?.targetMode === 'MANUAL') return false;
-    return true;
+  const [targetLevel, setTargetLevel] = useState<'LOCAL' | 'STATE' | 'FEDERAL'>(() => {
+    if (initialAction?.targetLevel) return initialAction.targetLevel;
+    return 'STATE';
   });
-  const [useManualTargets, setUseManualTargets] = useState(() => {
+  const [selectedOffices, setSelectedOffices] = useState<string[]>(() => {
+    if (initialAction?.targetOffices?.length) return initialAction.targetOffices;
+    return [];
+  });
+  const [includeManualTarget, setIncludeManualTarget] = useState(() => {
     if (initialAction?.targetMode === 'BOTH') return true;
     if (initialAction?.targetMode === 'MANUAL') return true;
-    if (initialAction?.targetMode === 'CIVIC') return false;
     if (initialAction?.manualTargets?.length) return true;
     if (initialAction?.type === 'EMAIL' && initialAction?.emailTargets?.length) return true;
     if (initialAction?.type === 'PHONE' && initialAction?.phoneNumbers?.length) return true;
     return false;
   });
-  const [targetLevel, setTargetLevel] = useState<'LOCAL' | 'STATE' | 'FEDERAL'>(
-    initialAction?.targetLevel || 'FEDERAL',
-  );
-  const [targetOfficesText, setTargetOfficesText] = useState(initialAction?.targetOffices?.join(', ') || '');
+  const useCivicTargets = selectedOffices.length > 0;
+  const useManualTargets = includeManualTarget;
   const [manualTargets, setManualTargets] = useState<
     Array<{ name: string; email?: string | null; phone?: string | null }>
   >(() => {
@@ -168,16 +167,15 @@ export function CreateActionForm({
     setCallScript(initialAction.callScript || '');
     setEmailSubject(initialAction.emailSubject || '');
     setEmailBody(initialAction.emailBody || '');
-    setUseCivicTargets(initialAction.targetMode === 'BOTH' || initialAction.targetMode === 'CIVIC');
-    setUseManualTargets(
+    setTargetLevel(initialAction.targetLevel || 'STATE');
+    setSelectedOffices(initialAction.targetOffices || []);
+    setIncludeManualTarget(
       initialAction.targetMode === 'BOTH' ||
         initialAction.targetMode === 'MANUAL' ||
         Boolean(initialAction.manualTargets?.length) ||
         (initialAction.type === 'EMAIL' && Boolean(initialAction.emailTargets?.length)) ||
         (initialAction.type === 'PHONE' && Boolean(initialAction.phoneNumbers?.length)),
     );
-    setTargetLevel(initialAction.targetLevel || 'FEDERAL');
-    setTargetOfficesText(initialAction.targetOffices?.join(', ') || '');
     setManualTargets(
       initialAction.manualTargets ||
         (initialAction.type === 'EMAIL' && initialAction.emailTargets?.length
@@ -195,13 +193,7 @@ export function CreateActionForm({
     setShareImagePreview(null);
   }, [defaultDate, initialAction]);
 
-  const targetOffices = useMemo(() => {
-    if (!targetOfficesText.trim()) return [];
-    return targetOfficesText
-      .split(',')
-      .map((office) => office.trim())
-      .filter(Boolean);
-  }, [targetOfficesText]);
+  const targetOffices = selectedOffices;
 
   const isSupportType = type === 'EMAIL' || type === 'PHONE';
 
@@ -430,56 +422,109 @@ export function CreateActionForm({
       )}
 
       {isSupportType && (
-        <div className="rounded-lg border border-border bg-muted/30 p-4">
-          <h4 className="mb-2 text-sm font-semibold">Support Targeting</h4>
-          <div className="space-y-2">
-            <p className="text-sm font-medium">Targeting Options</p>
-            <label className="flex items-center gap-2 text-sm text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={useCivicTargets}
-                onChange={(event) => setUseCivicTargets(event.target.checked)}
-              />
-              Representative lookup (Civic API)
-            </label>
-            <label className="flex items-center gap-2 text-sm text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={useManualTargets}
-                onChange={(event) => setUseManualTargets(event.target.checked)}
-              />
-              Manual targets
-            </label>
+        <div className="rounded-lg border-2 border-border bg-card p-5">
+          <h4 className="mb-1 text-sm font-bold uppercase tracking-wider text-foreground">Representative Targeting</h4>
+          <p className="mb-4 text-xs text-muted-foreground">
+            Choose which elected officials participants should contact.
+          </p>
+
+          {/* Tier 1: Government Level */}
+          <div className="mb-4">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Government Level</p>
+            <div className="flex gap-0 overflow-hidden rounded-lg border border-border">
+              {(['LOCAL', 'STATE'] as const).map((level) => (
+                <button
+                  key={level}
+                  type="button"
+                  className={cn(
+                    'flex-1 px-4 py-2.5 text-sm font-semibold transition-colors',
+                    targetLevel === level
+                      ? 'bg-foreground text-background'
+                      : 'bg-card text-muted-foreground hover:bg-muted/50',
+                  )}
+                  onClick={() => {
+                    setTargetLevel(level);
+                    setSelectedOffices([]);
+                    setIncludeManualTarget(false);
+                  }}>
+                  {level === 'LOCAL' ? 'Local' : 'State'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Tier 2: Office Selection */}
+          <div className="mb-4">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Select Offices</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {(targetLevel === 'LOCAL'
+                ? ['Mayor', 'City Council']
+                : ['Governor', 'State Assembly', 'State Senate']
+              ).map((office) => {
+                const isSelected = selectedOffices.includes(office);
+                return (
+                  <label
+                    key={office}
+                    className={cn(
+                      'flex cursor-pointer items-center gap-3 rounded-lg border-2 px-4 py-3 transition-all',
+                      isSelected
+                        ? 'border-foreground bg-foreground/5'
+                        : 'border-border hover:border-muted-foreground/40',
+                    )}>
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={(e) => {
+                        setSelectedOffices((prev) =>
+                          e.target.checked ? [...prev, office] : prev.filter((o) => o !== office),
+                        );
+                      }}
+                      className="h-4 w-4 rounded border-muted-foreground accent-foreground"
+                    />
+                    <span
+                      className={cn('text-sm font-medium', isSelected ? 'text-foreground' : 'text-muted-foreground')}>
+                      {office}
+                    </span>
+                  </label>
+                );
+              })}
+              {/* Manual option */}
+              <label
+                className={cn(
+                  'flex cursor-pointer items-center gap-3 rounded-lg border-2 border-dashed px-4 py-3 transition-all',
+                  includeManualTarget
+                    ? 'border-foreground bg-foreground/5'
+                    : 'border-border hover:border-muted-foreground/40',
+                )}>
+                <input
+                  type="checkbox"
+                  checked={includeManualTarget}
+                  onChange={(e) => setIncludeManualTarget(e.target.checked)}
+                  className="h-4 w-4 rounded border-muted-foreground accent-foreground"
+                />
+                <div>
+                  <span
+                    className={cn(
+                      'text-sm font-medium',
+                      includeManualTarget ? 'text-foreground' : 'text-muted-foreground',
+                    )}>
+                    Manual
+                  </span>
+                  <p className="text-xs text-muted-foreground">Add specific people by name</p>
+                </div>
+              </label>
+            </div>
             {!useCivicTargets && !useManualTargets && (
-              <p className="text-xs text-muted-foreground">Select at least one targeting option.</p>
+              <p className="mt-2 text-xs text-yellow-600">Select at least one office or add manual targets.</p>
             )}
           </div>
 
-          {useCivicTargets && (
-            <div className="mt-3 space-y-3">
-              <Select
-                label="Target Level"
-                name="targetLevel"
-                selectedKey={targetLevel}
-                onSelectionChange={(key) => setTargetLevel(key as 'LOCAL' | 'STATE' | 'FEDERAL')}>
-                <Item key="LOCAL">Local</Item>
-                <Item key="STATE">State</Item>
-                <Item key="FEDERAL">Federal</Item>
-              </Select>
-              <TextInput
-                label="Specific Offices (optional, comma-separated)"
-                name="targetOffices"
-                value={targetOfficesText}
-                onChange={setTargetOfficesText}
-                placeholder="e.g., City Council, Mayor"
-              />
-            </div>
-          )}
-
-          {useManualTargets && (
-            <div className="mt-3 space-y-3">
+          {/* Manual targets entry */}
+          {includeManualTarget && (
+            <div className="space-y-3 rounded-lg border border-border bg-muted/20 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Manual Targets</p>
               {manualTargets.map((target, index) => (
-                <div key={`${target.name}-${index}`} className="grid gap-3 sm:grid-cols-3">
+                <div key={`manual-${index}`} className="grid gap-3 sm:grid-cols-3">
                   <TextInput
                     label="Name"
                     name={`manualTargetName-${index}`}
