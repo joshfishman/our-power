@@ -22,6 +22,11 @@ const contentSecurityPolicy = [
 ].join('; ');
 
 const nextConfig = {
+  // Anchor file-tracing to the directory of this config. Prevents the
+  // "multiple lockfiles detected" warning when dev is run from a sibling
+  // git worktree (e.g. .claude/worktrees/*), since both the main repo and
+  // the worktree carry their own package-lock.json.
+  outputFileTracingRoot: __dirname,
   experimental: {
     scrollRestoration: true,
   },
