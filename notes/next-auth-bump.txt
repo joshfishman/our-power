@@ -1,0 +1,88 @@
+next-auth bump: beta.3 → beta.31
+Generated: 2026-05-13
+Releases sampled: beta.20, beta.21, beta.22, beta.24, beta.26, beta.27, beta.28, beta.29, beta.31
+Also sampled @auth/core: 0.35.0, 0.36.0, 0.37.0, 0.38.0, 0.39.0, 0.40.0, 0.41.0, 0.41.2
+
+=== BREAKING / MIGRATION-REQUIRED CHANGES ===
+
+1. signIn() return type now void when redirect is not explicitly false  [beta.26, @auth/core@0.38.0, PR #12017]
+   - "Correct the type signature of account in callbacks" tightened overloads.
+   - signIn(provider, { callbackUrl }) → return type is Promise<void> (first overload, redirect=true by default)
+   - signIn(provider, { redirect: false }) → return type is Promise<SignInResponse>
+   - IMPACT: src/app/(auth)/UserAuthForm.tsx line 87 — `signInResult?.error` errors with TS2339
+     because `signInResult` is inferred as `void` (no explicit redirect:false passed).
+   - FIX: Either add `redirect: false` to that signIn call, or stop reading .error from the result.
+
+2. nodemailer peer dep bumped from ^6.6.5 → ^7.0.7  [beta.31 / next-auth@5.0.0-beta.30 + beta.31]
+   - next-auth now declares `nodemailer: ^7.0.7` as a peer dep.
+   - The repo does NOT list nodemailer in its own package.json dependencies, so this only matters
+     if sendVerificationRequest is exercised (email magic links are used → src/auth.ts line 35).
+   - @auth/core at top level is 0.18.0 (old, kept by @auth/prisma-adapter) but the version
+     actually used by next-auth is nested at node_modules/next-auth/node_modules/@auth/core@0.41.2.
+   - No code change needed unless nodemailer is directly imported in app code (it is not).
+   - WATCH: if another dep pins nodemailer@6, there may be a peer-dep conflict at install time.
+     Current install succeeded without error. Nodemailer itself is not a direct dependency.
+
+3. Next.js 15: headers() / cookies() are now async  [beta.24, PR #12069]
+   - "await headers and cookies as expected in Next.js 15" landed in beta.24.
+   - We are still on Next 14.2.35, so this is a FORWARD-COMPAT note only.
+   - Once Next 15 is adopted, all usage of cookies() / headers() inside auth handlers
+     must be awaited. This affects middleware.ts and any route that calls auth().
+
+4. AppRouteHandlerFnContext type fix  [beta.27, PR #12901]
+   - Type fix for the route handler context (params as Promise<...> in Next.js 15).
+   - No impact on Next 14. Forward-compat only.
+
+5. Account callback type tightened  [beta.26, PR #12017]
+   - `account` parameter in session/signIn callbacks was typed more strictly.
+   - IMPACT: src/auth.ts callbacks.signIn({ account }) — currently typed as Partial<...>.
+     The top-level type for Account now extends Partial<TokenEndpointResponse>.
+     Existing access patterns (account?.provider) are safe because they already use optional chaining.
+
+6. User interface now overridable via module augmentation  [beta.26 / @auth/core@0.38.0, PR #12472]
+   - `User` interface can now be extended via declare module augmentation.
+   - src/auth.ts already augments `Session` interface with `user: { id: string; name: string }`.
+   - No breaking change — this is additive. But confirms our augmentation pattern is the correct one.
+
+7. jose bumped from 5.x → 6.x (nested inside next-auth)  [@auth/core@0.38.0, PR #12699]
+   - jose@6 is bundled inside node_modules/next-auth/node_modules/jose@6.2.3.
+   - The repo's top-level jose@4.14.4 is NOT impacted (it's used by other deps).
+   - jose@6 has breaking changes in its public API but next-auth abstracts jose entirely,
+     so this is INTERNAL to next-auth only. No app code calls jose directly.
+   - WATCH: if any app code imports jose directly and relies on next-auth's copy, it would break.
+     Grep confirms: no direct jose imports in src/.
+
+8. Prisma adapter: import path and P2025 error handling  [beta.28, PR #12755 and PR #13061]
+   - fix(prisma): import PrismaClientKnownRequestError for edge runtime compatibility [beta.28]
+   - fix(adapters): handle P2025 errors without importing Prisma namespace [beta.29]
+   - These are INTERNAL fixes to @auth/prisma-adapter. The import in src/auth.ts is:
+       import { PrismaAdapter } from '@auth/prisma-adapter';
+     This import path is UNCHANGED. @auth/prisma-adapter@2.11.1 is installed.
+   - No code change required.
+
+9. Prisma v6 support  [beta.26, PR #12319]
+   - @auth/prisma-adapter now explicitly supports Prisma v6.
+   - The repo is already on Prisma v6 (per package.json). This is a COMPATIBILITY FIX, not a break.
+
+=== NO BREAKING CHANGES IN THESE AREAS ===
+- auth() return shape: session?.user?.id access unchanged. The session callback still returns
+  { user: { id }, expires } and the augmented Session type is preserved.
+- callbacks.authorized signature: { auth, request: { nextUrl } } in src/auth.config.ts — UNCHANGED.
+- session/jwt callback parameter shapes: unchanged. token.sub is still present.
+- PrismaAdapter import path: unchanged — still '@auth/prisma-adapter'.
+- signIn / signOut server-side API from auth config: unchanged.
+
+=== TYPECHECK OUTPUT ===
+Single error surfaced by: npm run typecheck
+
+src/app/(auth)/UserAuthForm.tsx(87,25): error TS2339: Property 'error' does not exist on type 'never'
+
+This maps directly to breaking change #1 above (signIn overload return type).
+The fix is to add `redirect: false` to the signIn({ callbackUrl, redirect: false }) call
+on line 80 of UserAuthForm.tsx, or drop the .error check (OAuth providers don't use it anyway,
+since redirect:true causes a full page navigation — error checking is meaningless in that path).
+
+=== TASK 3 SCOPE ESTIMATE ===
+Task 3 only needs ONE code fix:
+- src/app/(auth)/UserAuthForm.tsx line 80: add `redirect: false` or remove .error check (line 87).
+All other surfaces (auth(), callbacks, PrismaAdapter) are compatible with no changes.
