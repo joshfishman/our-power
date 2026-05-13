@@ -77,9 +77,13 @@ export function UserAuthForm({ mode }: { mode: 'login' | 'register' }) {
         ...prev,
         [provider]: true,
       }));
-      const signInResult = await signIn(provider, {
+      // NextAuth v5+: signIn() defaults to redirect: true and returns void in the
+      // happy path (browser navigates away before resolution). Keep the defensive
+      // error check for the rare synchronous-failure case (misconfig, provider
+      // returning an immediate error before redirect).
+      const signInResult = (await signIn(provider, {
         callbackUrl,
-      });
+      })) as { error?: string } | undefined;
       setLoading((prev) => ({
         ...prev,
         [provider]: false,
