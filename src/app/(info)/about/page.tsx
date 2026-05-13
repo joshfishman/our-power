@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export const metadata = {
   title: 'About | Our Power',
 };
@@ -80,7 +82,7 @@ export default function AboutPage() {
         to get started.
       </p>
       <p>
-        Need a quick walkthrough? Visit the <a href="/help">Help Center</a> for step-by-step guidance.
+        Need a quick walkthrough? Visit the <Link href="/help">Help Center</Link> for step-by-step guidance.
       </p>
     </article>
   );

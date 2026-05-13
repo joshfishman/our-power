@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -226,9 +227,9 @@ export function OnboardingWizard() {
                   <li>Send advocacy emails and complete action tasks.</li>
                   <li>Track progress from your dashboard and notifications.</li>
                 </ul>
-                <a href="/help" className="mt-2 inline-block text-primary hover:underline">
+                <Link href="/help" className="mt-2 inline-block text-primary hover:underline">
                   Open help center
-                </a>
+                </Link>
               </div>
             </div>
 

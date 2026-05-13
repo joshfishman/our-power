@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { StatCard, ActionTypeChart } from '@/components/dashboard';
 import Bullhorn from '@/svg_components/Bullhorn';
@@ -128,7 +129,7 @@ export default function DashboardPage() {
           <h3 className="text-lg font-semibold">Quick Actions</h3>
           <p className="text-sm text-muted-foreground">Manage your campaigns and track impact</p>
           <div className="mt-4 grid gap-3">
-            <a
+            <Link
               href="/campaigns"
               className="flex items-center gap-3 rounded-lg border border-border p-3 transition-colors hover:bg-muted">
               <Bullhorn className="h-5 w-5 text-primary" />
@@ -136,8 +137,8 @@ export default function DashboardPage() {
                 <p className="font-medium">Browse Campaigns</p>
                 <p className="text-sm text-muted-foreground">Discover and join new campaigns</p>
               </div>
-            </a>
-            <a
+            </Link>
+            <Link
               href="/my-actions"
               className="flex items-center gap-3 rounded-lg border border-border p-3 transition-colors hover:bg-muted">
               <Calendar className="h-5 w-5 text-primary" />
@@ -145,8 +146,8 @@ export default function DashboardPage() {
                 <p className="font-medium">My Actions</p>
                 <p className="text-sm text-muted-foreground">View your upcoming actions</p>
               </div>
-            </a>
-            <a
+            </Link>
+            <Link
               href="/help"
               className="flex items-center gap-3 rounded-lg border border-border p-3 transition-colors hover:bg-muted">
               <CheckCircle className="h-5 w-5 text-primary" />
@@ -154,7 +155,7 @@ export default function DashboardPage() {
                 <p className="font-medium">Help Center</p>
                 <p className="text-sm text-muted-foreground">Learn key actions and platform workflows</p>
               </div>
-            </a>
+            </Link>
           </div>
         </div>
       </div>

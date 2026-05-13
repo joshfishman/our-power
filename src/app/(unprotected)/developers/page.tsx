@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export const metadata = {
   title: 'Developer API | Our Power',
   description: 'Public API documentation for integrating with Our Power campaigns and actions.',
@@ -192,9 +194,9 @@ export default function DevelopersPage() {
       <h2 className="mb-4 mt-10 text-2xl font-bold">Embeddable Widgets</h2>
       <p className="mb-4 text-neutral-600 dark:text-neutral-400">
         Embed campaign or action cards on your website with a simple script tag. Visit the{' '}
-        <a href="/embed" className="text-sky-600 underline hover:text-sky-700 dark:text-sky-400">
+        <Link href="/embed" className="text-sky-600 underline hover:text-sky-700 dark:text-sky-400">
           Embed Generator
-        </a>{' '}
+        </Link>{' '}
         to preview and copy embed codes.
       </p>
 

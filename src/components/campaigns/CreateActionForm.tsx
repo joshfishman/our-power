@@ -490,6 +490,8 @@ export function CreateActionForm({
               })}
               {/* Manual option */}
               <label
+                htmlFor="manual-target-checkbox"
+                aria-label="Manual targeting: add specific people by name"
                 className={cn(
                   'flex cursor-pointer items-center gap-3 rounded-lg border-2 border-dashed px-4 py-3 transition-all',
                   includeManualTarget
@@ -497,6 +499,7 @@ export function CreateActionForm({
                     : 'border-border hover:border-muted-foreground/40',
                 )}>
                 <input
+                  id="manual-target-checkbox"
                   type="checkbox"
                   checked={includeManualTarget}
                   onChange={(e) => setIncludeManualTarget(e.target.checked)}

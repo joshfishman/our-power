@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export const metadata = {
   title: 'Terms of Service | Our Power',
 };
@@ -86,7 +88,7 @@ export default function TermsPage() {
 
       <h2>10. Privacy</h2>
       <p>
-        Your use of the Platform is also governed by our <a href="/privacy-policy">Privacy Policy</a>, which is
+        Your use of the Platform is also governed by our <Link href="/privacy-policy">Privacy Policy</Link>, which is
         incorporated into these Terms by reference.
       </p>
 
