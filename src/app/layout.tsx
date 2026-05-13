@@ -18,6 +18,20 @@ const poppins = Poppins({
 export const metadata = {
   title: 'Our Power',
   description: 'A social network that powers real-world activism.',
+  icons: { icon: '/logo.png', apple: '/logo.png' },
+  openGraph: {
+    type: 'website',
+    siteName: 'Our Power',
+    title: 'Our Power',
+    description: 'A social network that powers real-world activism.',
+    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'Our Power' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Our Power',
+    description: 'A social network that powers real-world activism.',
+    images: ['/og-image.png'],
+  },
 };
 
 export default async function Layout({ children }: { children: React.ReactNode }) {
