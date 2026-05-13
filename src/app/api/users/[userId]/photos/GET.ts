@@ -8,7 +8,8 @@ import { fileNameToUrl } from '@/lib/storage/fileNameToUrl';
 import { NextResponse } from 'next/server';
 import { GetVisualMedia } from '@/types/definitions';
 
-export async function GET(request: Request, { params }: { params: { userId: string } }) {
+export async function GET(request: Request, props: { params: Promise<{ userId: string }> }) {
+  const params = await props.params;
   const res = await prisma.visualMedia.findMany({
     where: {
       userId: params.userId,

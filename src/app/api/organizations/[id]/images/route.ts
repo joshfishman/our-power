@@ -8,7 +8,8 @@ import { logError } from '@/lib/logger';
 import { z } from 'zod';
 
 // GET /api/organizations/[id]/images — list all images uploaded by this org
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const rateLimitResponse = await enforceRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;

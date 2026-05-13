@@ -10,7 +10,7 @@ import { LegislatorAvatar } from '@/components/scorecard/LegislatorAvatar';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-type Props = { params: { id: string } };
+type Props = { params: Promise<{ id: string }> };
 
 const PARTY_LABEL: Record<string, string> = {
   D: 'Democrat',
@@ -30,7 +30,8 @@ const POSITION_COLOR: Record<string, string> = {
   ABSTAINED: 'border-purple-400 bg-purple-50/90 text-purple-900',
 };
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata(props: Props): Promise<Metadata> {
+  const params = await props.params;
   const bill = await findBillByAnyId(decodeURIComponent(params.id));
   if (!bill) return { title: 'Bill not found | Scorecard' };
   return {
@@ -39,7 +40,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function BillIssuePage({ params }: Props) {
+export default async function BillIssuePage(props: Props) {
+  const params = await props.params;
   const bill = await findBillByAnyId(decodeURIComponent(params.id));
   if (!bill) notFound();
 

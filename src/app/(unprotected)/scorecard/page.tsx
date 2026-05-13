@@ -43,7 +43,8 @@ function chamberLabel(jurisdiction: 'FEDERAL' | 'CA', chamber: 'SEN' | 'REP'): s
   return jurisdiction === 'FEDERAL' ? CHAMBER_LABEL_FEDERAL[chamber] : CHAMBER_LABEL_STATE[chamber];
 }
 
-export default async function ScorecardIndexPage({ searchParams }: { searchParams: SearchParams }) {
+export default async function ScorecardIndexPage(props: { searchParams: Promise<SearchParams> }) {
+  const searchParams = await props.searchParams;
   const jurisdiction = parseJurisdictionParam(searchParams.jurisdiction) ?? 'FEDERAL';
   const chamber = searchParams.chamber === 'SEN' || searchParams.chamber === 'REP' ? searchParams.chamber : undefined;
   const party =

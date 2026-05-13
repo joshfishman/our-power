@@ -6,13 +6,12 @@
     "plugin:@typescript-eslint/recommended",
     "eslint:recommended",
     "plugin:react/recommended",
-    "plugin:react-hooks/recommended",
     "plugin:react-perf/recommended",
     "plugin:prettier/recommended",
     "prettier"
   ],
   "parser": "@typescript-eslint/parser",
-  "plugins": ["@typescript-eslint", "react", "react-hooks", "react-perf", "import"],
+  "plugins": ["@typescript-eslint", "react", "react-perf", "import"],
   "root": true,
   "parserOptions": {
     "project": "./tsconfig.json"

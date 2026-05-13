@@ -11,7 +11,8 @@ export async function OPTIONS(request: Request) {
 }
 
 // GET /api/campaigns/[id] - Get single campaign
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const rateLimitResponse = await enforceRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
@@ -70,7 +71,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
 }
 
 // PATCH /api/campaigns/[id] - Update campaign
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const rateLimitResponse = await enforceRateLimit(request, { limit: 30, windowSeconds: 60 });
     if (rateLimitResponse) return rateLimitResponse;
@@ -123,7 +125,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 }
 
 // DELETE /api/campaigns/[id] - Delete campaign
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const rateLimitResponse = await enforceRateLimit(request, { limit: 20, windowSeconds: 60 });
     if (rateLimitResponse) return rateLimitResponse;

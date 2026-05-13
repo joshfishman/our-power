@@ -7,7 +7,8 @@ import { z } from 'zod';
 export const runtime = 'nodejs';
 export const maxDuration = 30;
 
-export async function POST(request: Request, { params }: { params: { userId: string } }) {
+export async function POST(request: Request, props: { params: Promise<{ userId: string }> }) {
+  const params = await props.params;
   const rateLimitResponse = await enforceRateLimit(request, { limit: 10, windowSeconds: 60 });
   if (rateLimitResponse) return rateLimitResponse;
 

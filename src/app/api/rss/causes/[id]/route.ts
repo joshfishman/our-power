@@ -4,7 +4,8 @@ import { enforceRateLimit } from '@/lib/api-utils';
 import { logError } from '@/lib/logger';
 import { z } from 'zod';
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const rateLimitResponse = await enforceRateLimit(request);
   if (rateLimitResponse) return rateLimitResponse;
 

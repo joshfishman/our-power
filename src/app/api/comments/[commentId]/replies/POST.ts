@@ -16,7 +16,8 @@ import { GetComment } from '@/types/definitions';
 import { enforceRateLimit } from '@/lib/api-utils';
 import { z } from 'zod';
 
-export async function POST(request: Request, { params }: { params: { commentId: string } }) {
+export async function POST(request: Request, props: { params: Promise<{ commentId: string }> }) {
+  const params = await props.params;
   const rateLimitResponse = await enforceRateLimit(request, { limit: 30, windowSeconds: 60 });
   if (rateLimitResponse) return rateLimitResponse;
   const [user] = await getServerUser();

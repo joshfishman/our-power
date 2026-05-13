@@ -10,7 +10,8 @@ import { NextResponse } from 'next/server';
 import { enforceRateLimit } from '@/lib/api-utils';
 import { z } from 'zod';
 
-export async function DELETE(request: Request, { params }: { params: { userId: string; postId: string } }) {
+export async function DELETE(request: Request, props: { params: Promise<{ userId: string; postId: string }> }) {
+  const params = await props.params;
   const rateLimitResponse = await enforceRateLimit(request, { limit: 40, windowSeconds: 60 });
   if (rateLimitResponse) return rateLimitResponse;
 

@@ -15,7 +15,8 @@ import { NextResponse } from 'next/server';
 import { enforceRateLimit } from '@/lib/api-utils';
 import { z } from 'zod';
 
-export async function POST(request: Request, { params }: { params: { userId: string } }) {
+export async function POST(request: Request, props: { params: Promise<{ userId: string }> }) {
+  const params = await props.params;
   const rateLimitResponse = await enforceRateLimit(request, { limit: 30, windowSeconds: 60 });
   if (rateLimitResponse) return rateLimitResponse;
 

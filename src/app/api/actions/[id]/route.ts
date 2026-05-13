@@ -7,7 +7,8 @@ import { logError } from '@/lib/logger';
 import { z } from 'zod';
 
 // GET /api/actions/[id] - Get a single action
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const rateLimitResponse = await enforceRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
@@ -57,7 +58,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
 }
 
 // PATCH /api/actions/[id] - Update an action
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const rateLimitResponse = await enforceRateLimit(request, { limit: 30, windowSeconds: 60 });
     if (rateLimitResponse) return rateLimitResponse;
@@ -106,7 +108,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 }
 
 // DELETE /api/actions/[id] - Soft-delete an action
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const rateLimitResponse = await enforceRateLimit(request, { limit: 20, windowSeconds: 60 });
     if (rateLimitResponse) return rateLimitResponse;

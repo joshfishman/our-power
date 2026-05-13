@@ -21,7 +21,8 @@ async function verifyAccessToNotification(notificationId: number) {
   return count > 0;
 }
 
-export async function PATCH(request: Request, { params }: { params: { userId: string; notificationId: string } }) {
+export async function PATCH(request: Request, props: { params: Promise<{ userId: string; notificationId: string }> }) {
+  const params = await props.params;
   const rateLimitResponse = await enforceRateLimit(request, { limit: 60, windowSeconds: 60 });
   if (rateLimitResponse) return rateLimitResponse;
 

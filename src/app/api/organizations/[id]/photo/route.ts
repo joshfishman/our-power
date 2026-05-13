@@ -14,7 +14,8 @@ export const maxDuration = 30;
 const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 
 // POST /api/organizations/[id]/photo?type=logo|image
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const rateLimitResponse = await enforceRateLimit(request, { limit: 10, windowSeconds: 60 });
     if (rateLimitResponse) return rateLimitResponse;
