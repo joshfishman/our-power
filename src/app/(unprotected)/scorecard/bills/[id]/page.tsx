@@ -78,6 +78,11 @@ export default async function BillIssuePage(props: Props) {
   const totalVotes = bill.votes.length;
   const noVoteRoll = totalVotes === 0;
 
+  // When the focal bill has no votes, we promote sibling committee votes into
+  // the primary vote-roll section so the page isn't a dead end.
+  const siblingsWithVotes = siblingBills.filter((sib) => sib.votes.length > 0);
+  const hasPromotedSiblingVotes = noVoteRoll && siblingsWithVotes.length > 0;
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
       <Link href="/scorecard" className="text-sm text-[#F5DEB3]/80 hover:text-[#F5DEB3]">
@@ -130,7 +135,7 @@ export default async function BillIssuePage(props: Props) {
 
       <section className="mt-10">
         <h2 className="font-serif text-2xl font-bold text-[#F5DEB3]">The vote roll</h2>
-        {noVoteRoll ? (
+        {noVoteRoll && !hasPromotedSiblingVotes && (
           <div className="mt-3 rounded border border-[#2C4A5E] bg-[#2C4A5E]/60 p-4 text-sm text-[#F5DEB3]">
             <p className="font-semibold">No recorded floor vote yet.</p>
             <p className="mt-1">
@@ -138,7 +143,64 @@ export default async function BillIssuePage(props: Props) {
                 'A roll-call vote has not been recorded for this bill. Once it advances and a vote is recorded, every legislator’s position will appear here, sourced from the official record.'}
             </p>
           </div>
-        ) : (
+        )}
+        {hasPromotedSiblingVotes && (
+          <div className="mt-3">
+            <div className="rounded border border-[#2C4A5E] bg-[#2C4A5E]/60 p-4 text-sm text-[#F5DEB3]">
+              <p className="font-semibold">{bill.billNumber} hasn&rsquo;t had a recorded vote yet.</p>
+              <p className="mt-1">
+                These are the recorded committee positions on {siblingsWithVotes.map((s) => s.billNumber).join(', ')}{' '}
+                &mdash; the same marker, same policy intent. Members who voted yes on{' '}
+                {siblingsWithVotes.length > 1 ? 'any of these predecessors' : 'the predecessor'} still earn the marker
+                even if they haven&rsquo;t yet cosponsored {bill.billNumber}.
+              </p>
+            </div>
+            {siblingsWithVotes.map((sib) => {
+              const sibSessionLabel =
+                jurisdiction === 'CA'
+                  ? `${sib.congressNumber.toString().slice(0, 4)}-${sib.congressNumber.toString().slice(4)} CA Session`
+                  : `${sib.congressNumber}th Congress`;
+              // voteContext carries the committee name; use the first vote's value
+              // since all votes from the same committee hearing share the same context.
+              const firstContext = sib.votes[0]?.voteContext ?? null;
+              // Format voteDate as YYYY-MM-DD for display.
+              const firstDate = sib.votes[0]?.voteDate;
+              const dateLabel = firstDate instanceof Date ? firstDate.toISOString().slice(0, 10) : null;
+              const sibVotes = sib.votes as unknown as VoteRowVote[];
+              const sibNo = sibVotes.filter((v) => v.position === 'NO');
+              const sibNV = sibVotes.filter((v) => v.position === 'NOT_VOTING');
+              const sibYes = sibVotes.filter((v) => v.position === 'YES');
+              const sibAbstained = sibVotes.filter((v) => v.position === 'ABSTAINED');
+              const sibExcused = sibVotes.filter((v) => v.position === 'EXCUSED');
+              const sibPresent = sibVotes.filter((v) => v.position === 'PRESENT');
+              return (
+                <div key={sib.id} className="mt-6">
+                  <p className="font-mono text-xs uppercase tracking-widest text-[#F5DEB3]/70">
+                    From {sib.billNumber} ({sibSessionLabel})
+                  </p>
+                  {(firstContext || dateLabel) && (
+                    <p className="mt-0.5 text-sm text-[#F5DEB3]/80">
+                      {firstContext ?? ''}
+                      {firstContext && dateLabel ? ' · ' : ''}
+                      {dateLabel ?? ''}
+                    </p>
+                  )}
+                  <KilledItSection noVoters={sibNo} notVoting={sibNV} />
+                  <VoteSection label="Voted Yes" votes={sibYes} positionKey="YES" accent="text-green-300" />
+                  <VoteSection
+                    label="Abstained"
+                    votes={sibAbstained}
+                    positionKey="ABSTAINED"
+                    accent="text-purple-300"
+                  />
+                  <VoteSection label="Excused" votes={sibExcused} positionKey="EXCUSED" accent="text-[#F5DEB3]/80" />
+                  <VoteSection label="Voted Present" votes={sibPresent} positionKey="PRESENT" accent="text-blue-300" />
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {!noVoteRoll && (
           <>
             <p className="mt-1 text-sm text-[#F5DEB3]/80">
               {totalVotes} legislators on record. Members who didn&rsquo;t vote in committee are shown in this section
@@ -237,6 +299,7 @@ interface VoteRowVote {
   id: string;
   position: string;
   voteContext: string | null;
+  voteDate: Date | null;
   sourceUrl: string | null;
   legislator: {
     id: string;
