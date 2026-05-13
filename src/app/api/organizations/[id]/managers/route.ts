@@ -7,7 +7,8 @@ import { logError } from '@/lib/logger';
 import { z } from 'zod';
 
 // POST /api/organizations/[id]/managers - Add a manager to organization
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const rateLimitResponse = await enforceRateLimit(request, { limit: 20, windowSeconds: 60 });
     if (rateLimitResponse) return rateLimitResponse;
@@ -68,7 +69,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
 }
 
 // DELETE /api/organizations/[id]/managers - Remove a manager from organization
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const rateLimitResponse = await enforceRateLimit(request, { limit: 20, windowSeconds: 60 });
     if (rateLimitResponse) return rateLimitResponse;

@@ -7,7 +7,8 @@ import { logCampaignJoin } from '@/lib/notifications/campaignNotifications';
 import { z } from 'zod';
 
 // POST /api/campaigns/[id]/join - Join a campaign
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const rateLimitResponse = await enforceRateLimit(request, { limit: 20, windowSeconds: 60 });
     if (rateLimitResponse) return rateLimitResponse;
@@ -74,7 +75,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
 }
 
 // GET /api/campaigns/[id]/join - Check membership status
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const rateLimitResponse = await enforceRateLimit(request, { limit: 60, windowSeconds: 60 });
     if (rateLimitResponse) return rateLimitResponse;
@@ -117,7 +119,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
 }
 
 // DELETE /api/campaigns/[id]/join - Leave a campaign
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const rateLimitResponse = await enforceRateLimit(request, { limit: 20, windowSeconds: 60 });
     if (rateLimitResponse) return rateLimitResponse;

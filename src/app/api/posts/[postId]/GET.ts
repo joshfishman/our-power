@@ -12,7 +12,8 @@ import { NextResponse } from 'next/server';
 import { GetPost } from '@/types/definitions';
 import { z } from 'zod';
 
-export async function GET(request: Request, { params }: { params: { postId: string } }) {
+export async function GET(request: Request, props: { params: Promise<{ postId: string }> }) {
+  const params = await props.params;
   /**
    * The [user] will only be used to check whether the
    * user requesting the Post has like it or not.

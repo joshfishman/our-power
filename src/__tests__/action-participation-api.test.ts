@@ -53,7 +53,7 @@ describe('POST /api/actions/[id]/participate', () => {
       body: JSON.stringify({ willAttend: true }),
     });
 
-    const response = await POST(request, { params: { id: 'cjld2cjxh0000qzrmn831i7rn' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'cjld2cjxh0000qzrmn831i7rn' }) });
     expect(response.status).toBe(401);
   });
 
@@ -75,7 +75,7 @@ describe('POST /api/actions/[id]/participate', () => {
       body: JSON.stringify({ willAttend: true }),
     });
 
-    const response = await POST(request, { params: { id: 'cjld2cjxh0000qzrmn831i7rn' } });
+    const response = await POST(request, { params: Promise.resolve({ id: 'cjld2cjxh0000qzrmn831i7rn' }) });
     expect(response.status).toBe(200);
     expect(mockLogActionRSVP).toHaveBeenCalledTimes(1);
     expect(mockLogActionCompleted).not.toHaveBeenCalled();

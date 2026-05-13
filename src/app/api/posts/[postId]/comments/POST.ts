@@ -16,7 +16,8 @@ import { convertMentionUsernamesToIds } from '@/lib/convertMentionUsernamesToIds
 import { mentionsActivityLogger } from '@/lib/mentionsActivityLogger';
 import { enforceRateLimit } from '@/lib/api-utils';
 
-export async function POST(request: Request, { params }: { params: { postId: string } }) {
+export async function POST(request: Request, props: { params: Promise<{ postId: string }> }) {
+  const params = await props.params;
   const rateLimitResponse = await enforceRateLimit(request, { limit: 30, windowSeconds: 60 });
   if (rateLimitResponse) return rateLimitResponse;
   const [user] = await getServerUser();

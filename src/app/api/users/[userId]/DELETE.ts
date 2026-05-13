@@ -8,7 +8,8 @@ import { z } from 'zod';
  * DELETE /api/users/:userId
  * Allows an authenticated user to delete their own account.
  */
-export async function DELETE(request: Request, { params }: { params: { userId: string } }) {
+export async function DELETE(request: Request, props: { params: Promise<{ userId: string }> }) {
+  const params = await props.params;
   const rateLimitResponse = await enforceRateLimit(request, { limit: 5, windowSeconds: 60 });
   if (rateLimitResponse) return rateLimitResponse;
 

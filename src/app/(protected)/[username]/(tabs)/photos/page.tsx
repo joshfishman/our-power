@@ -4,7 +4,8 @@ import { GetVisualMedia } from '@/types/definitions';
 import { getProfile } from '../../getProfile';
 import { Gallery } from './Gallery';
 
-export async function generateMetadata({ params }: { params: { username: string } }) {
+export async function generateMetadata(props: { params: Promise<{ username: string }> }) {
+  const params = await props.params;
   const profile = await getProfile(params.username);
   return {
     title: `Photos | ${profile?.name}` || 'Photos',
@@ -25,7 +26,8 @@ async function getVisualMedia(userId: string) {
   );
 }
 
-export default async function Page({ params }: { params: { username: string } }) {
+export default async function Page(props: { params: Promise<{ username: string }> }) {
+  const params = await props.params;
   const profile = await getProfile(params.username);
   if (!profile) return <p>User not found.</p>;
   const visualMedia = await getVisualMedia(profile.id);

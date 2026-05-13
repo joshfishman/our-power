@@ -7,7 +7,8 @@ import { z } from 'zod';
 const roleSchema = z.enum(['MEMBER', 'ORGANIZER', 'ADMIN']);
 
 // PATCH /api/campaigns/[id]/members/[userId] - Update a campaign member role
-export async function PATCH(request: Request, { params }: { params: { id: string; userId: string } }) {
+export async function PATCH(request: Request, props: { params: Promise<{ id: string; userId: string }> }) {
+  const params = await props.params;
   const rateLimitResponse = await enforceRateLimit(request, { limit: 20, windowSeconds: 60 });
   if (rateLimitResponse) return rateLimitResponse;
 

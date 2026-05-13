@@ -44,7 +44,8 @@ const getLevel = (officeName: string) => {
 };
 
 // POST /api/actions/[id]/send-email - Send an advocacy email on behalf of a user
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const rateLimitResponse = await enforceRateLimit(request, { limit: 10, windowSeconds: 60 });
     if (rateLimitResponse) return rateLimitResponse;

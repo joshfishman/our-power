@@ -19,7 +19,8 @@ interface SearchParams {
   state?: string;
 }
 
-export default async function PacScorecardPage({ searchParams }: { searchParams: SearchParams }) {
+export default async function PacScorecardPage(props: { searchParams: Promise<SearchParams> }) {
+  const searchParams = await props.searchParams;
   // Pull every legislator with at least one PacMoneyData row, joined with
   // their best (highest-fidelity, most-recent) PAC record.
   const legislators = await prisma.legislator.findMany({

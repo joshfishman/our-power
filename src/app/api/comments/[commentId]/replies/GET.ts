@@ -12,7 +12,8 @@ import { FindCommentResult } from '@/types/definitions';
 import { enforceRateLimit } from '@/lib/api-utils';
 import { z } from 'zod';
 
-export async function GET(request: Request, { params }: { params: { commentId: string } }) {
+export async function GET(request: Request, props: { params: Promise<{ commentId: string }> }) {
+  const params = await props.params;
   /**
    * The `userId` will only be used to check whether the user
    * requesting the comments has liked them or not.

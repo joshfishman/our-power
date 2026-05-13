@@ -13,7 +13,8 @@ const participationSchema = z.object({
 });
 
 // POST /api/actions/[id]/participate - RSVP or mark completion
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const rateLimitResponse = await enforceRateLimit(request, { limit: 30, windowSeconds: 60 });
     if (rateLimitResponse) return rateLimitResponse;
@@ -120,7 +121,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
 }
 
 // GET /api/actions/[id]/participate - Get user's participation status
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const rateLimitResponse = await enforceRateLimit(request, { limit: 60, windowSeconds: 60 });
     if (rateLimitResponse) return rateLimitResponse;

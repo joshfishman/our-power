@@ -3,13 +3,11 @@ import React from 'react';
 import { ProfileHeader } from './ProfileHeader';
 import { getProfile } from '../getProfile';
 
-export default async function Layout({
-  children,
-  params,
-}: {
-  children: React.ReactNode;
-  params: { username: string };
-}) {
+export default async function Layout(props: { children: React.ReactNode; params: Promise<{ username: string }> }) {
+  const { children } = props;
+
+  const params = await props.params;
+
   const [user] = await getServerUser();
   const profile = await getProfile(params.username);
   if (!profile) return <p>This user does not exist or may have changed their username.</p>;

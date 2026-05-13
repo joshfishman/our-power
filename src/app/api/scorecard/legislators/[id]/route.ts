@@ -8,7 +8,8 @@ import { findLegislatorByAnyId, computePublishedTotal } from '@/lib/scorecard/qu
 // bioguideId, openStatesId, or internal cuid in the :id slot. Returns
 // the legislator's profile, published per-plank scores, and verified
 // marker achievements with evidence URLs.
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const reqId = requestId();
   try {
     const rateLimited = await enforceRateLimit(request, { limit: 60, windowSeconds: 60 });

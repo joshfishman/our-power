@@ -3,14 +3,16 @@ import { DiscoverSearch } from '@/components/DiscoverSearch';
 import { DiscoverFilters } from '@/components/DiscoverFilters';
 import { getProfile } from '../../getProfile';
 
-export async function generateMetadata({ params }: { params: { username: string } }) {
+export async function generateMetadata(props: { params: Promise<{ username: string }> }) {
+  const params = await props.params;
   const profile = await getProfile(params.username);
   return {
     title: `Following | ${profile?.name}` || 'Following',
   };
 }
 
-export default async function Page({ params }: { params: { username: string } }) {
+export default async function Page(props: { params: Promise<{ username: string }> }) {
+  const params = await props.params;
   const profile = await getProfile(params.username);
 
   return (

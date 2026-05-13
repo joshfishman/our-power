@@ -16,7 +16,8 @@ import { enforceRateLimit } from '@/lib/api-utils';
 import { z } from 'zod';
 import { verifyAccessToComment } from './verifyAccessToComment';
 
-export async function PUT(request: Request, { params }: { params: { commentId: string } }) {
+export async function PUT(request: Request, props: { params: Promise<{ commentId: string }> }) {
+  const params = await props.params;
   const rateLimitResponse = await enforceRateLimit(request, { limit: 20, windowSeconds: 60 });
   if (rateLimitResponse) return rateLimitResponse;
 

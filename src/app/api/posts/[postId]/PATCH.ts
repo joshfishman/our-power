@@ -7,7 +7,8 @@ import { serverWritePost } from '@/hooks/serverWritePost';
 import { enforceRateLimit } from '@/lib/api-utils';
 import { z } from 'zod';
 
-export async function PATCH(request: Request, { params }: { params: { postId: string } }) {
+export async function PATCH(request: Request, props: { params: Promise<{ postId: string }> }) {
+  const params = await props.params;
   const rateLimitResponse = await enforceRateLimit(request, { limit: 20, windowSeconds: 60 });
   if (rateLimitResponse) return rateLimitResponse;
 

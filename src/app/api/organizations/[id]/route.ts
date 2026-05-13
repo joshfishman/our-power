@@ -11,7 +11,8 @@ export async function OPTIONS(request: Request) {
 }
 
 // GET /api/organizations/[id] - Get single organization
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const rateLimitResponse = await enforceRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
@@ -75,7 +76,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
 }
 
 // PATCH /api/organizations/[id] - Update organization
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const rateLimitResponse = await enforceRateLimit(request, { limit: 30, windowSeconds: 60 });
     if (rateLimitResponse) return rateLimitResponse;
@@ -122,7 +124,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 }
 
 // DELETE /api/organizations/[id] - Delete organization
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const rateLimitResponse = await enforceRateLimit(request, { limit: 20, windowSeconds: 60 });
     if (rateLimitResponse) return rateLimitResponse;

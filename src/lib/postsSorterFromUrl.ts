@@ -4,7 +4,7 @@ import 'server-only';
  * Hook to easily filter posts, this allows paginated queries with varying directions ('asc' and 'desc')
  * @param url
  */
-export function usePostsSorter(url: string) {
+export function postsSorterFromUrl(url: string) {
   const { searchParams } = new URL(url);
   const limit = parseInt(searchParams.get('limit') || '5', 10);
   const cursor = parseInt(searchParams.get('cursor') || '0', 10);

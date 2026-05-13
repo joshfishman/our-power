@@ -10,7 +10,7 @@ import {
 } from '@/lib/scorecard/queries';
 import { LegislatorAvatar } from '@/components/scorecard/LegislatorAvatar';
 
-type Props = { params: { id: string } };
+type Props = { params: Promise<{ id: string }> };
 
 const PARTY_LABEL: Record<string, string> = {
   D: 'Democrat',
@@ -28,7 +28,8 @@ const CHAMBER_LABEL_STATE: Record<string, string> = {
   REP: 'California State Assembly',
 };
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata(props: Props): Promise<Metadata> {
+  const params = await props.params;
   const legislator = await findLegislatorByAnyId(decodeURIComponent(params.id));
   if (!legislator) return { title: 'Legislator not found | Scorecard' };
   return {
@@ -37,7 +38,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function LegislatorScorecardPage({ params }: Props) {
+export default async function LegislatorScorecardPage(props: Props) {
+  const params = await props.params;
   const legislator = await findLegislatorByAnyId(decodeURIComponent(params.id));
   if (!legislator) notFound();
 
