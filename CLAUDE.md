@@ -97,6 +97,104 @@ Server components fetch data directly. Client components use React Query hooks f
   - `docs/agent-native/capability-matrix.md`
   - `docs/agent-native/principles-scorecard.md`
 
+### Vision + organizational structure
+
+This codebase is the **Our Power** Next.js platform — a generic social network for civic activism (campaigns, actions, RSVPs, social feed). Most of the codebase is the activism infrastructure.
+
+**The Common Ground project** is a specific civic-accountability initiative built ON TOP of Our Power, sharing schema, auth, and UI primitives. It is the focus of recent work (the `src/lib/scorecard/`, `src/app/(unprotected)/scorecard/`, and `prisma/seed-scorecard.ts` surface area). Treat Common Ground as a feature/module of Our Power, not a separate app.
+
+**Common Ground's vision** — a cross-partisan civic movement organized around five concrete legislative commitments. The pledge: _"I will only vote for candidates who commit to these five promises."_ Public accountability via a methodology-driven scorecard rating every sitting member of Congress and the California State Legislature on the same rubric, regardless of party.
+
+**Voice register** — civic / Lincoln-Eisenhower-MLK, not progressive-advocacy. Avoid "stakeholders / intersectional / equity / progressive / MAGA." Prefer "we demand" over "we believe." Decisions in the project brief are locked unless explicitly reopened: no vouchers/charters in plank 2; no PRO Act in plank 3; fiscal honesty on Social Security in plank 4; "peace" stays in plank 5 name.
+
+**Partnership strategy** — three-tier partner model from the partner-pitch brief (slide 08):
+
+- **USER** (default) — open-license access to scorecard API, kitchen-table kits, action templates, methodology. No commitments expected.
+- **AFFILIATE** — public endorsement + one Promise Day per quarter. Gets co-branded materials, advance news-cycle notice, partner directory listing, coordination channel.
+- **ANCHOR** — staff time + seat on coordinating council. Gets strategic input, custom integrations, joint campaigns, deep coordination.
+
+Schema: `Organization.cgPartnerTier` (enum `CgPartnerTier { USER | AFFILIATE | ANCHOR }`), `cgPartnerTierAssignedAt`, `cgPartnerCommitments` Json field. Display copy + benefits + boundaries live in `src/lib/scorecard/partner-tiers.ts`.
+
+Boundaries that apply to ALL tiers (slide 10, "What we're not asking for"): not your list, not your donors, not your brand, not your mission, not exclusive partnership. **Coordination, not control.**
+
+Anchor-partner targets per slide 12 — democracy reform (RepresentUs, American Promise, Issue One, Public Citizen, Unite America), civic & veterans (American Legion, IAVA, Veterans for American Ideals, Interfaith Alliance, Braver Angels), working people (AFL-CIO political dept, worker centers, state labor federations, faith-labor coalitions). Coalition spans political spectrum by design — not a progressive coalition, not a conservative coalition.
+
+### Common Ground civic scorecard
+
+A cross-partisan rating system for every member of Congress and every California state legislator. Same rubric applied to every legislator regardless of party. Built on top of this app's existing schema + auth.
+
+**The five planks (federal). California is identical except Plank 5 doesn't apply (CA scores out of 20, not 25):**
+
+1. Honest Government — corporate-PAC refusal, stock-trading ban, public financing, dark-money disclosure, lobbying cooling-off.
+2. Our Children Our Future — major investment votes (CHIPS / IIJA / IRA), clean energy, science funding, environment, early childhood, infrastructure.
+3. Making a Living — federal $15 minimum wage primary, plus a Republican-led wage-floor alt (Option C); wage theft / non-compete / loan-rate-cap / housing / paid leave.
+4. The Care We Owe — major healthcare/veterans bill primary (IRA pricing / PACT / ACA / Medicare); plus Republican-led paid-leave alt (Option C); Medicaid protection, Social Security solvency.
+5. Peace and Strength (federal only) — war powers, Pentagon audit, antitrust, State funding, trade-agreement labor protections.
+
+**Scoring rubric per plank** (methodology v1.0, in `docs/scorecard-methodology.md` + `src/lib/scorecard/scoring.ts`):
+
+- 5 = primary achieved + 3+ secondaries · 4 = primary + 2 sec · 3 = primary alone OR 3+ sec without primary · 2 = 2 sec without primary · 1 = 1 sec · 0 = nothing.
+
+**Option C two-tier markers** (decided 2026-04-29): Republican-authored alternative bills count as SECONDARY markers (never primary) when (a) introduced as standalone bills with 3+ GOP cosponsors and (b) directionally aligned with the plank. Examples: Hawley's Higher Wages for American Workers Act under Plank 3; Bice-Houlahan paid leave under Plank 4. Implemented via `Marker.isRepublicanAlternative` + `parallelMarkerId` self-FK.
+
+**Scorecard code layout:**
+
+- `src/lib/scorecard/` — pure logic. Plank seeds (`federal-planks.ts`, `ca-planks.ts`), shared types, scoring engine (`scoring.ts`), legislative-source clients (`clients/legiscan.ts` API, `clients/legiscan-bulk.ts` on-disk fallback), calibration fixture.
+- `src/app/(unprotected)/scorecard/` — public pages. `page.tsx` index, `[id]/page.tsx` legislator detail, `bills/[id]/page.tsx` per-bill issue page, `pac/page.tsx` Plank 1 PAC ranking.
+- `src/app/api/scorecard/` — public read-only API: `/planks`, `/legislators/[id]`. CORS + rate-limited.
+- `prisma/seed-scorecard.ts` — seeds planks + markers + bills + legislators. Idempotent; nulls publicSlugs and prunes orphan MarkerBill rows before each upsert pass to safely handle bill renumbering across re-seeds.
+- `scripts/sync-marker-bills.ts` — manual CLI sync via LegiScan, `--source=api|bulk`, `--bill=…`, `--jurisdiction=…`, `--dry-run`. Refuses provisional bills.
+- `scripts/backfill-legiscan-people.ts` — one-time pass that maps `Legislator.legiscanPeopleId` from the bulk dataset's `people/*.json`. Required because LegiScan roll-call vote payloads carry only `people_id` (no names), so unmapped legislators get dropped as `unmappedVoters`. Run once after seeding new legislators.
+- `scripts/compute-scores.ts` — turns verified `MarkerAchievement` rows into `RepresentativeScore` rows. `--auto-verify` flag is a TEMPORARY stand-in for the unbuilt Phase 6 admin verification UI; it bulk-flips `verifiedAt` with `verifiedBy='auto-verify-temp'` and logs a warning. `--publish` sets `publishedAt`. Also computes corporate-pac-refusal achievements from PacMoneyData (`verifiedBy='pac-engine'`, auto-verified at write time since FEC/Cal-Access filings are already public).
+- `scripts/ingest-fec.ts` — federal PAC totals via api.open.fec.gov. One call per legislator (sorted -cycle). Caveat: counts ALL non-party PAC contributions, not strictly corporate-classified — until `CommitteeClassification` is populated, FEC_DIRECT is a broad proxy.
+- `scripts/ingest-pac-data.ts` — OpenSecrets bulk path (federal). Pre-classified corporate vs labor via RealCode taxonomy.
+- `scripts/ingest-cal-access.ts` — CA Cal-Access PAC. Curated-CSV path live; CCDC bulk path is a SKELETON pending a downloaded snapshot + classification table.
+
+### Common Ground scorecard — external data sources
+
+**Two unrelated data domains. Don't conflate them.**
+
+_Legislative data_ (bills, sponsors, votes) — **LegiScan** federal + CA. API key in `LEGISCAN_API_KEY` is the primary path; `LEGISCAN_DATASET_DIR` is the bulk-dataset fallback. `LEGISCAN_SOURCE=api|bulk` selects mode (also `--source=` flag, flag wins). LegiScan does NOT cover campaign finance. The `LegislativeDataSource` interface keeps a future swap to Congress.gov + OpenStates cheap.
+
+_Campaign finance / PAC money_ — completely separate. Three ingestion paths today:
+
+- **`FEC_API_KEY`** (api.open.fec.gov) → `npm run scorecard:ingest-fec`. Instant key from api.data.gov/signup. 1000/hr ceiling. dataSource=FEC_DIRECT. The script also accepts `FEC_DATA_API` as an alias.
+- **OpenSecrets bulk CSVs** → `npm run scorecard:ingest-pac --opensecrets-dir=./data/opensecrets/{cycle}/`. Pre-classified, methodology-strict. dataSource=OPENSECRETS_BULK. **OpenSecrets discontinued their API in April 2025; bulk CSV is the only OpenSecrets path. Don't suggest an OpenSecrets API key.**
+- **Curated CSV (federal or CA)** → `npm run scorecard:ingest-pac --csv=…` (federal: bioguideId column) or `npm run scorecard:ingest-ca-pac --csv=…` (CA: openStatesId column).
+
+If a future session sees only `LEGISCAN_API_KEY` in `.env.local`, that's intentional — the user originally believed LegiScan would suffice, then learned it doesn't carry PAC data. Do not treat the absence of an OpenSecrets credential as a setup gap.
+
+### Common Ground scorecard — phases + status
+
+- Phase 1 (data model + seed) ✅ shipped, applied via `prisma db push` (see migration-drift note below).
+- Phase 2 (LegiScan sync, both API and bulk modes) ✅ shipped, smoke-tested end-to-end against AB-2200 / AB-1900.
+- Phase 3 (PAC ingestion) — federal FEC + OpenSecrets paths shipped; CA curated path shipped, CA CCDC bulk path is a skeleton with TODOs pending a Cal-Access download.
+- Phase 4 (scoring engine) ✅ shipped with full rubric tests.
+- Phase 5 (score challenges + leaderboard) — not started.
+- Phase 6 (admin verification UI) — not started; `--auto-verify` flag and `verifiedBy='pac-engine'` are temporary stand-ins. **For a real public launch this needs a proper UI; the methodology promises every published score traces to human-verified evidence.**
+- Phase 7 (scheduled pipeline / cron) — explicitly deferred; runs are manual via npm scripts.
+
+Pre-119th historical bills (CHIPS H.R.4346, IIJA H.R.3684, PACT S.3373) remain `isProvisional: true` because the 119th-only LegiScan dataset on disk doesn't include them. Activate by downloading the 117th Congress dataset, pinning `legiscanBillId`, and flipping `isProvisional: false`.
+
+### Scorecard visual theme
+
+Brand colors: brick-red `#8B3A3A`, slate-blue navy `#2C4A5E`, parchment beige `#C8B98A`, wheat `#F5DEB3`. Voice register: civic / Lincoln-Eisenhower-MLK, not progressive-advocacy. Avoid "stakeholders / intersectional / equity / progressive / MAGA." Use "we demand" not "we believe."
+
+Visual conventions on `/scorecard*` pages:
+
+- Body text on white background uses `text-gray-900` which is globally overridden in `src/app/globals.css` to render as parchment beige `#C8B98A`.
+- Accent panels (PAC link, Featured Issues, status notes, empty states) use `bg-[#2C4A5E]/60` with wheat text (`text-[#F5DEB3]`).
+- Filter chips (jurisdiction, chamber, party): all sit on navy/60 with wheat text. Active state = brick-red border + navy/80 bg + bold weight.
+- Vote-position pills keep their semantic colors (green YES / red NO / yellow NV / etc.) but with brighter borders so they read on the navy backdrop.
+
+### Scorecard — common pitfalls + fixes
+
+- **`legiscanPeopleId` not set on a legislator** → committee voters drop as `unmappedVoters` because LegiScan roll-call payloads have no name. Run `npm run scorecard:backfill-people` after any new legislators land.
+- **`publicSlug` unique-constraint violation on re-seed** → seed releases all slugs to null at the start of each marker's bill loop before upserts, so this is handled. If you see it again, check the marker pre-pass `updateMany` block.
+- **`prisma.markerBill is undefined` at runtime** → Prisma client wasn't regenerated. `npx prisma generate` (or any `db push` which auto-runs generate).
+- **CA bill numbers reuse across sessions** → e.g., AB-2200 in 2023-24 is CalCare; AB-2200 in 2025-26 is "thermal curtains" (unrelated). Always pin `legiscanBillId` on CA seed entries to disambiguate. Federal numbers also reset per Congress.
+- **FEC rate limit (429)** → script paces at 100ms (10 req/sec) and retries with 60s sleep on 429. If you trigger it anyway, the 1000/hr rolling-window cap reset takes ~30-60 minutes.
+
 ## Rules
 
 - **Never modify `.env.local`** unless the user explicitly asks.

@@ -42,4 +42,12 @@ next-env.d.ts
 /src/generated/
 
 # custom
-/public/uploads
+/public/uploads/data/
+
+# LegiScan / OpenSecrets / Cal-Access dataset dumps (large, keep out of repo)
+/data/
+/CA/
+
+# Claude Code / Cursor working directories
+/.claude/
+/.cursor/

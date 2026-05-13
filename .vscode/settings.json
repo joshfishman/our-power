@@ -27,5 +27,6 @@
   "editor.codeActionsOnSave": {
     "source.fixAll": "explicit"
   },
-  "tailwindCSS.classAttributes": ["class", "className", "iconClassName"]
+  "tailwindCSS.classAttributes": ["class", "className", "iconClassName"],
+  "git.ignoreLimitWarning": true
 }

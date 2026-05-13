@@ -7,4 +7,7 @@ prisma.config.ts
 src/generated/
 prisma/seed.ts
 prisma/seed-causes.ts
+prisma/seed-scorecard.ts
 scripts/
+src/lib/scorecard/clients/
+src/components/scorecard/PacSortableTable.tsx

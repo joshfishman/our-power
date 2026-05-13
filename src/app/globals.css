@@ -83,3 +83,10 @@
     @apply rounded-sm decoration-sky-400 decoration-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400;
   }
 }
+
+/* Beige override for the default Tailwind gray-900 text class.
+ * Source order beats Tailwind's utilities layer so this wins without !important.
+ * Adjust the hex below if you want a warmer or cooler beige. */
+.text-gray-900 {
+  color: #c8b98a;
+}

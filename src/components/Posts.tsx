@@ -137,9 +137,44 @@ export function Posts({ type, hashtag, userId }: PostsProps) {
   }, []);
 
   useEffect(() => {
-    // Check for new posts every 5 seconds, this allows for bidirectional infinite queries
-    const interval = setInterval(fetchPreviousPage, 5000);
-    return () => clearInterval(interval);
+    // Poll for newer posts every 60s, but only when the tab is visible and
+    // the page is at/near the top. Previous version polled every 5s with no
+    // gating, hammering the feed endpoint (including the expensive mention-
+    // conversion path) even for users with empty feeds — the dominant cause
+    // of "feed feels slow" complaints.
+    const POLL_INTERVAL_MS = 60_000;
+    const SCROLL_THRESHOLD_PX = 800;
+
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+    const start = () => {
+      if (intervalId !== null) return;
+      intervalId = setInterval(() => {
+        if (typeof document !== 'undefined' && document.hidden) return;
+        if (typeof window !== 'undefined' && window.scrollY > SCROLL_THRESHOLD_PX) return;
+        fetchPreviousPage();
+      }, POLL_INTERVAL_MS);
+    };
+    const stop = () => {
+      if (intervalId === null) return;
+      clearInterval(intervalId);
+      intervalId = null;
+    };
+    const onVisibility = () => {
+      if (typeof document === 'undefined') return;
+      if (document.hidden) stop();
+      else start();
+    };
+
+    start();
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', onVisibility);
+    }
+    return () => {
+      stop();
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', onVisibility);
+      }
+    };
   }, [fetchPreviousPage]);
 
   useEffect(() => {

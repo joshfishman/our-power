@@ -52,6 +52,11 @@ const nextConfig = {
         hostname: 'platform-lookaside.fbsbx.com',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'raw.githubusercontent.com',
+        pathname: '/unitedstates/images/**',
+      },
     ],
   },
   async headers() {

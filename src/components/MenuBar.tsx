@@ -4,6 +4,7 @@ import BuildingBusinessOffice from '@/svg_components/BuildingBusinessOffice';
 import Bullhorn from '@/svg_components/Bullhorn';
 import Calendar from '@/svg_components/Calendar';
 import ChartBar from '@/svg_components/ChartBar';
+import CheckCircle from '@/svg_components/CheckCircle';
 import Close from '@/svg_components/Close';
 import GridFeedCards from '@/svg_components/GridFeedCards';
 import HamburgerMenu from '@/svg_components/HamburgerMenu';
@@ -12,6 +13,7 @@ import NotificationBell from '@/svg_components/NotificationBell';
 import Profile from '@/svg_components/Profile';
 import Search from '@/svg_components/Search';
 import TwoPeople from '@/svg_components/TwoPeople';
+import WorldNet from '@/svg_components/WorldNet';
 import { useSessionUserData } from '@/hooks/useSessionUserData';
 import { useNotificationsCountQuery } from '@/hooks/queries/useNotificationsCountQuery';
 import { useDialogs } from '@/hooks/useDialogs';
@@ -73,6 +75,8 @@ export function MenuBar() {
     { title: 'My Actions', Icon: Calendar, route: '/my-actions' },
     { title: 'Organizations', Icon: BuildingBusinessOffice, route: '/organizations' },
     { title: 'Dashboard', Icon: ChartBar, route: '/dashboard' },
+    { title: 'Scorecard', Icon: CheckCircle, route: '/scorecard' },
+    { title: 'PAC Money', Icon: WorldNet, route: '/scorecard/pac' },
     { title: 'Discover', Icon: Search, route: '/discover' },
     {
       title: 'Notifications',
@@ -106,7 +110,20 @@ export function MenuBar() {
 
         <div className="grid w-full grid-cols-2 gap-1">
           {allItems.map((item) => {
-            const isActive = pathname === item.route || (item.route !== '/feed' && pathname.startsWith(item.route));
+            const isActive =
+              pathname === item.route ||
+              (item.route !== '/feed' &&
+                pathname.startsWith(item.route) &&
+                // Prevent /scorecard/pac from also lighting up /scorecard.
+                // For routes that have more-specific siblings in the menu,
+                // only match when there's no longer matching item.
+                !allItems.some(
+                  (other) =>
+                    other !== item &&
+                    other.route.length > item.route.length &&
+                    other.route.startsWith(item.route) &&
+                    pathname.startsWith(other.route),
+                ));
             return (
               <button
                 type="button"
@@ -211,7 +228,20 @@ export function MenuBar() {
         <nav className="flex-1 overflow-y-auto px-3 py-3">
           <div className="grid grid-cols-2 gap-1">
             {allItems.map((item) => {
-              const isActive = pathname === item.route || (item.route !== '/feed' && pathname.startsWith(item.route));
+              const isActive =
+                pathname === item.route ||
+                (item.route !== '/feed' &&
+                  pathname.startsWith(item.route) &&
+                  // Prevent /scorecard/pac from also lighting up /scorecard.
+                  // For routes that have more-specific siblings in the menu,
+                  // only match when there's no longer matching item.
+                  !allItems.some(
+                    (other) =>
+                      other !== item &&
+                      other.route.length > item.route.length &&
+                      other.route.startsWith(item.route) &&
+                      pathname.startsWith(other.route),
+                  ));
               return (
                 <button
                   type="button"

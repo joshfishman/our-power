@@ -18,22 +18,14 @@ export async function GET(request: Request, { params }: { params: { userId: stri
   const [user] = await getServerUser();
   if (!user || params.userId !== user.id) return NextResponse.json({}, { status: 401 });
 
-  // Get the IDs of the user's followed users
-  const following = await prisma.follow.findMany({
-    where: {
-      followerId: user.id,
-    },
-    select: {
-      followingId: true,
-    },
-  });
-  const followingIds = following.map((u) => u.followingId);
-
+  // Single-query feed: posts authored by the user OR by anyone they follow.
+  // Previously this was two sequential queries (one for follows, one for
+  // posts), which doubled connection-setup latency on empty feeds. The
+  // nested relation filter pushes the join to Postgres and returns in one
+  // round trip.
   const res = await prisma.post.findMany({
     where: {
-      userId: {
-        in: [...followingIds, user.id],
-      },
+      OR: [{ userId: user.id }, { user: { followers: { some: { followerId: user.id } } } }],
       ...filters,
     },
     ...limitAndOrderBy,

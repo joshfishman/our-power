@@ -251,8 +251,28 @@ model Organization {
   website     String?
   managers    User[]     @relation("OrgManagers")
   campaigns   Campaign[]
+
+  // Common Ground partnership (per partner-pitch brief, slide 08).
+  // null = not a formal Common Ground partner (default for any org in the
+  // platform that isn't part of the movement coalition). USER, AFFILIATE,
+  // ANCHOR map to the brief's three tiers.
+  cgPartnerTier            CgPartnerTier?
+  cgPartnerTierAssignedAt  DateTime?
+  // Free-form per-tier commitments (e.g. plank focus, Promise Day cadence).
+  // Schema deliberately loose so brief refinements don't require migrations.
+  cgPartnerCommitments     Json?
+
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
+
+  @@index([cgPartnerTier])
+}
+
+// Common Ground partnership tiers, per partner-pitch brief slide 08.
+enum CgPartnerTier {
+  USER       // open-license access. No commitments expected.
+  AFFILIATE  // public endorsement + one Promise Day per quarter.
+  ANCHOR     // staff time + seat on coordinating council.
 }
 
 model Cause {
@@ -413,4 +433,422 @@ enum MemberRole {
   MEMBER // Regular campaign member
   ORGANIZER // Can create/edit actions
   ADMIN // Full campaign admin
+}
+
+// =====================================================
+// Scorecard system
+// =====================================================
+// Five-plank cross-partisan scorecard rating sitting members of Congress
+// (and CA state legislators in v1) against legislative voting records,
+// cosponsorships, and corporate PAC money. Federal and state share the
+// same models; rows are namespaced by `jurisdiction`.
+//
+// Methodology rules locked in:
+//   - Federal scoring is /25 across 5 planks; state (CA) is /20 across 4
+//     planks (Plank 5 "Peace and Strength" doesn't map to state level).
+//   - Option C two-tier markers: Republican-authored alternatives may
+//     count as SECONDARY markers (never PRIMARY) when introduced as a
+//     standalone bill with 3+ GOP cosponsors and directionally aligned
+//     with the plank. See `Marker.isRepublicanAlternative` and
+//     `Marker.parallelMarkerId`.
+//   - Every score must trace to a public source via MarkerAchievement.
+//     evidenceSourceUrl. Human verification required before publication.
+
+enum Jurisdiction {
+  FEDERAL
+  CA
+}
+
+enum Chamber {
+  SEN // U.S. Senate or CA State Senate
+  REP // U.S. House or CA State Assembly
+}
+
+enum Party {
+  D
+  R
+  I // Independent / other
+}
+
+enum MarkerType {
+  PRIMARY
+  SECONDARY
+}
+
+enum BillType {
+  // Federal
+  SENATE_BILL
+  HOUSE_BILL
+  SENATE_JOINT_RES
+  HOUSE_JOINT_RES
+  SENATE_RES
+  HOUSE_RES
+  // Concurrent resolutions — used for War Powers Resolutions, which need
+  // both chambers but not the President (Plank 5 primary marker).
+  SENATE_CONCURRENT_RES
+  HOUSE_CONCURRENT_RES
+  // California
+  CA_ASSEMBLY_BILL
+  CA_SENATE_BILL
+  CA_ASSEMBLY_RESOLUTION
+  CA_SENATE_RESOLUTION
+}
+
+enum BillActionType {
+  COSPONSOR // Federal cosponsorship
+  VOTE_YES
+  VOTE_NO
+  SPONSOR
+  // California-specific authorship tiers
+  AUTHOR
+  PRINCIPAL_COAUTHOR
+  COAUTHOR
+}
+
+enum EvidenceType {
+  COSPONSOR
+  VOTE
+  FEC_FILING
+  CAL_ACCESS_FILING
+  PUBLIC_STATEMENT
+}
+
+/// Three-state position record per (legislator, marker). Absence of a
+/// MarkerAchievement row means NO_RECORD — we don't know their position.
+/// Per We the People methodology v1.1: rendering distinguishes ✓/✗/? so
+/// legislators with thin data don't get treated as opposition by default.
+enum AchievementStatus {
+  ACTED_FOR // Cosponsored / voted yes on the marker bill, or under the corporate-PAC threshold
+  ACTED_AGAINST // Voted no on a marker that requires VOTE_YES, or above the corporate-PAC threshold
+  NO_RECORD // Explicitly written when we know the legislator was eligible but data was absent (rare; usually just no row)
+}
+
+/// Sponsorship tier per LegiScan. Recorded on MarkerAchievement so the
+/// page can render different badges for authors vs rank-and-file
+/// cosponsors. Mirrors the SponsorTier TS type in the source clients.
+enum SponsorTier {
+  AUTHOR // Primary sponsor / federal "lead sponsor" / CA principal author
+  PRINCIPAL_COAUTHOR // CA: joint sponsor distinct from principal author
+  COAUTHOR // CA: regular coauthor
+  COSPONSOR // Federal: cosponsor
+  SPONSOR // Generic / single-sponsor bills
+}
+
+enum PacDataSource {
+  OPENSECRETS_BULK // OpenSecrets bulk CSV (federal)
+  CAL_ACCESS_CCDC // CCDC Big Local News exports (CA)
+  FEC_DIRECT // Future graduation path: FEC.gov api.open.fec.gov
+}
+
+enum CommitteeCategory {
+  CORPORATE
+  LABOR
+  IDEOLOGICAL
+  PARTY
+  CANDIDATE // Candidate-controlled committee
+  TRADE_ASSOCIATION
+  UNCLASSIFIED
+}
+
+model Plank {
+  id               String       @id @default(cuid())
+  jurisdiction     Jurisdiction
+  slug             String
+  number           Int // 1-5 (federal) / 1-4 (CA)
+  name             String
+  shortDescription String       @db.Text
+  tagline          String       @db.Text
+  body             String       @db.Text // Full plank text per the brief
+  color            String? // Hex accent color for UI
+
+  markers Marker[]
+  scores  RepresentativeScore[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([jurisdiction, slug])
+  @@unique([jurisdiction, number])
+  @@index([jurisdiction])
+}
+
+model Marker {
+  id                      String       @id @default(cuid())
+  plank                   Plank        @relation(fields: [plankId], references: [id], onDelete: Cascade)
+  plankId                 String
+  jurisdiction            Jurisdiction // Denormalized from Plank for query convenience; must match plank.jurisdiction
+  slug                    String
+  name                    String
+  markerType              MarkerType
+  description             String       @db.Text
+  methodologyNotes        String?      @db.Text
+  displayOrder            Int          @default(0)
+  // Option C two-tier marker support
+  isRepublicanAlternative Boolean      @default(false)
+  parallelMarker          Marker?      @relation("ParallelMarker", fields: [parallelMarkerId], references: [id])
+  parallelMarkerId        String?
+  parallels               Marker[]     @relation("ParallelMarker")
+
+  bills        MarkerBill[]
+  achievements MarkerAchievement[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([plankId, slug])
+  @@index([jurisdiction])
+  @@index([plankId])
+}
+
+model MarkerBill {
+  id                String         @id @default(cuid())
+  marker            Marker         @relation(fields: [markerId], references: [id], onDelete: Cascade)
+  markerId          String
+  congressNumber    Int // 119 for federal current; CA session encoded as e.g. 20232024
+  billType          BillType
+  billNumber        String // e.g. "S.1041" or "AB-2200"
+  billTitle         String
+  actionType        BillActionType // What achieves this marker via this bill
+  notes             String?        @db.Text
+  isProvisional     Boolean        @default(true) // Bill numbers must be verified vs. authoritative source before any sync runs
+  // External system identifiers
+  legiscanBillId    Int?           @unique // LegiScan's bill_id, populated by sync
+  // Public-facing fields for the per-bill issue page
+  publicSlug        String?        @unique // Shareable URL slug, e.g. "calcare"
+  publicDescription String?        @db.Text // Human-readable explainer rendered on the issue page
+  statusNote        String?        @db.Text // e.g. "Held in Assembly Health Committee, did not advance"
+  callToAction      String?        @db.Text // Phone script body for the "call your rep" CTA
+  isFeatured        Boolean        @default(false) // Surfaced on the scorecard index when featured
+
+  /// Ordered timeline of bill actions ("Read first time", "Referred to Com. on HEALTH",
+  /// "Held under submission", etc.). Populated by sync from LegiScan's `history` array.
+  /// Shape: [{ date: string, chamber: 'A'|'S'|'X', action: string }, ...]
+  /// We store as JSON rather than a separate table because the timeline is always
+  /// rendered together and never queried individually.
+  procedureHistory  Json?
+
+  votes        BillVote[]
+  sponsorships BillSponsorship[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([markerId, billType, billNumber])
+  @@index([markerId])
+  @@index([isFeatured])
+}
+
+enum VotePosition {
+  YES
+  NO
+  NOT_VOTING
+  EXCUSED
+  PRESENT // Voted "present" — counted but not yes/no
+  ABSTAINED
+}
+
+model BillVote {
+  id           String       @id @default(cuid())
+  bill         MarkerBill   @relation(fields: [billId], references: [id], onDelete: Cascade)
+  billId       String
+  legislator   Legislator   @relation(fields: [legislatorId], references: [id], onDelete: Cascade)
+  legislatorId String
+  position     VotePosition
+  voteDate     DateTime?
+  voteContext  String? // e.g. "Floor vote", "Committee on Health, 2024-01-11"
+  sourceUrl    String? // Permanent link back to the official roll record
+  isProvisional Boolean    @default(true) // Mirror MarkerBill provisionality — votes need source verification
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([billId, legislatorId, voteContext])
+  @@index([billId])
+  @@index([legislatorId])
+}
+
+model Legislator {
+  // Primary key is bioguideId for federal, openStatesId for CA.
+  // We use a generic cuid id to keep the model uniform; bioguideId/openStatesId are unique secondary keys.
+  id            String       @id @default(cuid())
+  jurisdiction  Jurisdiction
+  bioguideId       String?      @unique // Federal members of Congress
+  openStatesId     String?      @unique // CA state legislators (and any other state expansion later)
+  legiscanPeopleId Int?         @unique // LegiScan's people_id (federal + state)
+  firstName     String
+  lastName      String
+  fullName      String
+  chamber       Chamber
+  state         String // 2-letter state abbreviation
+  district      Int? // null for U.S. Senate; required for U.S. House and state legislatures
+  party         Party
+  // Cross-system identifiers (federal)
+  opensecretsId String? // OpenSecrets CID
+  fecIds        String[] // FEC committee IDs (sometimes multiple)
+  govtrackId    Int?
+  photoUrl      String?
+  isActive      Boolean      @default(true)
+
+  scores       RepresentativeScore[]
+  achievements MarkerAchievement[]
+  pacData      PacMoneyData[]
+  billVotes        BillVote[]
+  billSponsorships BillSponsorship[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([jurisdiction])
+  @@index([state, chamber])
+  @@index([state, chamber, district])
+}
+
+model RepresentativeScore {
+  id                  String   @id @default(cuid())
+  legislator          Legislator @relation(fields: [legislatorId], references: [id], onDelete: Cascade)
+  legislatorId        String
+  plank               Plank    @relation(fields: [plankId], references: [id], onDelete: Cascade)
+  plankId             String
+  score               Int // signed integer under methodology v1.2 (+/-)
+  // For/against counts stored alongside the score so the index page can
+  // render "+N · X for · Y against" from a single source of truth. The
+  // invariant `score = forCount - againstCount` must hold; both are
+  // written atomically by compute-scores.
+  forCount            Int      @default(0)
+  againstCount        Int      @default(0)
+  computedAt          DateTime @default(now())
+  methodologyVersion  String // e.g. "v1.0"
+  notes               String?  @db.Text
+  publishedAt         DateTime? // null = unpublished/internal
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([legislatorId, plankId, methodologyVersion])
+  @@index([legislatorId])
+  @@index([plankId])
+}
+
+/// Per-(bill, legislator) sponsor record. Distinguishes "sponsored
+/// AB-1900" from "sponsored AB-2200" — MarkerAchievement is per-marker
+/// and can't distinguish which specific bill triggered the credit. The
+/// CalCare bill page uses these rows to render Authors / Cosponsors
+/// sections with full attribution per bill.
+model BillSponsorship {
+  id               String      @id @default(cuid())
+  bill             MarkerBill  @relation(fields: [billId], references: [id], onDelete: Cascade)
+  billId           String
+  legislator       Legislator  @relation(fields: [legislatorId], references: [id], onDelete: Cascade)
+  legislatorId     String
+  sponsorTier      SponsorTier
+  rawSponsorTypeId Int? // LegiScan sponsor_type_id, for audit
+  sponsorOrder     Int? // LegiScan sponsor_order (1 = primary, etc.)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([billId, legislatorId])
+  @@index([billId])
+  @@index([legislatorId])
+}
+
+model MarkerAchievement {
+  id                String              @id @default(cuid())
+  legislator        Legislator          @relation(fields: [legislatorId], references: [id], onDelete: Cascade)
+  legislatorId      String
+  marker            Marker              @relation(fields: [markerId], references: [id], onDelete: Cascade)
+  markerId          String
+  achieved          Boolean // Retained for back-compat with scoring engine; derived from actionTaken
+  // Three-state position evidence — distinguishes "took the right side"
+  // from "took the wrong side" from "no public record yet" so legislators
+  // with limited data don't get penalized as if they opposed everything.
+  // Absence of a row is the implicit fourth state: NO_RECORD.
+  actionTaken       AchievementStatus?  // null = legacy row written before three-state rollout
+  // When the achievement comes from sponsorship (rather than a vote),
+  // record the sponsor tier so the page can render an "Author" or
+  // "Cosponsor" badge. Null when the achievement comes from a vote roll
+  // or PAC data.
+  sponsorTier       SponsorTier?
+  evidenceType      EvidenceType
+  evidenceSourceUrl String? // Public link the score traces to
+  evidenceNotes     String?             @db.Text
+  verifiedAt        DateTime?
+  verifiedBy        String? // User id or admin email; resolved at app layer
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([legislatorId, markerId])
+  @@index([legislatorId])
+  @@index([markerId])
+  @@index([actionTaken])
+}
+
+model PacMoneyData {
+  id                     String        @id @default(cuid())
+  legislator             Legislator    @relation(fields: [legislatorId], references: [id], onDelete: Cascade)
+  legislatorId           String
+  cycleYear              Int // e.g. 2026
+  corporatePacAmount     Decimal       @db.Decimal(14, 2)
+  totalReceipts          Decimal       @db.Decimal(14, 2)
+  corporatePacPercentage Decimal       @db.Decimal(6, 4) // Stored as 0.0000-1.0000 for precision
+  dataSource             PacDataSource
+  dataSourceUrl          String? // Link back to the underlying filing or summary
+  fetchedAt              DateTime      @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Allows multiple rows per legislator-cycle from different sources;
+  // scoring engine prefers higher-fidelity sources (CAL_ACCESS_CCDC > OPENSECRETS_BULK)
+  @@unique([legislatorId, cycleYear, dataSource])
+  @@index([legislatorId])
+  @@index([cycleYear])
+}
+
+model CommitteeClassification {
+  id            String            @id @default(cuid())
+  jurisdiction  Jurisdiction
+  committeeId   String // FEC committee ID for federal, Cal-Access filer ID for CA
+  committeeName String
+  category      CommitteeCategory
+  sponsorName   String? // Sponsor org for sponsored committees (CA FPPC)
+  sourceNotes   String?           @db.Text // Public reasoning for the classification call
+  classifiedBy  String? // Reviewer identifier
+  classifiedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([jurisdiction, committeeId])
+  @@index([jurisdiction, category])
+}
+
+enum ApiCallSource {
+  LEGISCAN
+  CONGRESSGOV
+  OPENSTATES
+  OPENSECRETS_BULK
+  CAL_ACCESS_CCDC
+  FEC_DIRECT
+}
+
+// Records every external data call made by the scorecard pipeline.
+// Lets us audit rate limit budget, debug failures, and verify caching
+// is doing its job. Older rows are pruned by a maintenance job.
+model ApiCallLog {
+  id           String        @id @default(cuid())
+  source       ApiCallSource
+  endpoint     String // e.g. "getBill" or full URL path
+  params       Json? // Request parameters (no secrets)
+  status       Int? // HTTP status code, null if exception before response
+  cacheHit     Boolean       @default(false)
+  durationMs   Int? // Round-trip time
+  errorMessage String?       @db.Text
+
+  createdAt DateTime @default(now())
+
+  @@index([source, createdAt])
+  @@index([endpoint, createdAt])
+  @@index([createdAt])
 }

@@ -54,6 +54,7 @@ async function main() {
       const contactUrl = links.find((u) => /contact/i.test(u)) || links[0] || null;
       const websiteUrl = links.find((u) => !/contact/i.test(u)) || null;
       return {
+        openStatesId: l.id || null,
         name: l.name,
         party: l.current_party || null,
         chamber: l.current_chamber as 'upper' | 'lower',
