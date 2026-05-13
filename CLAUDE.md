@@ -200,3 +200,8 @@ Visual conventions on `/scorecard*` pages:
 - **Never modify `.env.local`** unless the user explicitly asks.
 - Treat `.env.local` as sensitive; avoid reading or copying values unless required.
 - When reviewing or modifying forms, check for injection (SQL/NoSQL/ORM misuse), XSS (stored, reflected, DOM-based), and hardcoded secrets. Prefer minimal, targeted fixes.
+
+## Workflow preferences
+
+- **Plan execution:** default to **subagent-driven** (one fresh subagent per task + spec-compliance review + code-quality review). Do not switch to inline execution unless explicitly requested.
+- **Branch strategy for migrations and risky changes:** always a dedicated branch + PR + Vercel-preview verification before merging. Never direct-to-`main` for dependency bumps or framework upgrades.
