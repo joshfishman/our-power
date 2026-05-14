@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { scoreLegislator, scorePlank, METHODOLOGY_VERSION, weightForAchievement } from '@/lib/scorecard/scoring';
 import type { ScoringPlank, AchievementForScoring } from '@/lib/scorecard/scoring';
 
-// Methodology v1.2: each ACTED_FOR = +1, each ACTED_AGAINST = -1.
-// Plank score = sum (can be negative). Total = sum of plank scores.
+// Methodology v1.3: weighted scoring via weightForAchievement.
+// Plank score = sum of weighted achievements. Total = sum of plank scores.
 
 const plank: ScoringPlank = {
   id: 'plank-1',
@@ -16,102 +16,87 @@ const plank: ScoringPlank = {
   ],
 };
 
-const set = (...ids: string[]) => new Set(ids);
+// Helpers for building test achievements.
+function ach(markerId: string, kind: 'for' | 'against' | 'norecord' = 'for'): AchievementForScoring {
+  return {
+    markerId,
+    achieved: kind === 'for',
+    actionTaken: kind === 'for' ? 'ACTED_FOR' : kind === 'against' ? 'ACTED_AGAINST' : 'NO_RECORD',
+    evidenceType: 'VOTE',
+    sponsorTier: null,
+  };
+}
 
-describe('scorePlank — +1 / -1 model', () => {
-  it('returns 0 when nothing is acted on', () => {
-    expect(scorePlank(plank, set(), set()).score).toBe(0);
+function authoredCosponsor(markerId: string, tier: AchievementForScoring['sponsorTier']): AchievementForScoring {
+  return {
+    markerId,
+    achieved: true,
+    actionTaken: 'ACTED_FOR',
+    evidenceType: 'COSPONSOR',
+    sponsorTier: tier,
+  };
+}
+
+describe('scorePlank — v1.3 weighted-sum model', () => {
+  it('returns 0 when no achievements touch this plank', () => {
+    const r = scorePlank(plank, []);
+    expect(r.score).toBe(0);
+    expect(r.measuredMarkers).toBe(0);
   });
 
-  it('returns +1 for one ACTED_FOR', () => {
-    expect(scorePlank(plank, set('m1'), set()).score).toBe(1);
-  });
-
-  it('returns -1 for one ACTED_AGAINST', () => {
-    expect(scorePlank(plank, set(), set('m1')).score).toBe(-1);
-  });
-
-  it('returns net (for − against)', () => {
-    expect(scorePlank(plank, set('m1', 'm2', 'm3'), set('m4')).score).toBe(2); // 3 − 1
-    expect(scorePlank(plank, set('m1'), set('m2', 'm3', 'm4')).score).toBe(-2); // 1 − 3
-  });
-
-  it('hits the floor when every marker is against', () => {
-    expect(scorePlank(plank, set(), set('m1', 'm2', 'm3', 'm4')).score).toBe(-4);
-  });
-
-  it('hits the ceiling when every marker is for', () => {
-    expect(scorePlank(plank, set('m1', 'm2', 'm3', 'm4'), set()).score).toBe(4);
-  });
-
-  it('exposes the for/against counts in the result', () => {
-    const r = scorePlank(plank, set('m1', 'm2'), set('m3'));
+  it('sums weights across markers', () => {
+    // +3 (Author) + +1 (vote yes) + -1 (vote no) = +3
+    const r = scorePlank(plank, [authoredCosponsor('m1', 'AUTHOR'), ach('m2', 'for'), ach('m3', 'against')]);
+    expect(r.score).toBe(3);
     expect(r.forCount).toBe(2);
     expect(r.againstCount).toBe(1);
     expect(r.measuredMarkers).toBe(3);
-    expect(r.totalMarkers).toBe(4);
-    expect(r.notes).toContain(`methodology=${METHODOLOGY_VERSION}`);
-    expect(r.notes).toContain('+2 −1');
   });
 
-  it("ignores marker IDs that don't belong to the plank", () => {
-    expect(scorePlank(plank, set('other-plank-marker'), set()).score).toBe(0);
+  it('ignores achievements for markers outside this plank', () => {
+    const r = scorePlank(plank, [ach('m1', 'for'), ach('not-on-this-plank', 'for')]);
+    expect(r.score).toBe(1);
+    expect(r.measuredMarkers).toBe(1);
+  });
+
+  it('ignores NO_RECORD achievements', () => {
+    const r = scorePlank(plank, [ach('m1', 'for'), ach('m2', 'norecord')]);
+    expect(r.score).toBe(1);
+    expect(r.measuredMarkers).toBe(1);
   });
 });
 
-describe('scoreLegislator — federal (5 planks)', () => {
-  const federalPlanks: ScoringPlank[] = [1, 2, 3, 4, 5].map((n) => ({
-    id: `p-${n}`,
-    number: n,
-    markers: [
-      { id: `p${n}-primary`, markerType: 'PRIMARY' },
-      { id: `p${n}-s1`, markerType: 'SECONDARY' },
-      { id: `p${n}-s2`, markerType: 'SECONDARY' },
-    ],
-  }));
+describe('scoreLegislator — v1.3', () => {
+  const planks: ScoringPlank[] = [
+    plank,
+    {
+      id: 'plank-2',
+      number: 2,
+      markers: [{ id: 'm10', markerType: 'PRIMARY' }],
+    },
+  ];
 
-  it('totals to +15 when every marker hits ACTED_FOR', () => {
-    const allFor = new Set<string>();
-    for (let n = 1; n <= 5; n += 1) {
-      allFor.add(`p${n}-primary`);
-      allFor.add(`p${n}-s1`);
-      allFor.add(`p${n}-s2`);
-    }
-    const result = scoreLegislator(federalPlanks, {
-      legislatorId: 'L1',
-      forIds: allFor,
-      againstIds: new Set(),
+  it('aggregates per-plank scores into a total', () => {
+    const result = scoreLegislator(planks, {
+      legislatorId: 'leg-1',
+      achievements: [authoredCosponsor('m1', 'AUTHOR'), ach('m10', 'against')],
     });
-    expect(result.total).toBe(15);
-    expect(result.totalFor).toBe(15);
-    expect(result.totalAgainst).toBe(0);
+    expect(result.total).toBe(2); // +3 + -1
+    expect(result.perPlank).toHaveLength(2);
   });
 
-  it('totals to -15 when every marker hits ACTED_AGAINST', () => {
-    const allAgainst = new Set<string>();
-    for (let n = 1; n <= 5; n += 1) {
-      allAgainst.add(`p${n}-primary`);
-      allAgainst.add(`p${n}-s1`);
-      allAgainst.add(`p${n}-s2`);
-    }
-    const result = scoreLegislator(federalPlanks, {
-      legislatorId: 'L1',
-      forIds: new Set(),
-      againstIds: allAgainst,
+  it('returns 0 for a legislator with no achievements', () => {
+    const result = scoreLegislator(planks, {
+      legislatorId: 'leg-1',
+      achievements: [],
     });
-    expect(result.total).toBe(-15);
+    expect(result.total).toBe(0);
   });
+});
 
-  it('mixes: +5 on Plank 1, -2 on Plank 2 → net +3', () => {
-    const result = scoreLegislator(federalPlanks, {
-      legislatorId: 'L1',
-      forIds: new Set(['p1-primary', 'p1-s1', 'p1-s2', 'p2-s1']),
-      againstIds: new Set(['p2-primary', 'p2-s2', 'p3-primary']),
-    });
-    expect(result.perPlank[0].score).toBe(3); // 3 for, 0 against
-    expect(result.perPlank[1].score).toBe(-1); // 1 for, 2 against
-    expect(result.perPlank[2].score).toBe(-1); // 0 for, 1 against
-    expect(result.total).toBe(1); // 3 − 1 − 1 + 0 + 0
+describe('METHODOLOGY_VERSION', () => {
+  it('is v1.3', () => {
+    expect(METHODOLOGY_VERSION).toBe('v1.3');
   });
 });
 
