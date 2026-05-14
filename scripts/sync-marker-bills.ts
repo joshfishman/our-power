@@ -122,6 +122,38 @@ const newStats = (): SyncStats => ({
   errors: 0,
 });
 
+/** Tokens that appear inside compound names but carry no identifying weight. */
+const NAME_FILLERS = new Set(['y', 'de', 'la', 'el', 'del', 'van', 'von', 'di', 'da']);
+
+/**
+ * Normalize a name for fuzzy comparison: strip diacritics (Pérez → perez),
+ * lowercase, strip punctuation (including hyphens → space), drop common
+ * suffixes (Jr/Sr/II/III/IV).
+ */
+function normalizeName(s: string): string {
+  return s
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[.,'`"-]/g, ' ')
+    .replace(/\bjr\b|\bsr\b|\bii\b|\biii\b|\biv\b/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function lastNameTokensOverlap(a: string, b: string): boolean {
+  const tokensA = normalizeName(a)
+    .split(' ')
+    .filter((t) => t.length >= 3 && !NAME_FILLERS.has(t));
+  const tokensB = new Set(
+    normalizeName(b)
+      .split(' ')
+      .filter((t) => t.length >= 3 && !NAME_FILLERS.has(t)),
+  );
+  if (tokensA.length === 0 || tokensB.size === 0) return false;
+  return tokensA.some((t) => tokensB.has(t));
+}
+
 /**
  * Looks up a Legislator by LegiScan people_id. If we don't yet have
  * that mapping, attempts a name + jurisdiction match against existing
@@ -144,27 +176,47 @@ async function resolveLegislator(
   });
   if (direct) return direct;
 
-  // Name match. Be conservative: jurisdiction must match, full name must match
-  // (case-insensitive), and party must match if both sides have a value.
-  const candidates = await prisma.legislator.findMany({
-    where: {
-      jurisdiction,
-      fullName: { equals: fullName, mode: 'insensitive' },
-    },
-    select: { id: true, party: true },
+  // No fullName supplied (roll-call voters called with ''): can't name-match.
+  if (!fullName) return null;
+
+  // Load all legislators for this jurisdiction. ≤538 federal or ≤120 CA rows
+  // — cheap enough to load in JS and match in memory for better normalization.
+  const allCandidates = await prisma.legislator.findMany({
+    where: { jurisdiction },
+    select: { id: true, fullName: true, party: true },
   });
-  if (candidates.length === 0) return null;
-  if (candidates.length > 1) return null; // Ambiguous — let it stay unmapped rather than guess.
-  const candidate = candidates[0];
-  if (party && candidate.party && party.charAt(0).toUpperCase() !== candidate.party) {
-    // Party mismatch; refuse to backfill.
-    return null;
-  }
-  await prisma.legislator.update({
-    where: { id: candidate.id },
-    data: { legiscanPeopleId: peopleIdNum },
-  });
-  return { id: candidate.id };
+
+  const normIncoming = normalizeName(fullName);
+
+  // --- Tier 1: strict normalized full-name match ---
+  const tier1 = allCandidates.filter((c) => normalizeName(c.fullName) === normIncoming);
+  const resolveCandidate = async (candidate: { id: string; party: string | null }) => {
+    if (party && candidate.party && party.charAt(0).toUpperCase() !== candidate.party) {
+      // Party mismatch; refuse to backfill.
+      return null;
+    }
+    await prisma.legislator.update({
+      where: { id: candidate.id },
+      data: { legiscanPeopleId: peopleIdNum },
+    });
+    return { id: candidate.id };
+  };
+
+  if (tier1.length === 1) return resolveCandidate(tier1[0]);
+  if (tier1.length > 1) return null; // Ambiguous — don't guess.
+
+  // --- Tier 2: token overlap on first + last name tokens ---
+  // We only have fullName in the DB, so we split incoming name into tokens
+  // and check that at least one identifying token overlaps with each DB
+  // candidate's normalized fullName tokens. Because we can't reliably split
+  // first vs last from a single fullName field, we treat the whole token set
+  // as one bag and require at least one overlap. This is the same logic
+  // lastNameTokensOverlap implements — we reuse it treating the full name
+  // strings as the inputs.
+  const tier2 = allCandidates.filter((c) => lastNameTokensOverlap(c.fullName, fullName));
+  if (tier2.length === 1) return resolveCandidate(tier2[0]);
+  // Ambiguous or zero — stay conservative.
+  return null;
 }
 
 /**
