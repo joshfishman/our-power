@@ -204,4 +204,5 @@ Visual conventions on `/scorecard*` pages:
 ## Workflow preferences
 
 - **Plan execution:** default to **subagent-driven** (one fresh subagent per task + spec-compliance review + code-quality review). Do not switch to inline execution unless explicitly requested.
-- **Branch strategy for migrations and risky changes:** always a dedicated branch + PR + Vercel-preview verification before merging. Never direct-to-`main` for dependency bumps or framework upgrades.
+- **Branch strategy for migrations and risky changes:** always a dedicated branch + PR + Vercel-preview verification before merging. Never direct-to-`main` for dependency bumps, framework upgrades, or methodology changes that affect every legislator's score. Vercel preview env vars are configured for `DATABASE_URL`, `AUTH_*`, etc. — preview deploys boot fully.
+- **Methodology-version bumps** (anything that changes how `RepresentativeScore` is computed) must trigger a recompute + spot-check of high-profile legislators on preview before merge.
