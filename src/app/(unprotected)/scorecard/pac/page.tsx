@@ -128,7 +128,10 @@ export default async function PacScorecardPage(props: { searchParams: Promise<Se
 
       <footer className="mt-12 border-t-2 border-gray-900 pt-4 text-xs text-gray-500">
         <p>
-          Same threshold applied to every legislator. Ranked low-to-high. Methodology v1.0.{' '}
+          Same threshold applied to every legislator. Ranked low-to-high.{' '}
+          <Link href="/scorecard/methodology" className="underline hover:text-[#8B3A3A]">
+            Methodology v1.3 →
+          </Link>{' '}
           <Link href="/scorecard" className="underline">
             Full scorecard →
           </Link>
