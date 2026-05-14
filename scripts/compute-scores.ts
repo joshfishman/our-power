@@ -280,7 +280,9 @@ async function main(): Promise<void> {
 
   async function flushBatch() {
     if (operations.length === 0) return;
-    await prisma.$transaction(operations);
+    // 30s per batch — Supabase round-trips can push a 50-upsert batch past
+    // Prisma's 5s default, especially on cold connections after a deploy.
+    await prisma.$transaction(operations, { timeout: 30_000 });
     operations.length = 0;
   }
 
