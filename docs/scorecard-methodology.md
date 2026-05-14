@@ -1,143 +1,127 @@
-# Scorecard Methodology — v1.0
+# How we score
 
-_Working draft. Methodology version `v1.0`. Subject to change before public launch._
+This scorecard measures every sitting member of Congress and every sitting member of the California State Legislature against five planks of a cross-partisan civic platform (four planks for California — see below). The same rubric applies to every legislator regardless of party: Bernie Sanders and Josh Hawley are scored against identical markers. Every point in every score traces to a public source — a vote roll, a cosponsorship record, an FEC filing, or a Cal-Access filing — and every score is reviewed by a human before it goes public.
 
----
+## The basics
 
-## What this scores
+Each legislator earns or loses points based on what they actually do on the bills tracked under each plank. Yes votes and cosponsorship earn points. A recorded "no" vote, an unexcused or excused absence on a recorded roll, or a vote of "present" loses a point. A position we have no record of doesn't count either way — it doesn't penalize a legislator, but it also doesn't help them. Thin coverage shows up explicitly on each plank as a "based on X of Y markers measured" indicator, so a score based on three markers reads differently from one based on twelve.
 
-Every sitting member of Congress (federal scorecard) and every sitting member of the California State Legislature (state scorecard, v1) is scored against five planks of a cross-partisan civic platform.
+Plank scores are signed integers — they can be positive, negative, or zero. A positive total renders green, a negative total renders red, zero renders neutral. There is no artificial denominator: the number reflects the cumulative weight of every recorded position.
 
-Federal members are scored 0–5 on each of five planks for a total out of 25. California members are scored 0–5 on each of four planks (Plank 5 — _Peace and Strength_ — does not map to state-level policy) for a total out of 20.
+## The weight table
 
-Same rubric applies to every member regardless of party. Bernie Sanders and Josh Hawley are scored against the same markers.
+| What                                                                         | Points |
+| ---------------------------------------------------------------------------- | ------ |
+| Wrote the bill (author / lead sponsor)                                       | +3     |
+| Co-led the bill (principal coauthor / coauthor)                              | +2     |
+| Signed on (cosponsor)                                                        | +1     |
+| Voted yes (committee or floor)                                               | +1     |
+| Voted no, didn't vote when present, was excused, abstained, or voted present | −1     |
+| Took less than 5% of campaign money from corporate PACs                      | +1     |
+| Took 5% or more from corporate PACs                                          | −1     |
+| No record on this marker                                                     | 0      |
 
-## Scoring (v1.2 — point model)
+> All five non-yes vote positions count the same: −1. Including officially-excused absences. We treat them the same because the bill needed your yes to pass — if you weren't there to give it, the procedural effect is identical regardless of why.
 
-Each verified position record contributes a signed integer point:
-
-- **ACTED_FOR** → **+1** for ANY of:
-  - Cosponsored the marker bill (any tier)
-  - Voted yes on the marker bill in committee or on the floor
-  - Under the corporate-PAC threshold (Plank 1 only)
-- **ACTED_AGAINST** → **−1** for ANY of:
-  - Voted no on the marker bill
-  - Recorded NOT_VOTING on a committee roll where the legislator was seated (procedural denial)
-  - Over the corporate-PAC threshold
-- **NO_RECORD** → 0 (no position evidence; the marker doesn't contribute either way)
-
-The marker's `actionType` (COSPONSOR vs VOTE_YES) determines which positive signals dominate when multiple exist (sponsor wins over vote), but **any** positive signal is enough to earn the +1. Earlier versions of the engine only counted cosponsorship for COSPONSOR-type markers; that was too strict — a senator who voted yes on a bill they didn't cosponsor still acted for it.
-
-**Plank score** = sum of marker points on that plank. Can be negative.
+**Plank score** = sum of all weighted points on that plank. Can be negative.  
 **Total score** = sum of plank scores across all planks. Also signed.
-
-Positive scores render green, negative scores render red, zero renders neutral gray. No artificial denominator (no "out of 20" or "out of 25") — the point total reflects the cumulative weight of recorded positions.
-
-A score is published only after every constituent record traces to a public source (vote, cosponsorship, FEC filing, Cal-Access filing) and has passed the verification gate.
-
-### Why this model
-
-Earlier versions (v1.0 / v1.1) used a 0–5 rubric per plank with primary + secondary weighting. Reasons for switching to the point model:
-
-1. **Action-reactive scoring.** A senator who cosponsors 12 marker bills and voted against 2 reads as +10 — the activity is preserved. The old rubric collapsed that into a 3/5 or 4/5 even though the underlying behavior was very different.
-2. **Transparent weighting.** Each marker is worth ±1, full stop. No ambiguity about whether "primary alone" earns 3 or whether "primary + 1 secondary" earns 3 or 4.
-3. **Computationally trivial.** Score = forCount − againstCount. Compute pass finishes in seconds at full population, vs. minutes with the rubric upserts.
-4. **Coverage is its own indicator.** Page renders "based on X of Y markers measured" beside the score; thin coverage no longer looks like the same thing as low alignment.
 
 ## The five planks
 
-### 1. Honest Government
+Planks 1–4 apply to both federal and California legislators. Plank 5 — Peace and Strength — is federal-only; it does not map to state-level policy and is not part of the California scorecard.
 
-End legalized bribery. Public servants, not private clients.
+---
 
-Federal primary marker: refuses corporate PAC money in current cycle (under 5% of total receipts, per FEC). Secondaries: stock-trading ban, public financing of elections, dark-money disclosure, lobbying-cooling-off reform.
+### Plank 1 — Honest Government
 
-California primary marker: refuses corporate PAC money in current cycle (under 5% of receipts, per Cal-Access). Secondaries: strengthening the Levine Act, lobbyist-gift caps, state-level dark-money disclosure, extended cooling-off period.
+_End legalized bribery. Public servants, not private clients._
 
-### 2. Our Children Our Future
+**Federal:** Public servants work for the public. End the system where members of Congress trade stocks on inside information, take corporate PAC money, and walk into lobbying jobs the day they leave office. Public financing of elections so candidates work for voters, not donors. Full disclosure of dark money. Real cooling-off periods between government service and lobbying.
 
-The schools, science, technology, and infrastructure we hand down.
+**California:** Members of the California Legislature work for Californians. Stop pay-to-play. Strengthen the Levine Act. Limit lobbyist gifts. Disclose dark money in state campaigns. Real cooling-off periods between Sacramento and the lobby corps next door.
 
-Federal primary marker: supported a major education / research / infrastructure / clean energy investment in the past two Congresses. Secondaries: clean energy investment, science research funding, environmental protection, early childhood, infrastructure beyond IIJA.
+---
 
-California primary marker: supported LCFF base and TK universalization (and opposed voucher / ESA proposals). Secondaries: SB 100 implementation, wildfire prevention, higher-ed funding floors, broadband.
+### Plank 2 — Our Children Our Future
 
-### 3. Making a Living
+_What we build and hand down to the next generation._
 
-A full-time job should support a life.
+**Federal:** Strong public schools — every child deserves a good one in their neighborhood. Parental empowerment within public schools (transparency, voice in curriculum), without draining public dollars to vouchers or charters. Early childhood education. Federal science and technology research. Clean energy independence — solar, wind, nuclear, geothermal, batteries, the grid. Roads, bridges, broadband, water. Environmental stewardship.
 
-Federal primary marker: supported federal minimum wage increase to $15 or higher. Secondaries: wage theft / non-compete / anti-retaliation legislation, 36% loan rate cap, federal housing supply, paid family leave. Includes a **Republican alternative** secondary for the Romney–Cotton TEAM Act under Option C (see below).
+**California:** Strong public schools — California's LCFF and TK rollouts mean every child has the chance to learn close to home. Real funding for UC, CSU, and community colleges. Climate action that meets SB 100 targets and the moment we are in. Wildfire prevention. Water infrastructure that holds for the next century. Broadband for every child.
 
-California primary marker: supported housing supply legislation (composite — at least two of SB 9 / SB 10 successors, AB 2011, AB 2097, ADU expansion). Secondaries: AB 1482 tenant protections, wage theft enforcement, state loan rate caps, expanded Paid Family Leave.
+---
 
-### 4. The Care We Owe
+### Plank 3 — Making a Living
 
-Honor the promises this country has made.
+_A full-time job should support a life. Wages, housing, no predatory lending._
 
-Federal primary marker: supported a major healthcare cost or veterans benefit measure in the past two Congresses (IRA drug pricing, PACT Act, ACA subsidy expansion, Medical Debt Relief, or Medicare expansion). Secondaries: PACT Act, votes against Medicaid cuts, Social Security solvency legislation, childcare / paid leave. Includes a **Republican alternative** secondary for the Rubio New Parents Act under Option C.
+**Federal:** A federal minimum wage that means something. Stop wage theft and retaliation against workers who organize. End non-competes that trap workers in low-wage jobs. Cap predatory loan rates. Build housing. Paid family leave for working families.
 
-California primary marker: supported Medi-Cal expansion and protection. Secondaries: CalRx affordable medication, state veterans home funding, county-level mental health capacity, state childcare assistance.
+**California:** California has the highest housing costs in the country. The state minimum wage is meaningful but rent eats it. Build housing — SB 9, SB 10, ADU pathways, by-right zoning where it works. Stop wage theft. Cap predatory loan rates. Protect tenants from no-cause eviction. Keep workers' protections strong.
 
-### 5. Peace and Strength (federal only)
+---
 
-Use American power wisely. End the forever wars. Audit the Pentagon.
+### Plank 4 — The Care We Owe
 
-Primary marker: supported a congressional war powers reassertion (AUMF repeal cosponsorship or Iran/Yemen/Venezuela WPR vote in 119th Congress). Secondaries: Pentagon audit accountability, major antitrust legislation, State Department funding, labor and environmental protections in trade agreements.
+_Honor the promises this country has made — to veterans, elders, and working families._
 
-This plank does not map to state-level policy and is not part of the California scorecard.
+**Federal:** The country made promises — to veterans, to elders, to working families who paid in. Honor them. Veterans get the care they earned. Drug prices come down. Medicare and Medicaid stay strong. Social Security stays solvent and pays what people earned. Childcare and paid leave so families can work and raise children at the same time.
 
-## Option C — two-tier markers
+**California:** Medi-Cal expansion has covered millions more Californians. Keep building that. CalRx for affordable medication. Real funding for state veterans homes and benefits. Mental health access that actually exists in your county. Childcare that working parents can afford.
 
-Republican-authored policy alternatives count toward plank scores as **secondary markers** (never primary) when they meet both conditions:
+---
 
-1. Introduced as a standalone bill with at least 3 GOP cosponsors.
-2. Directionally moves the policy in the plank's stated direction, even if smaller in magnitude than a Democratic vehicle.
+### Plank 5 — Peace and Strength (federal only)
 
-This rule was adopted on 2026-04-29 to fix a methodological gap: without it, the scorecard read as scoring against Democratic legislative vehicles, and Republicans who authored conservative alternatives on minimum wage, paid leave, antitrust, etc. received no credit. The cross-partisan integrity claim depends on this rule.
+_Use American power wisely. End the forever wars. Audit the Pentagon._
 
-Concrete examples in the seed data:
+Strength means using power wisely. End the forever wars — Congress, not the executive alone, decides when American troops go into combat. Audit the Pentagon, every dollar accounted for. Break up monopolies that have grown too powerful — Big Tech, pharma, agriculture, defense. Real diplomacy at parity with force projection. Trade deals that protect American workers and the environment.
 
-- **Plank 3 — _Making a Living_.** The Romney–Cotton TEAM Act (\$10/hour indexed minimum wage paired with E-Verify) counts as a secondary marker paralleling the Raise the Wage Act (\$15) primary. Members who cosponsor TEAM but not Raise the Wage receive secondary-marker credit on Plank 3.
-- **Plank 4 — _The Care We Owe_.** The Rubio New Parents Act (paid parental leave funded by Social Security advances) counts as a secondary marker paralleling federal paid-leave proposals.
+This plank does not map to state-level policy and is not scored for California legislators.
 
-Republican alternatives never qualify as the _primary_ marker for a plank. The reasoning for each Option C call is documented in the marker's `methodologyNotes` and rendered on the public methodology page.
+---
 
-## Corporate PAC money definition
+## Two-tier markers (the Option C rule)
 
-A member "refuses corporate PAC money" when corporate PAC contributions are under 5% of total campaign receipts in the current cycle.
+Some markers credit either the platform's preferred legislative vehicle or a Republican-authored alternative that moves in the same direction at smaller magnitude. Both vehicles count. A member who cosponsors the conservative alternative but not the progressive primary vehicle still earns secondary-marker credit — the cross-partisan integrity of this scorecard depends on that rule.
 
-**Federal source:** OpenSecrets bulk data, which pre-classifies PACs into corporate / labor / ideological / party / candidate categories from FEC filings. Imported into our `PacMoneyData` table with `dataSource = OPENSECRETS_BULK`. (The OpenSecrets API was discontinued in April 2025; bulk CSV downloads remain available.)
+Two concrete examples:
 
-**California source:** Cal-Access raw data via the California Civic Data Coalition (CCDC) pipeline, hosted on Big Local News. Imported with `dataSource = CAL_ACCESS_CCDC`. Cal-Access does not pre-classify "corporate PAC" — that classification is held in our `CommitteeClassification` table, hand-curated for the top California committees. Every classification is publicly visible and challengeable.
+- **Plank 3 — Making a Living.** The Higher Wages for American Workers Act (Hawley/Welch/Gallego, S.2013) counts as a secondary marker paralleling the Raise the Wage Act ($17/hr primary). Members who cosponsor the lower-magnitude alternative but not the primary earn secondary credit on Plank 3.
+- **Plank 4 — The Care We Owe.** The More Paid Leave for More Americans Act (Bice-Houlahan, H.R.3089) counts as a secondary marker paralleling Democratic paid-leave proposals. It uses tax credits and federal-state partnership rather than payroll-tax funding — a different mechanism, the same direction.
 
-A future graduation path uses FEC.gov directly (`api.open.fec.gov`) with our own PAC classification, switching `dataSource` to `FEC_DIRECT`. The scoring engine prefers higher-fidelity sources where multiple are present.
+Republican alternatives never qualify as the _primary_ marker for a plank. The reasoning for each two-tier call is documented in the marker's methodology notes and is publicly visible on the platform.
 
-## Provisional bill numbers
+## Corporate PAC money
 
-Bill numbers in the seed data are flagged `isProvisional = true` until they are verified against authoritative sources (Congress.gov for federal, leginfo.legislature.ca.gov for California). Phase 2 sync against ProPublica / OpenStates does not run against provisional bills.
+A legislator "refuses corporate PAC money" when corporate PAC contributions are under 5% of total campaign receipts in the current cycle.
 
-## Verification before publication
+**Federal source:** OpenSecrets bulk data, which pre-classifies PACs into corporate, labor, ideological, party, candidate, and trade-association categories from FEC filings. (The OpenSecrets API was discontinued in April 2025; bulk CSV downloads remain available and are imported into our database.)
 
-Every `MarkerAchievement` written by the automated pipeline starts unverified. A human reviewer must verify the evidence URL and toggle the achievement's verification flag before the resulting score is published. This is the credibility gate — without verification, no score is shown to the public.
+**California source:** Cal-Access raw data via the California Civic Data Coalition (CCDC) pipeline, hosted on Big Local News. Cal-Access does not pre-classify "corporate PAC" — that classification is maintained in our `CommitteeClassification` table, hand-curated for the top California committees. Every classification is publicly visible and open to challenge.
 
-## Challenges
+A future upgrade path uses FEC.gov directly with our own PAC classification. The scoring engine prefers the highest-fidelity source where multiple records exist for the same legislator.
 
-Every published score is open to public challenge. A challenge form (Phase 5) accepts a rep ID, plank ID, description, and contact email. The verification team reviews each challenge and either updates the score or publishes the reasoning for declining to update it. Rejections are not silent.
+## What we don't (yet) score
 
-## Three-state position records (v1.1)
+Honest accounting of current gaps:
 
-Each `MarkerAchievement` row carries an `actionTaken` field with three values:
+- **Procedural deaths.** When a bill dies in conference committee, in a suspense file, or is "held under submission," that often happens off the record — no vote roll, no cosponsorship signal. We can't score what we can't see, so those moments of legislative burial don't show up in a member's numbers even when they're consequential.
+- **Committee importance.** A committee chair who kills a bill in markup is doing something meaningfully different from a rank-and-file member who votes no on the floor. We don't yet weight by committee position or amendment authorship.
+- **Vote record completeness.** We rely on LegiScan for vote records. If LegiScan doesn't have a roll call, we don't either — a gap in their coverage becomes a gap in ours.
 
-- **ACTED_FOR** — positive evidence that the legislator took the side the marker rewards (cosponsored, voted yes on a VOTE_YES marker, refused corporate PAC money under the threshold).
-- **ACTED_AGAINST** — positive evidence the legislator took the opposite side (voted no on a VOTE_YES marker, accepted corporate PAC money over the threshold).
-- **NO_RECORD** — implicit when no row exists. We don't have a public position record for this legislator on this marker yet.
+## Provisional bills
 
-The page rendering distinguishes all three (✓ green / ✗ slate / ? gray dashed) so legislators with thin coverage don't get treated as opposition by default. Each plank now carries a "based on X of Y markers measured" indicator, and the per-plank score is rendered with reduced opacity when measured coverage falls below 50%.
-
-The scoring rubric itself is unchanged — `actionTaken === 'ACTED_FOR'` is what counts toward primary/secondary tallies. NO_RECORD does not penalize. ACTED_AGAINST does not deduct from the score (counts as zero like NO_RECORD), but it surfaces visibly on the page so readers can see who voted against the plank.
+Some markers track bills that have been identified as likely vehicles but haven't yet been formally introduced or confirmed in the official record. These are flagged as provisional and are not scored until LegiScan confirms the bill number against the authoritative source (Congress.gov for federal, leginfo.legislature.ca.gov for California). A provisional flag on a marker is visible on the platform and in the methodology notes.
 
 ## Methodology versions
 
-Methodology may change. Each `RepresentativeScore` row is stamped with the methodology version it was computed under. When the methodology changes, scores are recomputed under the new version; old versions remain in the database for audit purposes but are not displayed publicly.
+Each score row in the database is stamped with the methodology version it was computed under. When the methodology changes, scores are recomputed under the new version; old versions remain for audit purposes but are not shown publicly.
 
-This document is `v1.2` — replaces the v1.0/v1.1 0–5 rubric with the signed +1/−1 point model described above. Three-state position records (v1.1) and the coverage indicator are retained.
+| Version | Released   | What changed                                                                                    |
+| ------- | ---------- | ----------------------------------------------------------------------------------------------- |
+| v1.0    | 2026-04-29 | Initial 0–5 rubric, primary + secondary markers                                                 |
+| v1.1    | 2026-04-29 | Three-state position records (ACTED_FOR / ACTED_AGAINST / NO_RECORD)                            |
+| v1.2    | 2026-05-12 | Switched from 0–5 rubric to signed +1/−1 point sum                                              |
+| v1.3    | 2026-05-13 | Sponsor-tier weighted scoring (Author/Sponsor +3, Principal Coauthor/Coauthor +2, Cosponsor +1) |
