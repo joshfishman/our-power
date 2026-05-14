@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { scoreLegislator, scorePlank, METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
-import type { ScoringPlank } from '@/lib/scorecard/scoring';
+import { scoreLegislator, scorePlank, METHODOLOGY_VERSION, weightForAchievement } from '@/lib/scorecard/scoring';
+import type { ScoringPlank, AchievementForScoring } from '@/lib/scorecard/scoring';
 
 // Methodology v1.2: each ACTED_FOR = +1, each ACTED_AGAINST = -1.
 // Plank score = sum (can be negative). Total = sum of plank scores.
@@ -112,5 +112,92 @@ describe('scoreLegislator — federal (5 planks)', () => {
     expect(result.perPlank[1].score).toBe(-1); // 1 for, 2 against
     expect(result.perPlank[2].score).toBe(-1); // 0 for, 1 against
     expect(result.total).toBe(1); // 3 − 1 − 1 + 0 + 0
+  });
+});
+
+describe('weightForAchievement — v1.3 weight table', () => {
+  const base = {
+    markerId: 'm',
+    achieved: true,
+    sponsorTier: null,
+  } as const;
+
+  it('Author cosponsorship is +3', () => {
+    const a: AchievementForScoring = {
+      ...base,
+      evidenceType: 'COSPONSOR',
+      actionTaken: 'ACTED_FOR',
+      sponsorTier: 'AUTHOR',
+    };
+    expect(weightForAchievement(a)).toBe(3);
+  });
+
+  it('Sponsor cosponsorship is +3', () => {
+    const a: AchievementForScoring = {
+      ...base,
+      evidenceType: 'COSPONSOR',
+      actionTaken: 'ACTED_FOR',
+      sponsorTier: 'SPONSOR',
+    };
+    expect(weightForAchievement(a)).toBe(3);
+  });
+
+  it('Principal Coauthor cosponsorship is +2', () => {
+    const a: AchievementForScoring = {
+      ...base,
+      evidenceType: 'COSPONSOR',
+      actionTaken: 'ACTED_FOR',
+      sponsorTier: 'PRINCIPAL_COAUTHOR',
+    };
+    expect(weightForAchievement(a)).toBe(2);
+  });
+
+  it('Coauthor cosponsorship is +2', () => {
+    const a: AchievementForScoring = {
+      ...base,
+      evidenceType: 'COSPONSOR',
+      actionTaken: 'ACTED_FOR',
+      sponsorTier: 'COAUTHOR',
+    };
+    expect(weightForAchievement(a)).toBe(2);
+  });
+
+  it('Cosponsor cosponsorship is +1', () => {
+    const a: AchievementForScoring = {
+      ...base,
+      evidenceType: 'COSPONSOR',
+      actionTaken: 'ACTED_FOR',
+      sponsorTier: 'COSPONSOR',
+    };
+    expect(weightForAchievement(a)).toBe(1);
+  });
+
+  it('VOTE ACTED_FOR (yes) is +1', () => {
+    const a: AchievementForScoring = { ...base, evidenceType: 'VOTE', actionTaken: 'ACTED_FOR' };
+    expect(weightForAchievement(a)).toBe(1);
+  });
+
+  it('VOTE ACTED_AGAINST (no/absent/abstain/excused/present) is -1', () => {
+    const a: AchievementForScoring = { ...base, evidenceType: 'VOTE', actionTaken: 'ACTED_AGAINST' };
+    expect(weightForAchievement(a)).toBe(-1);
+  });
+
+  it('PAC FILING under threshold (ACTED_FOR) is +1', () => {
+    const a: AchievementForScoring = { ...base, evidenceType: 'FEC_FILING', actionTaken: 'ACTED_FOR' };
+    expect(weightForAchievement(a)).toBe(1);
+    const b: AchievementForScoring = { ...base, evidenceType: 'CAL_ACCESS_FILING', actionTaken: 'ACTED_FOR' };
+    expect(weightForAchievement(b)).toBe(1);
+  });
+
+  it('PAC FILING over threshold (ACTED_AGAINST) is -1', () => {
+    const a: AchievementForScoring = { ...base, evidenceType: 'FEC_FILING', actionTaken: 'ACTED_AGAINST' };
+    expect(weightForAchievement(a)).toBe(-1);
+    const b: AchievementForScoring = { ...base, evidenceType: 'CAL_ACCESS_FILING', actionTaken: 'ACTED_AGAINST' };
+    expect(weightForAchievement(b)).toBe(-1);
+  });
+
+  it('NO_RECORD contributes 0', () => {
+    const a: AchievementForScoring = { ...base, evidenceType: 'VOTE', actionTaken: 'NO_RECORD' };
+    expect(weightForAchievement(a)).toBe(0);
   });
 });

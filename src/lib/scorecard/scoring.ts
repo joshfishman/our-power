@@ -48,6 +48,48 @@ export interface PlankScoreResult {
 }
 
 /**
+ * The minimal achievement shape the scoring engine needs to weigh an
+ * action. Kept narrow (vs the full Prisma MarkerAchievement) so unit
+ * tests stay fast and the scoring engine has no Prisma dependency.
+ */
+export interface AchievementForScoring {
+  markerId: string;
+  achieved: boolean;
+  actionTaken: AchievementStatus | null;
+  evidenceType: 'COSPONSOR' | 'VOTE' | 'FEC_FILING' | 'CAL_ACCESS_FILING' | 'PUBLIC_STATEMENT';
+  sponsorTier: 'AUTHOR' | 'PRINCIPAL_COAUTHOR' | 'COAUTHOR' | 'COSPONSOR' | 'SPONSOR' | null;
+}
+
+/**
+ * Methodology v1.3 weight table — see docs/scorecard-methodology.md
+ * for the public-facing rationale.
+ *
+ *   COSPONSOR Author / Sponsor        → +3
+ *   COSPONSOR Principal / Coauthor    → +2
+ *   COSPONSOR Cosponsor               → +1
+ *   VOTE      ACTED_FOR  (yes)        → +1
+ *   VOTE      ACTED_AGAINST           → -1  (NO, NOT_VOTING, EXCUSED,
+ *                                            ABSTAINED, PRESENT — every
+ *                                            recorded non-yes counts the
+ *                                            same: the bill needed your
+ *                                            yes to pass)
+ *   PAC FILING ACTED_FOR  (under 5%)  → +1
+ *   PAC FILING ACTED_AGAINST          → -1
+ *   NO_RECORD or absent row           →  0
+ */
+export function weightForAchievement(a: AchievementForScoring): number {
+  if (a.actionTaken !== 'ACTED_FOR' && a.actionTaken !== 'ACTED_AGAINST') return 0;
+  const sign = a.actionTaken === 'ACTED_FOR' ? 1 : -1;
+  if (a.evidenceType === 'COSPONSOR') {
+    if (a.sponsorTier === 'AUTHOR' || a.sponsorTier === 'SPONSOR') return sign * 3;
+    if (a.sponsorTier === 'PRINCIPAL_COAUTHOR' || a.sponsorTier === 'COAUTHOR') return sign * 2;
+    return sign * 1; // COSPONSOR or unknown tier
+  }
+  // VOTE / FEC_FILING / CAL_ACCESS_FILING / PUBLIC_STATEMENT all carry magnitude 1.
+  return sign;
+}
+
+/**
  * Score a single plank for a single legislator given which marker IDs they
  * have ACTED_FOR vs ACTED_AGAINST records for. Markers without rows are
  * NO_RECORD and contribute 0.
