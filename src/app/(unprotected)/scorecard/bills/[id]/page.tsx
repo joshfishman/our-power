@@ -289,7 +289,9 @@ export default async function BillIssuePage(props: Props) {
 
       <footer className="mt-12 border-t-2 border-[#2C4A5E] pt-4 text-xs text-[#F5DEB3]/70">
         <p>
-          Methodology v1.0.{' '}
+          <Link href="/scorecard/methodology" className="underline hover:text-[#F5DEB3]">
+            Methodology v1.3 →
+          </Link>{' '}
           {bill.isProvisional ? 'Bill number is provisional pending verification against the official source.' : ''}{' '}
           <Link href="/scorecard" className="underline hover:text-[#F5DEB3]">
             See the full scorecard

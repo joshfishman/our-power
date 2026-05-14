@@ -227,7 +227,14 @@ async function main(): Promise<void> {
       fullName: true,
       achievements: {
         where: { verifiedAt: { not: null }, actionTaken: { not: null } },
-        select: { markerId: true, actionTaken: true, updatedAt: true },
+        select: {
+          markerId: true,
+          actionTaken: true,
+          updatedAt: true,
+          achieved: true,
+          evidenceType: true,
+          sponsorTier: true,
+        },
       },
       ...(flags.changesOnly
         ? {
@@ -282,15 +289,15 @@ async function main(): Promise<void> {
     const planksForJurisdiction = planksByJurisdiction.get(jurisdiction) ?? [];
     if (planksForJurisdiction.length === 0) continue;
 
-    const forIds = new Set(leg.achievements.filter((a) => a.actionTaken === 'ACTED_FOR').map((a) => a.markerId));
-    const againstIds = new Set(
-      leg.achievements.filter((a) => a.actionTaken === 'ACTED_AGAINST').map((a) => a.markerId),
-    );
-
     const result = scoreLegislator(planksForJurisdiction, {
       legislatorId: leg.id,
-      forIds,
-      againstIds,
+      achievements: leg.achievements.map((a) => ({
+        markerId: a.markerId,
+        achieved: a.achieved,
+        actionTaken: a.actionTaken,
+        evidenceType: a.evidenceType,
+        sponsorTier: a.sponsorTier,
+      })),
     });
 
     for (const ps of result.perPlank) {

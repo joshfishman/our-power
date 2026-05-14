@@ -77,11 +77,14 @@ export default async function ScorecardIndexPage(props: { searchParams: Promise<
         <p className="mt-2 max-w-2xl text-base text-gray-700">
           Every legislator scored against the same {jurisdiction === 'FEDERAL' ? 'five' : 'four'} commitments. Same
           rubric for everyone, every score backed by a public source. Each vote or cosponsorship is +1; each recorded
-          vote-against or no-show on a recorded vote is &minus;1.
+          vote-against or no-show on a recorded vote is &minus;1.{' '}
+          <Link href="/scorecard/methodology" className="underline hover:text-[#8B3A3A]">
+            Read the full methodology →
+          </Link>
         </p>
       </header>
 
-      <nav className="mt-6 flex flex-wrap gap-2 text-sm">
+      <nav className="mt-6 flex flex-wrap items-center gap-2 text-sm">
         <Link
           href={buildHref({ jurisdiction: 'FEDERAL', state: undefined })}
           className={`rounded border px-3 py-1 text-[#F5DEB3] transition-colors ${
@@ -99,6 +102,11 @@ export default async function ScorecardIndexPage(props: { searchParams: Promise<
               : 'border-[#2C4A5E] bg-[#2C4A5E]/60 hover:bg-[#2C4A5E]/80'
           }`}>
           California
+        </Link>
+        <Link
+          href="/scorecard/methodology"
+          className="ml-auto rounded border border-[#2C4A5E] bg-transparent px-3 py-1 text-[#F5DEB3]/80 transition-colors hover:bg-[#2C4A5E]/60 hover:text-[#F5DEB3]">
+          Methodology →
         </Link>
       </nav>
 
@@ -262,8 +270,10 @@ export default async function ScorecardIndexPage(props: { searchParams: Promise<
 
       <footer className="mt-12 border-t-2 border-gray-900 pt-4 text-xs text-gray-500">
         <p>
-          Methodology v1.2. Same rubric applies to every legislator regardless of party. Every score traces to a public
-          source.
+          <Link href="/scorecard/methodology" className="underline hover:text-[#8B3A3A]">
+            Methodology v1.3 →
+          </Link>{' '}
+          Same rubric applies to every legislator regardless of party. Every score traces to a public source.
         </p>
         <p className="mt-1">
           Republican-authored alternatives count as secondary markers under the two-tier methodology adopted 2026-04-29.

@@ -212,7 +212,10 @@ export default async function LegislatorScorecardPage(props: Props) {
 
       <footer className="mt-12 border-t-2 border-gray-900 pt-4 text-xs text-gray-500">
         <p>
-          Same rubric applied to every legislator. Methodology v1.2.{' '}
+          Same rubric applied to every legislator.{' '}
+          <Link href="/scorecard/methodology" className="underline hover:text-[#8B3A3A]">
+            Methodology v1.3 →
+          </Link>{' '}
           <Link href="/scorecard" className="underline">
             See the full scorecard
           </Link>
