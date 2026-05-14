@@ -7,7 +7,8 @@ import { logError } from '@/lib/logger';
 import { z } from 'zod';
 
 // GET: Get detailed stats for a specific campaign
-export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -16,7 +17,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const rateLimitResponse = await enforceRateLimit(request, { limit: 60, windowSeconds: 60 });
   if (rateLimitResponse) return rateLimitResponse;
 
-  const { id } = await params;
+  const { id } = params;
   const campaignId = z.string().min(1).safeParse(id);
   if (!campaignId.success) {
     return NextResponse.json({ error: 'Invalid campaign id' }, { status: 400 });

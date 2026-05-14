@@ -260,20 +260,26 @@ export default async function BillIssuePage(props: Props) {
                 )}
                 {/* Sibling sponsorships */}
                 <SponsorSections bill={{ sponsorships: sib.sponsorships as unknown as SponsorshipRow[] }} />
-                {/* Sibling vote roll — combined NO + NV */}
-                {(sibNoVoters.length > 0 || sibNotVoting.length > 0) && (
-                  <KilledItSection
-                    noVoters={sibNoVoters as unknown as VoteRowVote[]}
-                    notVoting={sibNotVoting as unknown as VoteRowVote[]}
-                  />
-                )}
-                {sibYesVoters.length > 0 && (
-                  <VoteSection
-                    label="Voted Yes"
-                    votes={sibYesVoters as unknown as VoteRowVote[]}
-                    positionKey="YES"
-                    accent="text-green-300"
-                  />
+                {/* Sibling vote roll — combined NO + NV. Suppressed when those
+                 * votes were already promoted into the primary vote-roll panel
+                 * above, to avoid showing the same rows twice. */}
+                {!hasPromotedSiblingVotes && (
+                  <>
+                    {(sibNoVoters.length > 0 || sibNotVoting.length > 0) && (
+                      <KilledItSection
+                        noVoters={sibNoVoters as unknown as VoteRowVote[]}
+                        notVoting={sibNotVoting as unknown as VoteRowVote[]}
+                      />
+                    )}
+                    {sibYesVoters.length > 0 && (
+                      <VoteSection
+                        label="Voted Yes"
+                        votes={sibYesVoters as unknown as VoteRowVote[]}
+                        positionKey="YES"
+                        accent="text-green-300"
+                      />
+                    )}
+                  </>
                 )}
               </article>
             );
