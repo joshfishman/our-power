@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import prisma from '@/lib/prisma/prisma';
 import { PacSortableTable, type PacRow } from '@/components/scorecard/PacSortableTable';
+import { METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
 
 export const metadata: Metadata = {
   title: 'Corporate PAC Money | We the People Scorecard',
@@ -144,7 +145,7 @@ export default async function PacScorecardPage(props: { searchParams: Promise<Se
         <p>
           Same threshold applied to every legislator. Ranked low-to-high.{' '}
           <Link href="/scorecard/methodology" className="underline hover:text-[#8B3A3A]">
-            Methodology v1.3 →
+            Methodology {METHODOLOGY_VERSION} →
           </Link>{' '}
           <Link href="/scorecard" className="underline">
             Full scorecard →

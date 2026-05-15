@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { findBillByAnyId, findSiblingBills } from '@/lib/scorecard/queries';
 import { LegislatorAvatar } from '@/components/scorecard/LegislatorAvatar';
+import { METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
 
 // Bill data changes often (sync runs append history entries, vote rolls
 // arrive). Don't let Next cache this page across requests.
@@ -290,7 +291,7 @@ export default async function BillIssuePage(props: Props) {
       <footer className="mt-12 border-t-2 border-[#2C4A5E] pt-4 text-xs text-[#F5DEB3]/70">
         <p>
           <Link href="/scorecard/methodology" className="underline hover:text-[#F5DEB3]">
-            Methodology v1.3 →
+            Methodology {METHODOLOGY_VERSION} →
           </Link>{' '}
           {bill.isProvisional ? 'Bill number is provisional pending verification against the official source.' : ''}{' '}
           <Link href="/scorecard" className="underline hover:text-[#F5DEB3]">

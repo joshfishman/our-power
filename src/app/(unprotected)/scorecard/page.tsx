@@ -299,7 +299,7 @@ export default async function ScorecardIndexPage(props: { searchParams: Promise<
       <footer className="mt-12 border-t-2 border-gray-900 pt-4 text-xs text-gray-500">
         <p>
           <Link href="/scorecard/methodology" className="underline hover:text-[#8B3A3A]">
-            Methodology v1.3 →
+            Methodology {METHODOLOGY_VERSION} →
           </Link>{' '}
           Same rubric applies to every legislator regardless of party. Every score traces to a public source.
         </p>

@@ -8,6 +8,7 @@ import {
   computePublishedTotal,
   computePlankCoverage,
 } from '@/lib/scorecard/queries';
+import { METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
 import { LegislatorAvatar } from '@/components/scorecard/LegislatorAvatar';
 
 type Props = { params: Promise<{ id: string }> };
@@ -88,7 +89,7 @@ export default async function LegislatorScorecardPage(props: Props) {
           {total === null ? (
             <div>
               <p className="font-mono text-xs uppercase tracking-widest text-gray-500">Score pending</p>
-              <p className="mt-1 text-sm text-gray-600">Methodology v1.2 — no data yet</p>
+              <p className="mt-1 text-sm text-gray-600">Methodology {METHODOLOGY_VERSION} — no data yet</p>
             </div>
           ) : (
             <div>
@@ -214,7 +215,7 @@ export default async function LegislatorScorecardPage(props: Props) {
         <p>
           Same rubric applied to every legislator.{' '}
           <Link href="/scorecard/methodology" className="underline hover:text-[#8B3A3A]">
-            Methodology v1.3 →
+            Methodology {METHODOLOGY_VERSION} →
           </Link>{' '}
           <Link href="/scorecard" className="underline">
             See the full scorecard
