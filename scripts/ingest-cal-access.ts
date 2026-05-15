@@ -39,7 +39,13 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { PrismaClient } from '../src/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { parseCalAccess, type PacAggregate } from '../src/lib/scorecard/calaccess-parser';
+import {
+  parseCalAccess,
+  parseCalAccessIe,
+  type CalAccessIeBuckets,
+  type PacAggregate,
+  type ParseCalAccessIeRaceCandidate,
+} from '../src/lib/scorecard/calaccess-parser';
 
 const adapter = new PrismaPg({
   connectionString: process.env.DIRECT_URL || process.env.DATABASE_URL!,
@@ -168,6 +174,142 @@ async function ingestFromCcdc(
   return { aggregates: result.aggregates, unclassifiedTop: result.unclassifiedTopContributors };
 }
 
+/**
+ * v1.4 IE pass — parses F461P5 line items from `expn_cd.csv`, filters to
+ * corporate/trade-association spenders, attributes each row to a CA
+ * legislator (self-support / self-oppose / opponent-oppose), and writes
+ * the buckets onto the same `PacMoneyData` rows produced by `ingestFromCcdc`.
+ *
+ * Race-candidate roster lookup may be empty (CA RaceCandidate seeding is
+ * stubbed as of v1.4 ship); in that case `corporateIeAgainstOpponentAmount`
+ * stays at $0, which is acceptable per the task brief.
+ */
+async function runIePass(
+  dir: string,
+  cycleYear: number,
+  dryRun: boolean,
+): Promise<{ written: number; ieRowsScanned: number; ieRowsAttributed: number; topBuckets: CalAccessIeBuckets[] }> {
+  const cycles = [cycleYear - 2, cycleYear];
+
+  const legislators = await prisma.legislator.findMany({
+    where: { jurisdiction: 'CA', isActive: true },
+    select: {
+      id: true,
+      openStatesId: true,
+      fullName: true,
+      state: true,
+      chamber: true,
+      district: true,
+    },
+  });
+
+  const raceCandidatesByCycle = new Map<number, ParseCalAccessIeRaceCandidate[]>();
+  for (const cycle of cycles) {
+    const rows = await prisma.raceCandidate.findMany({
+      where: { cycleYear: cycle, jurisdiction: 'CA' },
+      select: {
+        externalCandidateId: true,
+        candidateName: true,
+        state: true,
+        chamber: true,
+        district: true,
+        legislatorId: true,
+      },
+    });
+    raceCandidatesByCycle.set(
+      cycle,
+      rows.map((r) => ({
+        externalCandidateId: r.externalCandidateId,
+        candidateName: r.candidateName,
+        state: r.state,
+        chamber: r.chamber as 'SEN' | 'REP',
+        district: r.district,
+        legislatorId: r.legislatorId,
+      })),
+    );
+  }
+
+  const corpCmtes = await prisma.committeeClassification.findMany({
+    where: { jurisdiction: 'CA', category: { in: ['CORPORATE', 'TRADE_ASSOCIATION'] } },
+    select: { committeeId: true },
+  });
+  const corporateSpenderFilerIds = new Set(corpCmtes.map((c) => c.committeeId));
+
+  const result = await parseCalAccessIe({
+    dataDir: dir,
+    legislators: legislators.map((l) => ({
+      id: l.id,
+      openStatesId: l.openStatesId,
+      fullName: l.fullName,
+      state: l.state,
+      chamber: l.chamber as 'SEN' | 'REP',
+      district: l.district,
+    })),
+    raceCandidatesByCycle,
+    corporateSpenderFilerIds,
+    cycles,
+  });
+
+  let written = 0;
+  for (const b of result.buckets) {
+    if (dryRun) {
+      console.log(
+        `  [dry-run/ie] legislator=${b.legislatorId} cycle=${
+          b.cycleYear
+        } ie-support=$${b.corporateIeSupportAmount.toFixed(0)} ie-vs-opp=$${b.corporateIeAgainstOpponentAmount.toFixed(
+          0,
+        )} ie-vs-self=$${b.corporateIeAgainstSelfAmount.toFixed(0)}`,
+      );
+      written += 1;
+      continue;
+    }
+    await prisma.pacMoneyData.upsert({
+      where: {
+        legislatorId_cycleYear_dataSource: {
+          legislatorId: b.legislatorId,
+          cycleYear: b.cycleYear,
+          dataSource: 'CAL_ACCESS_CCDC',
+        },
+      },
+      create: {
+        legislatorId: b.legislatorId,
+        cycleYear: b.cycleYear,
+        dataSource: 'CAL_ACCESS_CCDC',
+        corporatePacAmount: 0,
+        totalReceipts: 0,
+        corporatePacPercentage: 0,
+        corporateIeSupportAmount: b.corporateIeSupportAmount,
+        corporateIeAgainstOpponentAmount: b.corporateIeAgainstOpponentAmount,
+        corporateIeAgainstSelfAmount: b.corporateIeAgainstSelfAmount,
+      },
+      update: {
+        corporateIeSupportAmount: b.corporateIeSupportAmount,
+        corporateIeAgainstOpponentAmount: b.corporateIeAgainstOpponentAmount,
+        corporateIeAgainstSelfAmount: b.corporateIeAgainstSelfAmount,
+        // combinedCorporateRatio is computed in compute-scores, not here.
+        fetchedAt: new Date(),
+      },
+    });
+    written += 1;
+  }
+
+  const topBuckets = [...result.buckets]
+    .sort(
+      (a, b) =>
+        b.corporateIeSupportAmount +
+        b.corporateIeAgainstOpponentAmount -
+        (a.corporateIeSupportAmount + a.corporateIeAgainstOpponentAmount),
+    )
+    .slice(0, 5);
+
+  return {
+    written,
+    ieRowsScanned: result.ieRowsScanned,
+    ieRowsAttributed: result.ieRowsAttributed,
+    topBuckets,
+  };
+}
+
 async function writeAggregates(aggregates: PacAggregate[], dryRun: boolean): Promise<number> {
   let written = 0;
   for (const a of aggregates) {
@@ -280,6 +422,27 @@ async function main(): Promise<void> {
       console.log('\n[ingest-cal-access] top unclassified committee contributors (review for classifier tuning):');
       for (const u of unclassifiedTop.slice(0, 15)) {
         console.log(`  $${u.amount.toFixed(0).padStart(12)}  ${u.name}`);
+      }
+    }
+
+    // v1.4: parse Form 496 (F461P5) IE data and update the same PacMoneyData rows.
+    console.log('\n[ingest-cal-access] starting Form 496 IE pass...');
+    const ie = await runIePass(flags.ccdcDir, flags.cycleYear, flags.dryRun);
+    console.log(
+      `[ingest-cal-access] IE pass complete: scanned=${ie.ieRowsScanned.toLocaleString()} attributed=${ie.ieRowsAttributed.toLocaleString()} bucket-writes=${
+        ie.written
+      }${flags.dryRun ? ' (dry-run)' : ''}`,
+    );
+    if (ie.topBuckets.length > 0) {
+      console.log('\n[ingest-cal-access] top 5 IE buckets (by support + against-opponent):');
+      for (const b of ie.topBuckets) {
+        console.log(
+          `  legislator=${b.legislatorId} cycle=${b.cycleYear} support=$${b.corporateIeSupportAmount.toFixed(
+            0,
+          )} vs-opp=$${b.corporateIeAgainstOpponentAmount.toFixed(0)} vs-self=$${b.corporateIeAgainstSelfAmount.toFixed(
+            0,
+          )}`,
+        );
       }
     }
   } else if (flags.csvPath) {

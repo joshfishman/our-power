@@ -21,7 +21,7 @@
 // "+0 with full coverage" — the same evidence transparency goal as the
 // three-state rendering.
 
-export const METHODOLOGY_VERSION = 'v1.3';
+export const METHODOLOGY_VERSION = 'v1.4';
 
 export type MarkerTypeForScoring = 'PRIMARY' | 'SECONDARY';
 export type AchievementStatus = 'ACTED_FOR' | 'ACTED_AGAINST' | 'NO_RECORD';
@@ -58,6 +58,7 @@ export interface AchievementForScoring {
   actionTaken: AchievementStatus | null;
   evidenceType: 'COSPONSOR' | 'VOTE' | 'FEC_FILING' | 'CAL_ACCESS_FILING' | 'PUBLIC_STATEMENT';
   sponsorTier: 'AUTHOR' | 'PRINCIPAL_COAUTHOR' | 'COAUTHOR' | 'COSPONSOR' | 'SPONSOR' | null;
+  achievementScore: number | null;
 }
 
 /**
@@ -78,15 +79,81 @@ export interface AchievementForScoring {
  *   NO_RECORD or absent row           →  0
  */
 export function weightForAchievement(a: AchievementForScoring): number {
+  // v1.4: PAC marker uses continuous achievementScore when present
+  if ((a.evidenceType === 'FEC_FILING' || a.evidenceType === 'CAL_ACCESS_FILING') && a.achievementScore != null) {
+    return a.achievementScore;
+  }
+  // Existing v1.3 weight table follows (unchanged)
   if (a.actionTaken !== 'ACTED_FOR' && a.actionTaken !== 'ACTED_AGAINST') return 0;
   const sign = a.actionTaken === 'ACTED_FOR' ? 1 : -1;
   if (a.evidenceType === 'COSPONSOR') {
     if (a.sponsorTier === 'AUTHOR' || a.sponsorTier === 'SPONSOR') return sign * 3;
     if (a.sponsorTier === 'PRINCIPAL_COAUTHOR' || a.sponsorTier === 'COAUTHOR') return sign * 2;
-    return sign * 1; // COSPONSOR or unknown tier
+    return sign * 1;
   }
-  // VOTE / FEC_FILING / CAL_ACCESS_FILING / PUBLIC_STATEMENT all carry magnitude 1.
   return sign;
+}
+
+/**
+ * Methodology v1.4 continuous PAC gradient. Maps a combined corporate-money
+ * ratio (direct + IE in numerator, total receipts + same IE in denominator)
+ * to a marker score in [-3, +2].
+ *
+ *   ratio 0.00 → +2  (real zero — reward maximally)
+ *   ratio 0.05 → +1  (the v1.3 threshold — partial credit)
+ *   ratio 0.15 → 0   (neutral)
+ *   ratio 0.35 → -1
+ *   ratio 0.65 → -2
+ *   ratio 0.85 → -3  (floor — corporate dominance)
+ *
+ * Linear interpolation between anchors. Clamped at endpoints. The reward for
+ * being at "real zero" (0%) is bigger than the cliff at the v1.3 threshold,
+ * so legislators who genuinely refuse corporate money get more credit than
+ * those who just barely qualify.
+ */
+const PAC_ANCHORS: ReadonlyArray<[ratio: number, score: number]> = [
+  [0.0, 2.0],
+  [0.05, 1.0],
+  [0.15, 0.0],
+  [0.35, -1.0],
+  [0.65, -2.0],
+  [0.85, -3.0],
+];
+
+export function pacScoreFromRatio(ratio: number): number {
+  if (ratio <= PAC_ANCHORS[0][0]) return PAC_ANCHORS[0][1];
+  if (ratio >= PAC_ANCHORS[PAC_ANCHORS.length - 1][0]) return PAC_ANCHORS[PAC_ANCHORS.length - 1][1];
+  for (let i = 1; i < PAC_ANCHORS.length; i += 1) {
+    const [r1, s1] = PAC_ANCHORS[i - 1];
+    const [r2, s2] = PAC_ANCHORS[i];
+    if (ratio <= r2) {
+      const t = (ratio - r1) / (r2 - r1);
+      return s1 + t * (s2 - s1);
+    }
+  }
+  return PAC_ANCHORS[PAC_ANCHORS.length - 1][1]; // unreachable
+}
+
+/**
+ * Maps a raw signed score to an anchored percentage in [-100, +100]. Anchors
+ * are picked empirically from the methodology-version's first compute (95th
+ * percentile of positives → +100%; 5th percentile of negatives → -100%) and
+ * frozen for the lifetime of that version. Asymmetric by design — the positive
+ * range typically extends further than the negative because most achievements
+ * carry positive weights.
+ *
+ * @param raw          The signed integer-or-decimal score.
+ * @param posAnchor    Raw score that maps to +100%.
+ * @param negAnchor    Raw score that maps to -100% (negative number).
+ */
+export function rawToPercent(raw: number, posAnchor: number, negAnchor: number): number {
+  if (raw === 0 || (posAnchor === 0 && negAnchor === 0)) return 0;
+  if (raw > 0) {
+    if (posAnchor <= 0) return 0;
+    return Math.min(100, (raw / posAnchor) * 100);
+  }
+  if (negAnchor >= 0) return 0;
+  return Math.max(-100, (raw / Math.abs(negAnchor)) * 100);
 }
 
 export function scorePlank(plank: ScoringPlank, achievements: readonly AchievementForScoring[]): PlankScoreResult {

@@ -7,7 +7,9 @@ import {
   getPublicPlanks,
   computePublishedTotal,
   computePlankCoverage,
+  getScoreCalibration,
 } from '@/lib/scorecard/queries';
+import { METHODOLOGY_VERSION, rawToPercent } from '@/lib/scorecard/scoring';
 import { LegislatorAvatar } from '@/components/scorecard/LegislatorAvatar';
 
 type Props = { params: Promise<{ id: string }> };
@@ -46,6 +48,10 @@ export default async function LegislatorScorecardPage(props: Props) {
   const jurisdiction = legislator.jurisdiction as 'FEDERAL' | 'CA';
   const planks = await getPublicPlanks(jurisdiction);
   const total = computePublishedTotal(legislator.scores);
+  const calibration = (await getScoreCalibration(METHODOLOGY_VERSION)) ?? {
+    positiveAnchor: 25,
+    negativeAnchor: -10,
+  };
   const chamberLabel =
     jurisdiction === 'FEDERAL' ? CHAMBER_LABEL_FEDERAL[legislator.chamber] : CHAMBER_LABEL_STATE[legislator.chamber];
 
@@ -88,13 +94,10 @@ export default async function LegislatorScorecardPage(props: Props) {
           {total === null ? (
             <div>
               <p className="font-mono text-xs uppercase tracking-widest text-gray-500">Score pending</p>
-              <p className="mt-1 text-sm text-gray-600">Methodology v1.2 — no data yet</p>
+              <p className="mt-1 text-sm text-gray-600">Methodology {METHODOLOGY_VERSION} — no data yet</p>
             </div>
           ) : (
-            <div>
-              <ScoreNumber value={total} size="hero" />
-              <p className="font-mono text-xs uppercase tracking-widest text-gray-500">Total score</p>
-            </div>
+            <HeroPercent total={total} calibration={calibration} scores={legislator.scores} />
           )}
         </div>
       </header>
@@ -182,6 +185,14 @@ export default async function LegislatorScorecardPage(props: Props) {
                               <SponsorBadge
                                 tier={(achievement as unknown as { sponsorTier?: string | null })?.sponsorTier ?? null}
                               />
+                              {marker.slug?.includes('corporate-pac-refusal') ? (
+                                <PacContinuousScore
+                                  achievementScore={
+                                    (achievement as unknown as { achievementScore?: unknown })?.achievementScore
+                                  }
+                                  evidenceNotes={achievement?.evidenceNotes ?? null}
+                                />
+                              ) : null}
                             </p>
                             {achievement?.evidenceSourceUrl && (
                               <a
@@ -214,7 +225,7 @@ export default async function LegislatorScorecardPage(props: Props) {
         <p>
           Same rubric applied to every legislator.{' '}
           <Link href="/scorecard/methodology" className="underline hover:text-[#8B3A3A]">
-            Methodology v1.3 →
+            Methodology {METHODOLOGY_VERSION} →
           </Link>{' '}
           <Link href="/scorecard" className="underline">
             See the full scorecard
@@ -223,6 +234,76 @@ export default async function LegislatorScorecardPage(props: Props) {
         </p>
       </footer>
     </div>
+  );
+}
+
+/** v1.4 hero — renders the legislator's overall as a percentage of the
+ *  calibrated raw range (positiveAnchor = top of pack, negativeAnchor =
+ *  bottom of pack), with raw and for/against counts as a sub-line. The
+ *  percent is signed: positive shows "+", zero shows neither sign, negative
+ *  shows native "-". Color tracks magnitude in both directions. */
+function HeroPercent({
+  total,
+  calibration,
+  scores,
+}: {
+  total: number;
+  calibration: { positiveAnchor: number; negativeAnchor: number };
+  scores: Array<{ forCount?: number | null; againstCount?: number | null }>;
+}) {
+  const percent = Math.round(rawToPercent(total, calibration.positiveAnchor, calibration.negativeAnchor));
+  const colorClass =
+    percent > 50
+      ? 'text-green-700'
+      : percent > 0
+      ? 'text-green-600'
+      : percent === 0
+      ? 'text-gray-500'
+      : percent > -50
+      ? 'text-red-500'
+      : 'text-red-700';
+  const sign = percent > 0 ? '+' : '';
+  const rawSign = total > 0 ? '+' : '';
+  const sumFor = scores.reduce((s, ps) => s + (ps.forCount ?? 0), 0);
+  const sumAgainst = scores.reduce((s, ps) => s + (ps.againstCount ?? 0), 0);
+  return (
+    <div>
+      <p className={`font-serif text-6xl font-bold tabular-nums ${colorClass}`}>
+        {sign}
+        {percent}%
+      </p>
+      <p className="mt-1 font-mono text-xs uppercase tracking-widest text-gray-500">
+        Score · raw {rawSign}
+        {total} · {sumFor} for · {sumAgainst} against
+      </p>
+    </div>
+  );
+}
+
+/** v1.4 — renders the continuous PAC marker score (e.g. "+1.8 · 1.2% combined
+ *  corporate donations") next to the marker name. Pulls the ratio out of
+ *  `evidenceNotes` (written by scripts/compute-scores.ts as
+ *  `combined-corporate=<n>%`). If the achievementScore is missing, renders
+ *  nothing — caller already has the marker's name + ✓/✗ icon to convey state. */
+function PacContinuousScore({
+  achievementScore,
+  evidenceNotes,
+}: {
+  achievementScore: unknown;
+  evidenceNotes: string | null;
+}) {
+  if (achievementScore === null || achievementScore === undefined) return null;
+  const score = Number(achievementScore);
+  if (!Number.isFinite(score)) return null;
+  const ratioMatch = evidenceNotes?.match(/combined-corporate=(\d+(?:\.\d+)?)%/);
+  const ratio = ratioMatch ? parseFloat(ratioMatch[1]) : null;
+  const sign = score >= 0 ? '+' : '';
+  return (
+    <span className="ml-2 font-mono text-xs text-gray-600">
+      {sign}
+      {score.toFixed(1)}
+      {ratio !== null ? ` · ${ratio.toFixed(1)}% combined corporate donations` : ''}
+    </span>
   );
 }
 

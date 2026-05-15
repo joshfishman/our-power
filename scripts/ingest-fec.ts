@@ -174,6 +174,92 @@ async function logApiCall(args: {
   }
 }
 
+interface ScheduleEFiling {
+  candidate_id: string;
+  committee_id: string;
+  support_oppose_indicator: 'S' | 'O' | null;
+  expenditure_amount: number;
+  expenditure_date: string | null;
+}
+
+async function fetchScheduleEForCandidate(
+  candidateId: string,
+  cycle: number,
+  apiKey: string,
+): Promise<ScheduleEFiling[]> {
+  const out: ScheduleEFiling[] = [];
+  let page = 1;
+  while (true) {
+    const url =
+      `https://api.open.fec.gov/v1/schedules/schedule_e/` +
+      `?api_key=${apiKey}&candidate_id=${candidateId}&cycle=${cycle}` +
+      `&per_page=100&page=${page}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      // Some candidates have no IE filings; FEC returns 404 in some cases. Don't fail the whole run.
+      if (res.status === 404) return out;
+      throw new Error(`Schedule E fetch failed for ${candidateId} cycle ${cycle}: ${res.status}`);
+    }
+    const data = (await res.json()) as { results?: ScheduleEFiling[]; pagination?: { pages?: number } };
+    out.push(...(data.results ?? []));
+    const pages = data.pagination?.pages ?? 1;
+    if (page >= pages) break;
+    page += 1;
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  return out;
+}
+
+interface IeBuckets {
+  corporateIeSupportAmount: number;
+  corporateIeAgainstOpponentAmount: number;
+  corporateIeAgainstSelfAmount: number;
+}
+
+async function classifyIeBuckets(
+  legislatorFecId: string,
+  opponentFecIds: ReadonlyArray<string>,
+  cycle: number,
+  apiKey: string,
+  prismaClient: PrismaClient,
+): Promise<IeBuckets> {
+  // Pull IE FOR or AGAINST this legislator
+  const selfFilings = await fetchScheduleEForCandidate(legislatorFecId, cycle, apiKey);
+  let support = 0;
+  let againstSelf = 0;
+  const classifiedCorpCache = new Map<string, boolean>();
+  async function isCorpCommittee(committeeId: string): Promise<boolean> {
+    if (classifiedCorpCache.has(committeeId)) return classifiedCorpCache.get(committeeId)!;
+    const row = await prismaClient.committeeClassification.findUnique({
+      where: { jurisdiction_committeeId: { jurisdiction: 'FEDERAL', committeeId } },
+      select: { category: true },
+    });
+    const isCorp = row?.category === 'CORPORATE' || row?.category === 'TRADE_ASSOCIATION';
+    classifiedCorpCache.set(committeeId, isCorp);
+    return isCorp;
+  }
+  for (const f of selfFilings) {
+    if (!(await isCorpCommittee(f.committee_id))) continue;
+    if (f.support_oppose_indicator === 'S') support += f.expenditure_amount;
+    else if (f.support_oppose_indicator === 'O') againstSelf += f.expenditure_amount;
+  }
+  // Pull IE AGAINST any of this legislator's same-cycle opponents
+  let againstOpp = 0;
+  for (const oppId of opponentFecIds) {
+    const oppFilings = await fetchScheduleEForCandidate(oppId, cycle, apiKey);
+    for (const f of oppFilings) {
+      if (f.support_oppose_indicator !== 'O') continue;
+      if (!(await isCorpCommittee(f.committee_id))) continue;
+      againstOpp += f.expenditure_amount;
+    }
+  }
+  return {
+    corporateIeSupportAmount: support,
+    corporateIeAgainstOpponentAmount: againstOpp,
+    corporateIeAgainstSelfAmount: againstSelf,
+  };
+}
+
 async function main(): Promise<void> {
   // Accept either FEC_API_KEY (canonical) or FEC_DATA_API (used in some
   // setups). data.gov calls the field "API key" so both reading shapes
@@ -211,7 +297,7 @@ async function main(): Promise<void> {
 
   const legislators = await prisma.legislator.findMany({
     where: { isActive: true, jurisdiction: 'FEDERAL' },
-    select: { id: true, bioguideId: true, fullName: true, fecIds: true },
+    select: { id: true, bioguideId: true, fullName: true, fecIds: true, state: true, chamber: true, district: true },
   });
   console.log(`[ingest-fec] ${legislators.length} federal legislator(s) total`);
 
@@ -275,6 +361,41 @@ async function main(): Promise<void> {
     const pct = pacContribs / totalReceipts;
     if (pct < 0.05) refusers += 1;
 
+    // Inside the existing per-legislator loop, AFTER you have direct
+    // pacContribs + totalReceipts:
+
+    const legislatorFecId = leg.fecIds[0]; // first FEC id; null-safe below
+
+    // Look up same-cycle opponents
+    const opponents = await prisma.raceCandidate.findMany({
+      where: {
+        cycleYear: actualCycle,
+        jurisdiction: 'FEDERAL',
+        state: leg.state,
+        chamber: leg.chamber,
+        district: leg.district,
+        // exclude self by candidate_id (FEC id, NOT legislator id)
+        NOT: legislatorFecId ? { externalCandidateId: legislatorFecId } : undefined,
+      },
+      select: { externalCandidateId: true },
+    });
+    const opponentFecIds = opponents.map((o) => o.externalCandidateId);
+
+    let ieBuckets: IeBuckets = {
+      corporateIeSupportAmount: 0,
+      corporateIeAgainstOpponentAmount: 0,
+      corporateIeAgainstSelfAmount: 0,
+    };
+    if (legislatorFecId) {
+      ieBuckets = await classifyIeBuckets(legislatorFecId, opponentFecIds, actualCycle, apiKey, prisma);
+    }
+
+    const combinedNumerator =
+      pacContribs + ieBuckets.corporateIeSupportAmount + ieBuckets.corporateIeAgainstOpponentAmount;
+    const combinedDenominator =
+      totalReceipts + ieBuckets.corporateIeSupportAmount + ieBuckets.corporateIeAgainstOpponentAmount;
+    const combinedCorporateRatio = combinedDenominator > 0 ? combinedNumerator / combinedDenominator : 0;
+
     if (flags.dryRun) {
       console.log(
         `  [dry] ${leg.fullName.padEnd(
@@ -301,6 +422,10 @@ async function main(): Promise<void> {
         corporatePacAmount: pacContribs,
         totalReceipts,
         corporatePacPercentage: pct,
+        corporateIeSupportAmount: ieBuckets.corporateIeSupportAmount,
+        corporateIeAgainstOpponentAmount: ieBuckets.corporateIeAgainstOpponentAmount,
+        corporateIeAgainstSelfAmount: ieBuckets.corporateIeAgainstSelfAmount,
+        combinedCorporateRatio,
         dataSource: 'FEC_DIRECT',
         // FEC's web UI rejects the cycle param when it doesn't match the
         dataSourceUrl:
@@ -313,6 +438,10 @@ async function main(): Promise<void> {
         corporatePacAmount: pacContribs,
         totalReceipts,
         corporatePacPercentage: pct,
+        corporateIeSupportAmount: ieBuckets.corporateIeSupportAmount,
+        corporateIeAgainstOpponentAmount: ieBuckets.corporateIeAgainstOpponentAmount,
+        corporateIeAgainstSelfAmount: ieBuckets.corporateIeAgainstSelfAmount,
+        combinedCorporateRatio,
         // FEC's web UI rejects the cycle param when it doesn't match the
         dataSourceUrl:
           // candidate's 6-year Senate cycle (e.g. cycle=2026 404s for a senator

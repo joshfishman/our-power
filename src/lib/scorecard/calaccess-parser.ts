@@ -250,6 +250,27 @@ function isLastNameMatch(dbLastName: string, dbFullName: string, cvrLastName: st
 }
 
 /**
+ * Token-overlap match between two full names from different data sources.
+ * Normalizes both, then checks whether any non-filler token (≥3 chars)
+ * from `nameA` appears in the token set of `nameB`.
+ *
+ * Designed for FEC ↔ DB legislator matching where the FEC format is
+ * "LASTNAME, FIRSTNAME" and the DB stores "First Last".
+ */
+export function lastNameTokensOverlap(nameA: string, nameB: string): boolean {
+  const tokensA = new Set(
+    normalizeName(nameA)
+      .split(' ')
+      .filter((t) => t.length >= 3 && !NAME_FILLERS.has(t)),
+  );
+  const tokensB = normalizeName(nameB)
+    .split(' ')
+    .filter((t) => t.length >= 3 && !NAME_FILLERS.has(t));
+  if (tokensA.size === 0 || tokensB.length === 0) return false;
+  return tokensB.some((t) => tokensA.has(t));
+}
+
+/**
  * CAL-ACCESS OFFICE_CD values for state legislative offices.
  * Source: https://calaccess.californiacivicdata.org/documentation/calaccess-files/lookup-codes-cd/
  *   STE = State Senate
@@ -459,5 +480,249 @@ export async function parseCalAccess(
     totalReceiptRowsScanned: rcptCount,
     filingsMatched: filingToLegislator.size,
     unclassifiedTopContributors,
+  };
+}
+
+// -------------------------------------------------------------------------
+// v1.4: Form 496 / IE parser
+// -------------------------------------------------------------------------
+//
+// Form 496 is the CA "Late Independent Expenditure Report" filed when a
+// committee spends $1,000+ independently for or against a candidate in the
+// 90-day window before an election. The CCDC bulk download does NOT publish
+// a standalone `s496_cd.csv`; instead, the IE expenditure line items live in
+// `expn_cd.csv` under `FORM_TYPE='F461P5'` — Schedule E (Independent
+// Expenditures Made) of Form 461 (Major Donor / Independent Expenditure
+// Committee Campaign Statement). Rows on this schedule carry the candidate
+// the IE was made for or against (`CAND_NAML`, `OFFICE_CD`, `JURIS_CD`,
+// `DIST_NO`) plus `SUP_OPP_CD` ('S' = support, 'O' = oppose) and the
+// spender's `FILING_ID` (joined to `cvr_campaign_disclosure_cd.csv` for
+// FILER_ID).
+//
+// Algorithm:
+//
+//  Pass 1 — cvr_campaign_disclosure_cd.csv: build Map<FILING_ID, FILER_ID>.
+//  Pass 2 — expn_cd.csv filtered to FORM_TYPE='F461P5': for each row,
+//    resolve filing→filer, gate by corporate-spender set, parse expenditure
+//    date to cycle, match target candidate (chamber+district) to a
+//    legislator OR to one of that legislator's race opponents, then
+//    accumulate into the right IE bucket.
+
+export interface CalAccessIeBuckets {
+  legislatorId: string;
+  cycleYear: number;
+  corporateIeSupportAmount: number;
+  corporateIeAgainstOpponentAmount: number;
+  corporateIeAgainstSelfAmount: number;
+}
+
+export interface ParseCalAccessIeLegislator {
+  id: string;
+  openStatesId: string | null;
+  fullName: string;
+  state: string;
+  chamber: 'SEN' | 'REP';
+  district: number | null;
+}
+
+export interface ParseCalAccessIeRaceCandidate {
+  externalCandidateId: string;
+  candidateName: string;
+  state: string;
+  chamber: 'SEN' | 'REP';
+  district: number | null;
+  legislatorId: string | null;
+}
+
+export interface ParseCalAccessIeArgs {
+  dataDir: string;
+  legislators: ReadonlyArray<ParseCalAccessIeLegislator>;
+  raceCandidatesByCycle: Map<number, ReadonlyArray<ParseCalAccessIeRaceCandidate>>;
+  /**
+   * Cal-Access FILER_IDs (committeeId on CommitteeClassification) classified
+   * as CORPORATE or TRADE_ASSOCIATION for jurisdiction=CA. Only IE rows
+   * whose spending filer is in this set contribute to the buckets.
+   */
+  corporateSpenderFilerIds: ReadonlySet<string>;
+  cycles: ReadonlyArray<number>;
+}
+
+export interface CalAccessIeIngestResult {
+  buckets: CalAccessIeBuckets[];
+  ieRowsScanned: number;
+  ieRowsAttributed: number;
+  filingsMappedToFiler: number;
+}
+
+/**
+ * Round an expenditure-date year to the cycle year (next even year).
+ * 2023→2024, 2024→2024, 2025→2026, 2026→2026. Matches the federal
+ * convention used by FEC and the existing `cyclesFor` PAC code.
+ */
+function cycleForYear(year: number): number {
+  return year % 2 === 0 ? year : year + 1;
+}
+
+/**
+ * Match a target candidate (parsed from an F461P5 row) against the legislator
+ * roster and that cycle's race-candidate roster. Returns whichever attribution
+ * bucket the row falls into, or null if no match.
+ *
+ *  - 'self-support'    : target == this legislator, SUP_OPP_CD='S'
+ *  - 'self-oppose'     : target == this legislator, SUP_OPP_CD='O'
+ *  - 'opponent-oppose' : target == one of this legislator's opponents in
+ *                        the same cycle/race, SUP_OPP_CD='O'
+ *
+ * The opponent path requires the RaceCandidate table to be populated. If
+ * empty (e.g. CA RaceCandidate seeding is still stubbed), the opponent
+ * bucket simply stays at $0 — that's expected for v1.4.
+ */
+function matchIeTarget(
+  targetLastName: string,
+  targetFirstName: string,
+  targetChamber: 'SEN' | 'REP',
+  targetDistrict: number | null,
+  supOpp: 'S' | 'O',
+  legislators: ReadonlyArray<ParseCalAccessIeLegislator>,
+  raceCandidates: ReadonlyArray<ParseCalAccessIeRaceCandidate>,
+): { legislatorId: string; bucket: 'self-support' | 'self-oppose' | 'opponent-oppose' } | null {
+  const targetFullName = `${targetFirstName} ${targetLastName}`.trim();
+
+  // Direct match against the legislator roster (self).
+  for (const l of legislators) {
+    if (l.chamber !== targetChamber) continue;
+    if (targetDistrict != null && l.district !== targetDistrict) continue;
+    if (!lastNameTokensOverlap(l.fullName, targetFullName)) continue;
+    if (supOpp === 'S') return { legislatorId: l.id, bucket: 'self-support' };
+    if (supOpp === 'O') return { legislatorId: l.id, bucket: 'self-oppose' };
+  }
+
+  // Opponent path: only opposing spend counts (supporting an opponent is
+  // not "corporate money working against me" in v1.4 methodology).
+  if (supOpp !== 'O') return null;
+
+  for (const rc of raceCandidates) {
+    if (rc.chamber !== targetChamber) continue;
+    if (targetDistrict != null && rc.district !== targetDistrict) continue;
+    if (!lastNameTokensOverlap(rc.candidateName, targetFullName)) continue;
+
+    // Find the legislator who shares this race (same chamber + district +
+    // cycle) but is NOT this candidate. That legislator gets the "money
+    // spent against my opponent" credit.
+    for (const l of legislators) {
+      if (l.chamber !== targetChamber) continue;
+      if (rc.district != null && l.district !== rc.district) continue;
+      if (lastNameTokensOverlap(l.fullName, rc.candidateName)) continue; // skip if this IS the candidate
+      return { legislatorId: l.id, bucket: 'opponent-oppose' };
+    }
+  }
+
+  return null;
+}
+
+export async function parseCalAccessIe(args: ParseCalAccessIeArgs): Promise<CalAccessIeIngestResult> {
+  const { dataDir, legislators, raceCandidatesByCycle, corporateSpenderFilerIds, cycles } = args;
+  const cycleSet = new Set(cycles);
+
+  console.log(
+    `[ca-access-ie] cycles: ${[...cycleSet].join(', ')}; legislators: ${legislators.length}; corporate spenders: ${
+      corporateSpenderFilerIds.size
+    }; race-candidates loaded for cycles: ${[...raceCandidatesByCycle.keys()].join(', ') || '(none)'}`,
+  );
+
+  if (corporateSpenderFilerIds.size === 0) {
+    console.log('[ca-access-ie] no CA corporate/trade-association filer IDs classified — skipping IE pass.');
+    return { buckets: [], ieRowsScanned: 0, ieRowsAttributed: 0, filingsMappedToFiler: 0 };
+  }
+
+  // ---- Pass 1: cvr_campaign_disclosure_cd → filing→filerId map ----
+  const filingToFiler = new Map<string, string>();
+  console.log('[ca-access-ie] Pass 1: scanning cvr_campaign_disclosure_cd.csv for FILING_ID → FILER_ID...');
+  const cvrRows = await streamCsv(path.join(dataDir, 'cvr_campaign_disclosure_cd.csv'), {}, (row) => {
+    const filingId = row.FILING_ID;
+    const filerId = row.FILER_ID;
+    if (!filingId || !filerId) return;
+    // The same FILING_ID can appear multiple times (one per amendment);
+    // the FILER_ID is stable across amendments so a simple set is fine.
+    filingToFiler.set(filingId, filerId);
+  });
+  console.log(
+    `[ca-access-ie] Pass 1: scanned ${cvrRows.toLocaleString()} cvr rows; ${filingToFiler.size.toLocaleString()} filing→filer mappings`,
+  );
+
+  // ---- Pass 2: stream expn_cd.csv filtered to F461P5 ----
+  type BucketKey = string; // `${legislatorId}|${cycleYear}`
+  const buckets = new Map<BucketKey, CalAccessIeBuckets>();
+  let ieRowsScanned = 0;
+  let ieRowsAttributed = 0;
+
+  function getBucket(legislatorId: string, cycleYear: number): CalAccessIeBuckets {
+    const key = `${legislatorId}|${cycleYear}`;
+    let b = buckets.get(key);
+    if (!b) {
+      b = {
+        legislatorId,
+        cycleYear,
+        corporateIeSupportAmount: 0,
+        corporateIeAgainstOpponentAmount: 0,
+        corporateIeAgainstSelfAmount: 0,
+      };
+      buckets.set(key, b);
+    }
+    return b;
+  }
+
+  console.log('[ca-access-ie] Pass 2: streaming expn_cd.csv for F461P5 IE rows (large file — be patient)...');
+  await streamCsv(path.join(dataDir, 'expn_cd.csv'), { filter: (row) => row.FORM_TYPE === 'F461P5' }, (row) => {
+    ieRowsScanned += 1;
+
+    const filerId = filingToFiler.get(row.FILING_ID);
+    if (!filerId) return;
+    if (!corporateSpenderFilerIds.has(filerId)) return;
+
+    const supOppRaw = (row.SUP_OPP_CD || '').toUpperCase().trim();
+    if (supOppRaw !== 'S' && supOppRaw !== 'O') return;
+    const supOpp = supOppRaw as 'S' | 'O';
+
+    const chamber = chamberFromOffice(row.OFFICE_CD);
+    if (!chamber) return;
+
+    const districtRaw = parseInt(row.DIST_NO || '', 10);
+    const district = Number.isFinite(districtRaw) ? districtRaw : null;
+
+    const exp = parseCalAccessDate(row.EXPN_DATE);
+    if (!exp) return;
+    const cycleYear = cycleForYear(exp.year);
+    if (!cycleSet.has(cycleYear)) return;
+
+    const amount = Number(row.AMOUNT);
+    if (!Number.isFinite(amount) || amount <= 0) return;
+
+    const targetLast = row.CAND_NAML || '';
+    const targetFirst = row.CAND_NAMF || '';
+    if (!targetLast) return;
+
+    const raceCands = raceCandidatesByCycle.get(cycleYear) ?? [];
+    const matched = matchIeTarget(targetLast, targetFirst, chamber, district, supOpp, legislators, raceCands);
+    if (!matched) return;
+
+    ieRowsAttributed += 1;
+    const b = getBucket(matched.legislatorId, cycleYear);
+    if (matched.bucket === 'self-support') b.corporateIeSupportAmount += amount;
+    else if (matched.bucket === 'self-oppose') b.corporateIeAgainstSelfAmount += amount;
+    else if (matched.bucket === 'opponent-oppose') b.corporateIeAgainstOpponentAmount += amount;
+  });
+
+  console.log(
+    `[ca-access-ie] Pass 2: scanned ${ieRowsScanned.toLocaleString()} F461P5 rows; ${ieRowsAttributed.toLocaleString()} attributed; ${
+      buckets.size
+    } (legislator, cycle) buckets with non-zero IE`,
+  );
+
+  return {
+    buckets: [...buckets.values()],
+    ieRowsScanned,
+    ieRowsAttributed,
+    filingsMappedToFiler: filingToFiler.size,
   };
 }

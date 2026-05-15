@@ -534,6 +534,16 @@ enum SponsorTier {
   SPONSOR // Generic / single-sponsor bills
 }
 
+/// Per-cycle race outcome for a candidate, used to track opponents (B+C in the
+/// v1.4 methodology). DECLARED_PENDING covers active-cycle candidates who've
+/// filed paperwork but the election hasn't happened yet.
+enum RaceOutcome {
+  WON
+  LOST_GENERAL
+  LOST_PRIMARY
+  DECLARED_PENDING
+}
+
 enum PacDataSource {
   OPENSECRETS_BULK // OpenSecrets bulk CSV (federal)
   CAL_ACCESS_CCDC // CCDC Big Local News exports (CA)
@@ -692,6 +702,7 @@ model Legislator {
   scores       RepresentativeScore[]
   achievements MarkerAchievement[]
   pacData      PacMoneyData[]
+  races        RaceCandidate[]
   billVotes        BillVote[]
   billSponsorships BillSponsorship[]
 
@@ -772,6 +783,10 @@ model MarkerAchievement {
   evidenceType      EvidenceType
   evidenceSourceUrl String? // Public link the score traces to
   evidenceNotes     String?             @db.Text
+  // v1.4 continuous marker score (currently used for PAC marker only — null for all
+  // other achievement types). Scoring engine prefers this over the v1.3 integer
+  // weight when present.
+  achievementScore  Decimal?            @db.Decimal(6, 2)
   verifiedAt        DateTime?
   verifiedBy        String? // User id or admin email; resolved at app layer
 
@@ -792,6 +807,13 @@ model PacMoneyData {
   corporatePacAmount     Decimal       @db.Decimal(14, 2)
   totalReceipts          Decimal       @db.Decimal(14, 2)
   corporatePacPercentage Decimal       @db.Decimal(6, 4) // Stored as 0.0000-1.0000 for precision
+  // v1.4 IE breakdown (nullable; default 0 in queries). corporateIeAgainstSelfAmount
+  // is disclosed in the PAC scoreboard but does NOT count toward the combined ratio.
+  corporateIeSupportAmount          Decimal?      @db.Decimal(14, 2)
+  corporateIeAgainstOpponentAmount  Decimal?      @db.Decimal(14, 2)
+  corporateIeAgainstSelfAmount      Decimal?      @db.Decimal(14, 2)
+  // Cached v1.4 ratio: (direct corp + IE for + IE vs opponent) / (total receipts + same IE).
+  combinedCorporateRatio            Decimal?      @db.Decimal(6, 4)
   dataSource             PacDataSource
   dataSourceUrl          String? // Link back to the underlying filing or summary
   fetchedAt              DateTime      @default(now())
@@ -804,6 +826,43 @@ model PacMoneyData {
   @@unique([legislatorId, cycleYear, dataSource])
   @@index([legislatorId])
   @@index([cycleYear])
+}
+
+/// Tracks every candidate who has run (or is currently running) for a
+/// legislator's seat, across cycles. Used by v1.4's "money working for me"
+/// ratio to count corporate IE spending against the legislator's opponents.
+/// Indexed for "who ran against legislator X in cycle Y" lookups.
+model RaceCandidate {
+  id                   String        @id @default(cuid())
+  legislator           Legislator?   @relation(fields: [legislatorId], references: [id], onDelete: SetNull)
+  legislatorId         String?
+  cycleYear            Int
+  jurisdiction         Jurisdiction
+  state                String
+  chamber              Chamber
+  district             Int?
+  externalCandidateId  String
+  candidateName        String
+  outcome              RaceOutcome
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cycleYear, externalCandidateId])
+  @@index([cycleYear, jurisdiction, state, chamber, district])
+}
+
+/// Stores the per-methodology-version percentile anchors used to map raw signed
+/// scores to the -100% to +100% display range. Written once per methodology
+/// version by compute-scores after the first run. Frozen until the next
+/// methodology bump.
+model ScoreCalibration {
+  id                 String   @id @default(cuid())
+  methodologyVersion String   @unique
+  positiveAnchor     Decimal  @db.Decimal(8, 2)
+  negativeAnchor     Decimal  @db.Decimal(8, 2)
+  computedAt         DateTime @default(now())
+  computedFromCount  Int
 }
 
 model CommitteeClassification {

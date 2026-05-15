@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { scoreLegislator, scorePlank, METHODOLOGY_VERSION, weightForAchievement } from '@/lib/scorecard/scoring';
+import {
+  scoreLegislator,
+  scorePlank,
+  METHODOLOGY_VERSION,
+  weightForAchievement,
+  pacScoreFromRatio,
+  rawToPercent,
+} from '@/lib/scorecard/scoring';
 import type { ScoringPlank, AchievementForScoring } from '@/lib/scorecard/scoring';
 
 // Methodology v1.3: weighted scoring via weightForAchievement.
@@ -24,6 +31,7 @@ function ach(markerId: string, kind: 'for' | 'against' | 'norecord' = 'for'): Ac
     actionTaken: kind === 'for' ? 'ACTED_FOR' : kind === 'against' ? 'ACTED_AGAINST' : 'NO_RECORD',
     evidenceType: 'VOTE',
     sponsorTier: null,
+    achievementScore: null,
   };
 }
 
@@ -34,6 +42,7 @@ function authoredCosponsor(markerId: string, tier: AchievementForScoring['sponso
     actionTaken: 'ACTED_FOR',
     evidenceType: 'COSPONSOR',
     sponsorTier: tier,
+    achievementScore: null,
   };
 }
 
@@ -95,8 +104,8 @@ describe('scoreLegislator — v1.3', () => {
 });
 
 describe('METHODOLOGY_VERSION', () => {
-  it('is v1.3', () => {
-    expect(METHODOLOGY_VERSION).toBe('v1.3');
+  it('is v1.4', () => {
+    expect(METHODOLOGY_VERSION).toBe('v1.4');
   });
 });
 
@@ -105,6 +114,7 @@ describe('weightForAchievement — v1.3 weight table', () => {
     markerId: 'm',
     achieved: true,
     sponsorTier: null,
+    achievementScore: null,
   } as const;
 
   it('Author cosponsorship is +3', () => {
@@ -184,5 +194,75 @@ describe('weightForAchievement — v1.3 weight table', () => {
   it('NO_RECORD contributes 0', () => {
     const a: AchievementForScoring = { ...base, evidenceType: 'VOTE', actionTaken: 'NO_RECORD' };
     expect(weightForAchievement(a)).toBe(0);
+  });
+});
+
+describe('pacScoreFromRatio — v1.4 continuous gradient', () => {
+  it('returns +2 at zero corporate', () => {
+    expect(pacScoreFromRatio(0)).toBeCloseTo(2);
+  });
+  it('returns +1 at exactly 5%', () => {
+    expect(pacScoreFromRatio(0.05)).toBeCloseTo(1);
+  });
+  it('returns 0 at 15%', () => {
+    expect(pacScoreFromRatio(0.15)).toBeCloseTo(0);
+  });
+  it('returns -1 at 35%', () => {
+    expect(pacScoreFromRatio(0.35)).toBeCloseTo(-1);
+  });
+  it('returns -2 at 65%', () => {
+    expect(pacScoreFromRatio(0.65)).toBeCloseTo(-2);
+  });
+  it('returns -3 at 85%', () => {
+    expect(pacScoreFromRatio(0.85)).toBeCloseTo(-3);
+  });
+  it('clamps to -3 above 85%', () => {
+    expect(pacScoreFromRatio(0.95)).toBeCloseTo(-3);
+    expect(pacScoreFromRatio(1.0)).toBeCloseTo(-3);
+  });
+  it('clamps to +2 below 0', () => {
+    // Shouldn't happen in practice but worth covering
+    expect(pacScoreFromRatio(-0.1)).toBeCloseTo(2);
+  });
+  it('interpolates linearly between anchors — 2.5% → +1.5', () => {
+    expect(pacScoreFromRatio(0.025)).toBeCloseTo(1.5);
+  });
+  it('interpolates linearly between anchors — 10% → +0.5', () => {
+    expect(pacScoreFromRatio(0.1)).toBeCloseTo(0.5);
+  });
+  it('interpolates linearly between anchors — 50% → -1.5', () => {
+    expect(pacScoreFromRatio(0.5)).toBeCloseTo(-1.5);
+  });
+});
+
+describe('rawToPercent — v1.4 anchored display', () => {
+  it('returns 0% at raw 0', () => {
+    expect(rawToPercent(0, 25, -10)).toBe(0);
+  });
+  it('returns 100% at positive anchor', () => {
+    expect(rawToPercent(25, 25, -10)).toBe(100);
+  });
+  it('returns -100% at negative anchor', () => {
+    expect(rawToPercent(-10, 25, -10)).toBe(-100);
+  });
+  it('returns 50% halfway up positive side', () => {
+    expect(rawToPercent(12.5, 25, -10)).toBe(50);
+  });
+  it('returns -50% halfway down negative side', () => {
+    expect(rawToPercent(-5, 25, -10)).toBe(-50);
+  });
+  it('clamps above positive anchor to +100', () => {
+    expect(rawToPercent(100, 25, -10)).toBe(100);
+  });
+  it('clamps below negative anchor to -100', () => {
+    expect(rawToPercent(-50, 25, -10)).toBe(-100);
+  });
+  it('handles asymmetric anchors correctly', () => {
+    // positive scale is +25, negative scale is -8
+    expect(rawToPercent(12.5, 25, -8)).toBe(50); // halfway up
+    expect(rawToPercent(-4, 25, -8)).toBe(-50); // halfway down
+  });
+  it('returns 0% when both anchors are 0 (defensive)', () => {
+    expect(rawToPercent(5, 0, 0)).toBe(0);
   });
 });

@@ -2,6 +2,7 @@
 // All functions are read-only and safe to call from public surface area.
 
 import prisma from '@/lib/prisma/prisma';
+import { METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
 
 export type ScorecardJurisdiction = 'FEDERAL' | 'CA';
 
@@ -54,10 +55,12 @@ export interface LegislatorListFilter {
  * next to each score — surfacing activity even where the total score
  * is low.
  */
-// Source of truth for scoring methodology version on display. Old v1.0/v1.1
+// Source of truth for scoring methodology version on display. Old v1.0/v1.1/...
 // score rows linger in the DB but are filtered out here so a legislator's
-// total reflects only the current methodology pass.
-export const CURRENT_METHODOLOGY = 'v1.2';
+// total reflects only the current methodology pass. We re-export the value
+// from `scoring.ts` to keep a single source of truth: the methodology version
+// the engine writes is the same version the public reads.
+export const CURRENT_METHODOLOGY = METHODOLOGY_VERSION;
 
 export async function getLegislatorList(filter: LegislatorListFilter = {}) {
   return prisma.legislator.findMany({
@@ -315,4 +318,29 @@ export async function getFeaturedBills(jurisdiction?: ScorecardJurisdiction) {
     },
     orderBy: { updatedAt: 'desc' },
   });
+}
+
+/**
+ * Returns the v1.4+ raw→percent calibration anchors for the given methodology
+ * version, or null if no calibration row has been computed yet. `compute-scores`
+ * writes one row per methodology version, holding the 95th/5th percentiles of
+ * raw scores observed during that pass. Callers should fall back to a sensible
+ * default ({ positiveAnchor: 25, negativeAnchor: -10 } today) when null so the
+ * page still renders before the first compute pass on a new version.
+ */
+export interface ScoreCalibration {
+  positiveAnchor: number;
+  negativeAnchor: number;
+}
+
+export async function getScoreCalibration(version: string): Promise<ScoreCalibration | null> {
+  const row = await prisma.scoreCalibration.findUnique({
+    where: { methodologyVersion: version },
+    select: { positiveAnchor: true, negativeAnchor: true },
+  });
+  if (!row) return null;
+  return {
+    positiveAnchor: Number(row.positiveAnchor),
+    negativeAnchor: Number(row.negativeAnchor),
+  };
 }
