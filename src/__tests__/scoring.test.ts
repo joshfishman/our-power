@@ -5,6 +5,7 @@ import {
   METHODOLOGY_VERSION,
   weightForAchievement,
   pacScoreFromRatio,
+  rawToPercent,
 } from '@/lib/scorecard/scoring';
 import type { ScoringPlank, AchievementForScoring } from '@/lib/scorecard/scoring';
 
@@ -228,5 +229,37 @@ describe('pacScoreFromRatio — v1.4 continuous gradient', () => {
   });
   it('interpolates linearly between anchors — 50% → -1.5', () => {
     expect(pacScoreFromRatio(0.5)).toBeCloseTo(-1.5);
+  });
+});
+
+describe('rawToPercent — v1.4 anchored display', () => {
+  it('returns 0% at raw 0', () => {
+    expect(rawToPercent(0, 25, -10)).toBe(0);
+  });
+  it('returns 100% at positive anchor', () => {
+    expect(rawToPercent(25, 25, -10)).toBe(100);
+  });
+  it('returns -100% at negative anchor', () => {
+    expect(rawToPercent(-10, 25, -10)).toBe(-100);
+  });
+  it('returns 50% halfway up positive side', () => {
+    expect(rawToPercent(12.5, 25, -10)).toBe(50);
+  });
+  it('returns -50% halfway down negative side', () => {
+    expect(rawToPercent(-5, 25, -10)).toBe(-50);
+  });
+  it('clamps above positive anchor to +100', () => {
+    expect(rawToPercent(100, 25, -10)).toBe(100);
+  });
+  it('clamps below negative anchor to -100', () => {
+    expect(rawToPercent(-50, 25, -10)).toBe(-100);
+  });
+  it('handles asymmetric anchors correctly', () => {
+    // positive scale is +25, negative scale is -8
+    expect(rawToPercent(12.5, 25, -8)).toBe(50); // halfway up
+    expect(rawToPercent(-4, 25, -8)).toBe(-50); // halfway down
+  });
+  it('returns 0% when both anchors are 0 (defensive)', () => {
+    expect(rawToPercent(5, 0, 0)).toBe(0);
   });
 });

@@ -129,6 +129,28 @@ export function pacScoreFromRatio(ratio: number): number {
   return PAC_ANCHORS[PAC_ANCHORS.length - 1][1]; // unreachable
 }
 
+/**
+ * Maps a raw signed score to an anchored percentage in [-100, +100]. Anchors
+ * are picked empirically from the methodology-version's first compute (95th
+ * percentile of positives → +100%; 5th percentile of negatives → -100%) and
+ * frozen for the lifetime of that version. Asymmetric by design — the positive
+ * range typically extends further than the negative because most achievements
+ * carry positive weights.
+ *
+ * @param raw          The signed integer-or-decimal score.
+ * @param posAnchor    Raw score that maps to +100%.
+ * @param negAnchor    Raw score that maps to -100% (negative number).
+ */
+export function rawToPercent(raw: number, posAnchor: number, negAnchor: number): number {
+  if (raw === 0 || (posAnchor === 0 && negAnchor === 0)) return 0;
+  if (raw > 0) {
+    if (posAnchor <= 0) return 0;
+    return Math.min(100, (raw / posAnchor) * 100);
+  }
+  if (negAnchor >= 0) return 0;
+  return Math.max(-100, (raw / Math.abs(negAnchor)) * 100);
+}
+
 export function scorePlank(plank: ScoringPlank, achievements: readonly AchievementForScoring[]): PlankScoreResult {
   const markerIds = new Set(plank.markers.map((m) => m.id));
   let score = 0;
