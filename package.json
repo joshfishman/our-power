@@ -38,6 +38,7 @@
     "scorecard:ingest-ca-pac": "npx tsx ./scripts/ingest-cal-access.ts",
     "scorecard:find-historical": "npx tsx ./scripts/find-historical-bills.ts",
     "scorecard:ingest-opensecrets-classifications": "npx tsx ./scripts/ingest-opensecrets-classifications.ts",
+    "scorecard:ingest-race-candidates": "npx tsx ./scripts/ingest-race-candidates.ts",
     "prisma:mock": "npx prisma migrate reset && npx tsx ./scripts/createMockUsers.ts",
     "congress:update": "npx tsx scripts/update-congress-data.ts",
     "ca-legislators:update": "npx tsx scripts/update-ca-legislators.ts",

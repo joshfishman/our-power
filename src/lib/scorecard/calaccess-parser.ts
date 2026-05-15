@@ -250,6 +250,27 @@ function isLastNameMatch(dbLastName: string, dbFullName: string, cvrLastName: st
 }
 
 /**
+ * Token-overlap match between two full names from different data sources.
+ * Normalizes both, then checks whether any non-filler token (≥3 chars)
+ * from `nameA` appears in the token set of `nameB`.
+ *
+ * Designed for FEC ↔ DB legislator matching where the FEC format is
+ * "LASTNAME, FIRSTNAME" and the DB stores "First Last".
+ */
+export function lastNameTokensOverlap(nameA: string, nameB: string): boolean {
+  const tokensA = new Set(
+    normalizeName(nameA)
+      .split(' ')
+      .filter((t) => t.length >= 3 && !NAME_FILLERS.has(t)),
+  );
+  const tokensB = normalizeName(nameB)
+    .split(' ')
+    .filter((t) => t.length >= 3 && !NAME_FILLERS.has(t));
+  if (tokensA.size === 0 || tokensB.length === 0) return false;
+  return tokensB.some((t) => tokensA.has(t));
+}
+
+/**
  * CAL-ACCESS OFFICE_CD values for state legislative offices.
  * Source: https://calaccess.californiacivicdata.org/documentation/calaccess-files/lookup-codes-cd/
  *   STE = State Senate
