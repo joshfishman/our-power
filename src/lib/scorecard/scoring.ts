@@ -89,6 +89,46 @@ export function weightForAchievement(a: AchievementForScoring): number {
   return sign;
 }
 
+/**
+ * Methodology v1.4 continuous PAC gradient. Maps a combined corporate-money
+ * ratio (direct + IE in numerator, total receipts + same IE in denominator)
+ * to a marker score in [-3, +2].
+ *
+ *   ratio 0.00 → +2  (real zero — reward maximally)
+ *   ratio 0.05 → +1  (the v1.3 threshold — partial credit)
+ *   ratio 0.15 → 0   (neutral)
+ *   ratio 0.35 → -1
+ *   ratio 0.65 → -2
+ *   ratio 0.85 → -3  (floor — corporate dominance)
+ *
+ * Linear interpolation between anchors. Clamped at endpoints. The reward for
+ * being at "real zero" (0%) is bigger than the cliff at the v1.3 threshold,
+ * so legislators who genuinely refuse corporate money get more credit than
+ * those who just barely qualify.
+ */
+const PAC_ANCHORS: ReadonlyArray<[ratio: number, score: number]> = [
+  [0.0, 2.0],
+  [0.05, 1.0],
+  [0.15, 0.0],
+  [0.35, -1.0],
+  [0.65, -2.0],
+  [0.85, -3.0],
+];
+
+export function pacScoreFromRatio(ratio: number): number {
+  if (ratio <= PAC_ANCHORS[0][0]) return PAC_ANCHORS[0][1];
+  if (ratio >= PAC_ANCHORS[PAC_ANCHORS.length - 1][0]) return PAC_ANCHORS[PAC_ANCHORS.length - 1][1];
+  for (let i = 1; i < PAC_ANCHORS.length; i += 1) {
+    const [r1, s1] = PAC_ANCHORS[i - 1];
+    const [r2, s2] = PAC_ANCHORS[i];
+    if (ratio <= r2) {
+      const t = (ratio - r1) / (r2 - r1);
+      return s1 + t * (s2 - s1);
+    }
+  }
+  return PAC_ANCHORS[PAC_ANCHORS.length - 1][1]; // unreachable
+}
+
 export function scorePlank(plank: ScoringPlank, achievements: readonly AchievementForScoring[]): PlankScoreResult {
   const markerIds = new Set(plank.markers.map((m) => m.id));
   let score = 0;

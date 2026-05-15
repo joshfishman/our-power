@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { scoreLegislator, scorePlank, METHODOLOGY_VERSION, weightForAchievement } from '@/lib/scorecard/scoring';
+import {
+  scoreLegislator,
+  scorePlank,
+  METHODOLOGY_VERSION,
+  weightForAchievement,
+  pacScoreFromRatio,
+} from '@/lib/scorecard/scoring';
 import type { ScoringPlank, AchievementForScoring } from '@/lib/scorecard/scoring';
 
 // Methodology v1.3: weighted scoring via weightForAchievement.
@@ -184,5 +190,43 @@ describe('weightForAchievement — v1.3 weight table', () => {
   it('NO_RECORD contributes 0', () => {
     const a: AchievementForScoring = { ...base, evidenceType: 'VOTE', actionTaken: 'NO_RECORD' };
     expect(weightForAchievement(a)).toBe(0);
+  });
+});
+
+describe('pacScoreFromRatio — v1.4 continuous gradient', () => {
+  it('returns +2 at zero corporate', () => {
+    expect(pacScoreFromRatio(0)).toBeCloseTo(2);
+  });
+  it('returns +1 at exactly 5%', () => {
+    expect(pacScoreFromRatio(0.05)).toBeCloseTo(1);
+  });
+  it('returns 0 at 15%', () => {
+    expect(pacScoreFromRatio(0.15)).toBeCloseTo(0);
+  });
+  it('returns -1 at 35%', () => {
+    expect(pacScoreFromRatio(0.35)).toBeCloseTo(-1);
+  });
+  it('returns -2 at 65%', () => {
+    expect(pacScoreFromRatio(0.65)).toBeCloseTo(-2);
+  });
+  it('returns -3 at 85%', () => {
+    expect(pacScoreFromRatio(0.85)).toBeCloseTo(-3);
+  });
+  it('clamps to -3 above 85%', () => {
+    expect(pacScoreFromRatio(0.95)).toBeCloseTo(-3);
+    expect(pacScoreFromRatio(1.0)).toBeCloseTo(-3);
+  });
+  it('clamps to +2 below 0', () => {
+    // Shouldn't happen in practice but worth covering
+    expect(pacScoreFromRatio(-0.1)).toBeCloseTo(2);
+  });
+  it('interpolates linearly between anchors — 2.5% → +1.5', () => {
+    expect(pacScoreFromRatio(0.025)).toBeCloseTo(1.5);
+  });
+  it('interpolates linearly between anchors — 10% → +0.5', () => {
+    expect(pacScoreFromRatio(0.1)).toBeCloseTo(0.5);
+  });
+  it('interpolates linearly between anchors — 50% → -1.5', () => {
+    expect(pacScoreFromRatio(0.5)).toBeCloseTo(-1.5);
   });
 });
