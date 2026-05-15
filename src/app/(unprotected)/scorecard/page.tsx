@@ -6,7 +6,9 @@ import {
   getFeaturedBills,
   parseJurisdictionParam,
   computePublishedTotal,
+  getScoreCalibration,
 } from '@/lib/scorecard/queries';
+import { rawToPercent, METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
 import { LegislatorAvatar } from '@/components/scorecard/LegislatorAvatar';
 
 export const metadata: Metadata = {
@@ -54,10 +56,14 @@ export default async function ScorecardIndexPage(props: { searchParams: Promise<
   const state = searchParams.state ? searchParams.state.toUpperCase() : undefined;
   const sortOrder: 'best' | 'worst' = searchParams.sort === 'worst' ? 'worst' : 'best';
 
-  const [legislators, featuredBills] = await Promise.all([
+  const [legislators, featuredBills, calibrationRow] = await Promise.all([
     getLegislatorList({ jurisdiction, chamber, party, state }),
     getFeaturedBills(jurisdiction),
+    getScoreCalibration(METHODOLOGY_VERSION),
   ]);
+  // Fallback anchors keep the page rendering on a fresh methodology version
+  // before the first compute-scores pass populates ScoreCalibration.
+  const calibration = calibrationRow ?? { positiveAnchor: 25, negativeAnchor: -10 };
 
   const buildHref = (overrides: Partial<SearchParams>): string => {
     const params = new URLSearchParams();
@@ -229,16 +235,38 @@ export default async function ScorecardIndexPage(props: { searchParams: Promise<
                     <span className="font-mono text-xs uppercase tracking-wide text-gray-500">Pending</span>
                   ) : (
                     <>
-                      <p
-                        className={`font-serif text-2xl font-bold tabular-nums ${
-                          total > 0
-                            ? 'text-green-600 dark:text-green-400'
-                            : total < 0
-                            ? 'text-red-600 dark:text-red-400'
-                            : 'text-gray-500'
-                        }`}>
-                        {total > 0 ? `+${total}` : total}
-                      </p>
+                      {(() => {
+                        // v1.4 display: anchored percent (primary) + raw (secondary).
+                        // Calibration anchors are frozen per methodology version
+                        // and fall back to {25, -10} before the first compute pass.
+                        const percent = Math.round(
+                          rawToPercent(total, calibration.positiveAnchor, calibration.negativeAnchor),
+                        );
+                        const colorClass =
+                          percent > 50
+                            ? 'text-green-700'
+                            : percent > 0
+                            ? 'text-green-600'
+                            : percent === 0
+                            ? 'text-gray-500'
+                            : percent > -50
+                            ? 'text-red-500'
+                            : 'text-red-700';
+                        const sign = percent > 0 ? '+' : '';
+                        const rawSign = total > 0 ? '+' : '';
+                        return (
+                          <>
+                            <p className={`font-serif text-2xl font-bold tabular-nums ${colorClass}`}>
+                              {sign}
+                              {percent}%
+                            </p>
+                            <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wide text-gray-500">
+                              raw {rawSign}
+                              {total}
+                            </p>
+                          </>
+                        );
+                      })()}
                       {(() => {
                         // Pull from RepresentativeScore rows (single source of
                         // truth — written atomically with score). Guarantees

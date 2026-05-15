@@ -316,3 +316,28 @@ export async function getFeaturedBills(jurisdiction?: ScorecardJurisdiction) {
     orderBy: { updatedAt: 'desc' },
   });
 }
+
+/**
+ * Returns the v1.4+ raw→percent calibration anchors for the given methodology
+ * version, or null if no calibration row has been computed yet. `compute-scores`
+ * writes one row per methodology version, holding the 95th/5th percentiles of
+ * raw scores observed during that pass. Callers should fall back to a sensible
+ * default ({ positiveAnchor: 25, negativeAnchor: -10 } today) when null so the
+ * page still renders before the first compute pass on a new version.
+ */
+export interface ScoreCalibration {
+  positiveAnchor: number;
+  negativeAnchor: number;
+}
+
+export async function getScoreCalibration(version: string): Promise<ScoreCalibration | null> {
+  const row = await prisma.scoreCalibration.findUnique({
+    where: { methodologyVersion: version },
+    select: { positiveAnchor: true, negativeAnchor: true },
+  });
+  if (!row) return null;
+  return {
+    positiveAnchor: Number(row.positiveAnchor),
+    negativeAnchor: Number(row.negativeAnchor),
+  };
+}
