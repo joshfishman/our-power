@@ -21,7 +21,7 @@
 // "+0 with full coverage" — the same evidence transparency goal as the
 // three-state rendering.
 
-export const METHODOLOGY_VERSION = 'v1.3';
+export const METHODOLOGY_VERSION = 'v1.4';
 
 export type MarkerTypeForScoring = 'PRIMARY' | 'SECONDARY';
 export type AchievementStatus = 'ACTED_FOR' | 'ACTED_AGAINST' | 'NO_RECORD';
@@ -58,6 +58,7 @@ export interface AchievementForScoring {
   actionTaken: AchievementStatus | null;
   evidenceType: 'COSPONSOR' | 'VOTE' | 'FEC_FILING' | 'CAL_ACCESS_FILING' | 'PUBLIC_STATEMENT';
   sponsorTier: 'AUTHOR' | 'PRINCIPAL_COAUTHOR' | 'COAUTHOR' | 'COSPONSOR' | 'SPONSOR' | null;
+  achievementScore: number | null;
 }
 
 /**
@@ -78,14 +79,18 @@ export interface AchievementForScoring {
  *   NO_RECORD or absent row           →  0
  */
 export function weightForAchievement(a: AchievementForScoring): number {
+  // v1.4: PAC marker uses continuous achievementScore when present
+  if ((a.evidenceType === 'FEC_FILING' || a.evidenceType === 'CAL_ACCESS_FILING') && a.achievementScore != null) {
+    return a.achievementScore;
+  }
+  // Existing v1.3 weight table follows (unchanged)
   if (a.actionTaken !== 'ACTED_FOR' && a.actionTaken !== 'ACTED_AGAINST') return 0;
   const sign = a.actionTaken === 'ACTED_FOR' ? 1 : -1;
   if (a.evidenceType === 'COSPONSOR') {
     if (a.sponsorTier === 'AUTHOR' || a.sponsorTier === 'SPONSOR') return sign * 3;
     if (a.sponsorTier === 'PRINCIPAL_COAUTHOR' || a.sponsorTier === 'COAUTHOR') return sign * 2;
-    return sign * 1; // COSPONSOR or unknown tier
+    return sign * 1;
   }
-  // VOTE / FEC_FILING / CAL_ACCESS_FILING / PUBLIC_STATEMENT all carry magnitude 1.
   return sign;
 }
 

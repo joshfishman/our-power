@@ -31,6 +31,7 @@ function ach(markerId: string, kind: 'for' | 'against' | 'norecord' = 'for'): Ac
     actionTaken: kind === 'for' ? 'ACTED_FOR' : kind === 'against' ? 'ACTED_AGAINST' : 'NO_RECORD',
     evidenceType: 'VOTE',
     sponsorTier: null,
+    achievementScore: null,
   };
 }
 
@@ -41,6 +42,7 @@ function authoredCosponsor(markerId: string, tier: AchievementForScoring['sponso
     actionTaken: 'ACTED_FOR',
     evidenceType: 'COSPONSOR',
     sponsorTier: tier,
+    achievementScore: null,
   };
 }
 
@@ -102,8 +104,8 @@ describe('scoreLegislator — v1.3', () => {
 });
 
 describe('METHODOLOGY_VERSION', () => {
-  it('is v1.3', () => {
-    expect(METHODOLOGY_VERSION).toBe('v1.3');
+  it('is v1.4', () => {
+    expect(METHODOLOGY_VERSION).toBe('v1.4');
   });
 });
 
@@ -112,6 +114,7 @@ describe('weightForAchievement — v1.3 weight table', () => {
     markerId: 'm',
     achieved: true,
     sponsorTier: null,
+    achievementScore: null,
   } as const;
 
   it('Author cosponsorship is +3', () => {

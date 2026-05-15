@@ -21,7 +21,12 @@ import './load-env';
 
 import { PrismaClient } from '../src/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { METHODOLOGY_VERSION, scoreLegislator, type ScoringPlank } from '../src/lib/scorecard/scoring';
+import {
+  METHODOLOGY_VERSION,
+  pacScoreFromRatio,
+  scoreLegislator,
+  type ScoringPlank,
+} from '../src/lib/scorecard/scoring';
 
 const adapter = new PrismaPg({
   connectionString: process.env.DIRECT_URL || process.env.DATABASE_URL!,
@@ -96,7 +101,7 @@ async function computePacAchievements(
       pacData: {
         // Highest-fidelity source first, then most recent cycle.
         orderBy: [{ dataSource: 'asc' }, { cycleYear: 'desc' }],
-        select: { corporatePacPercentage: true, cycleYear: true, dataSourceUrl: true },
+        select: { corporatePacPercentage: true, combinedCorporateRatio: true, cycleYear: true, dataSourceUrl: true },
       },
     },
   });
@@ -108,44 +113,41 @@ async function computePacAchievements(
     if (!pac) continue;
     const marker = markerByJurisdiction.get(leg.jurisdiction as 'FEDERAL' | 'CA');
     if (!marker) continue;
-    const pct = Number(pac.corporatePacPercentage);
-    const passes = pct < CORPORATE_PAC_THRESHOLD;
-    if (passes) achieved += 1;
+    const ratio = Number(pac.combinedCorporateRatio ?? pac.corporatePacPercentage ?? 0);
+    const continuousScore = pacScoreFromRatio(ratio);
+    const actionTaken = continuousScore >= 0 ? 'ACTED_FOR' : 'ACTED_AGAINST';
+    if (continuousScore >= 0) achieved += 1;
 
     if (dryRun) {
       written += 1;
       continue;
     }
 
-    // Three-state: under threshold → ACTED_FOR, over threshold → ACTED_AGAINST.
-    // We always have data here (pacData[0] exists), so this is positive
-    // evidence either way — never NO_RECORD at this point.
-    const actionTaken = passes ? 'ACTED_FOR' : 'ACTED_AGAINST';
     await prisma.markerAchievement.upsert({
       where: { legislatorId_markerId: { legislatorId: leg.id, markerId: marker.id } },
       create: {
         legislatorId: leg.id,
         markerId: marker.id,
-        achieved: passes,
+        achieved: continuousScore >= 0,
         actionTaken,
+        achievementScore: continuousScore,
         evidenceType: leg.jurisdiction === 'CA' ? 'CAL_ACCESS_FILING' : 'FEC_FILING',
         evidenceSourceUrl: pac.dataSourceUrl ?? null,
-        evidenceNotes: `cycle=${pac.cycleYear}, corporate-PAC=${(pct * 100).toFixed(2)}% (threshold=${
-          CORPORATE_PAC_THRESHOLD * 100
-        }%)`,
+        evidenceNotes: `cycle=${pac.cycleYear}, combined-corporate=${(ratio * 100).toFixed(
+          2,
+        )}%, continuous-score=${continuousScore.toFixed(2)}`,
         verifiedAt: new Date(),
-        verifiedBy: 'pac-engine',
+        verifiedBy: 'pac-engine-v1.4',
       },
       update: {
-        achieved: passes,
+        achieved: continuousScore >= 0,
         actionTaken,
-        evidenceType: leg.jurisdiction === 'CA' ? 'CAL_ACCESS_FILING' : 'FEC_FILING',
-        evidenceSourceUrl: pac.dataSourceUrl ?? null,
-        evidenceNotes: `cycle=${pac.cycleYear}, corporate-PAC=${(pct * 100).toFixed(2)}% (threshold=${
-          CORPORATE_PAC_THRESHOLD * 100
-        }%)`,
+        achievementScore: continuousScore,
+        evidenceNotes: `cycle=${pac.cycleYear}, combined-corporate=${(ratio * 100).toFixed(
+          2,
+        )}%, continuous-score=${continuousScore.toFixed(2)}`,
         verifiedAt: new Date(),
-        verifiedBy: 'pac-engine',
+        verifiedBy: 'pac-engine-v1.4',
       },
     });
     written += 1;
@@ -234,6 +236,7 @@ async function main(): Promise<void> {
           achieved: true,
           evidenceType: true,
           sponsorTier: true,
+          achievementScore: true,
         },
       },
       ...(flags.changesOnly
@@ -299,6 +302,7 @@ async function main(): Promise<void> {
         actionTaken: a.actionTaken,
         evidenceType: a.evidenceType,
         sponsorTier: a.sponsorTier,
+        achievementScore: Number(a.achievementScore ?? 0) || null,
       })),
     });
 
@@ -351,6 +355,44 @@ async function main(): Promise<void> {
     } zero` + (flags.publish ? ` — published` : ` — NOT published (rerun with --publish)`),
   );
   if (flags.dryRun) console.log('[compute-scores] DRY RUN — no DB writes performed.');
+
+  // v1.4: compute ScoreCalibration anchors from the just-written score rows
+  console.log('[compute-scores] computing v1.4 percentile anchors...');
+  const allScores = await prisma.representativeScore.findMany({
+    where: { methodologyVersion: 'v1.4', publishedAt: { not: null } },
+    select: { legislatorId: true, score: true },
+  });
+  // Aggregate to per-legislator totals (sum across planks)
+  const totalsByLegislator = new Map<string, number>();
+  for (const s of allScores) {
+    totalsByLegislator.set(s.legislatorId, (totalsByLegislator.get(s.legislatorId) ?? 0) + s.score);
+  }
+  const totals = [...totalsByLegislator.values()].sort((a, b) => a - b);
+  function percentile(p: number): number {
+    if (totals.length === 0) return 0;
+    const idx = Math.min(totals.length - 1, Math.max(0, Math.floor((p / 100) * totals.length)));
+    return totals[idx];
+  }
+  const positiveAnchor = percentile(95);
+  const negativeAnchor = percentile(5);
+  await prisma.scoreCalibration.upsert({
+    where: { methodologyVersion: 'v1.4' },
+    create: {
+      methodologyVersion: 'v1.4',
+      positiveAnchor,
+      negativeAnchor,
+      computedFromCount: totalsByLegislator.size,
+    },
+    update: {
+      positiveAnchor,
+      negativeAnchor,
+      computedFromCount: totalsByLegislator.size,
+      computedAt: new Date(),
+    },
+  });
+  console.log(
+    `[compute-scores] v1.4 anchors: +100% = ${positiveAnchor} raw, -100% = ${negativeAnchor} raw (from ${totalsByLegislator.size} legislators)`,
+  );
 }
 
 main()
