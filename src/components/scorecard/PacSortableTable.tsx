@@ -22,12 +22,26 @@ export interface PacRow {
   district: number | null;
   party: string;
   photoUrl: string | null;
-  pct: number; // 0.0 - 1.0
+  /** v1.4 combined ratio (direct + IE for + IE vs opponents) / adjusted total. 0.0–1.0. Null when not yet computed. */
+  pct: number; // combinedCorporateRatio if available, else corporatePacPercentage
   corpAmount: number;
   totalReceipts: number;
+  // v1.4 IE breakdown (all in dollars; 0 when not yet ingested)
+  ieSupport: number;
+  ieAgainstOpponent: number;
+  ieAttacking: number;
 }
 
-type SortKey = 'rank' | 'name' | 'party' | 'pct' | 'receipts';
+type SortKey =
+  | 'rank'
+  | 'name'
+  | 'party'
+  | 'pct'
+  | 'receipts'
+  | 'corpAmount'
+  | 'ieSupport'
+  | 'ieAgainstOpponent'
+  | 'ieAttacking';
 type SortDir = 'asc' | 'desc';
 
 interface Props {
@@ -62,6 +76,18 @@ export function PacSortableTable({ rows, hideStateColumn = false }: Props) {
         case 'receipts':
           cmp = a.totalReceipts - b.totalReceipts;
           break;
+        case 'corpAmount':
+          cmp = a.corpAmount - b.corpAmount;
+          break;
+        case 'ieSupport':
+          cmp = a.ieSupport - b.ieSupport;
+          break;
+        case 'ieAgainstOpponent':
+          cmp = a.ieAgainstOpponent - b.ieAgainstOpponent;
+          break;
+        case 'ieAttacking':
+          cmp = a.ieAttacking - b.ieAttacking;
+          break;
         case 'rank':
         default:
           // Rank is derived from pct ascending — treat same as pct.
@@ -80,6 +106,7 @@ export function PacSortableTable({ rows, hideStateColumn = false }: Props) {
       setSortKey(key);
       // Most useful defaults per column.
       setSortDir(key === 'name' || key === 'party' ? 'asc' : key === 'pct' ? 'asc' : 'desc');
+      // IE columns: descending by default (largest spender at top).
     }
   }
 
@@ -87,6 +114,8 @@ export function PacSortableTable({ rows, hideStateColumn = false }: Props) {
     if (sortKey !== key) return <span className="text-gray-400"> ⇅</span>;
     return <span> {sortDir === 'asc' ? '↑' : '↓'}</span>;
   };
+
+  const fmt$ = (n: number) => (n > 0 ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—');
 
   return (
     <table className="mt-6 w-full border-collapse text-sm">
@@ -98,8 +127,23 @@ export function PacSortableTable({ rows, hideStateColumn = false }: Props) {
             Party{hideStateColumn ? '' : ' · State'}
             {arrow('party')}
           </Th>
-          <Th onClick={() => handleClick('pct')} align="right">
-            Corporate PAC %{arrow('pct')}
+          {/* Contextual: v1.3 direct-only number */}
+          <Th onClick={() => handleClick('corpAmount')} align="right">
+            Direct corporate{arrow('corpAmount')}
+          </Th>
+          {/* v1.4 IE columns */}
+          <Th onClick={() => handleClick('ieSupport')} align="right" accent>
+            Corp IE Supporting{arrow('ieSupport')}
+          </Th>
+          <Th onClick={() => handleClick('ieAgainstOpponent')} align="right">
+            Corp IE vs opponents{arrow('ieAgainstOpponent')}
+          </Th>
+          <Th onClick={() => handleClick('ieAttacking')} align="right" italic muted>
+            Corp IE attacking{arrow('ieAttacking')}
+          </Th>
+          {/* Primary sort column */}
+          <Th onClick={() => handleClick('pct')} align="right" bold>
+            % Corporate Donations{arrow('pct')}
           </Th>
           <Th onClick={() => handleClick('receipts')} align="right">
             Total Receipts{arrow('receipts')}
@@ -130,26 +174,32 @@ export function PacSortableTable({ rows, hideStateColumn = false }: Props) {
                 {PARTY_LABEL[l.party] ?? l.party}
                 {!hideStateColumn && <> · {l.state}</>}
               </td>
+              {/* Direct corporate (v1.3 contextual) */}
+              <td className="py-2 pr-4 text-right font-mono text-xs text-gray-600">{fmt$(l.corpAmount)}</td>
+              {/* Corp IE Supporting — prominent */}
+              <td className="py-2 pr-4 text-right font-mono text-sm font-bold text-[#8B3A3A]">{fmt$(l.ieSupport)}</td>
+              {/* Corp IE vs opponents */}
+              <td className="py-2 pr-4 text-right font-mono text-xs text-gray-600">{fmt$(l.ieAgainstOpponent)}</td>
+              {/* Corp IE attacking — disclosure only, muted italic */}
+              <td className="py-2 pr-4 text-right font-mono text-xs italic text-gray-400">{fmt$(l.ieAttacking)}</td>
+              {/* % Corporate Donations — primary */}
               <td className="py-2 pr-4 text-right">
                 <span
                   className={
                     passes
-                      ? 'font-serif text-base font-bold text-green-600 dark:text-green-400'
-                      : 'font-serif text-base font-bold text-red-600 dark:text-red-400'
+                      ? 'font-serif text-base font-bold text-[#8B3A3A]'
+                      : 'font-serif text-base font-bold text-gray-900'
                   }>
                   {(l.pct * 100).toFixed(1)}%
                 </span>
                 {passes && (
-                  <span className="ml-2 rounded bg-green-600 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-white">
+                  <span className="ml-2 rounded bg-[#8B3A3A] px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-white">
                     ✓
                   </span>
                 )}
               </td>
-              <td className="py-2 pr-4 text-right font-mono text-xs text-gray-600">
+              <td className="py-2 text-right font-mono text-xs text-gray-600">
                 ${l.totalReceipts.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                <span className="ml-1 text-gray-400">
-                  (${l.corpAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })} corp)
-                </span>
               </td>
             </tr>
           );
@@ -163,16 +213,29 @@ function Th({
   children,
   onClick,
   align = 'left',
+  bold = false,
+  accent = false,
+  italic = false,
+  muted = false,
 }: {
   children: React.ReactNode;
   onClick: () => void;
   align?: 'left' | 'right';
+  /** Primary column — render label in bold dark text */
+  bold?: boolean;
+  /** Accent column — render label in brand red */
+  accent?: boolean;
+  /** Italic label */
+  italic?: boolean;
+  /** Muted label — lighter gray */
+  muted?: boolean;
 }) {
+  const colorCls = accent ? 'text-[#8B3A3A]' : muted ? 'text-gray-400' : bold ? 'text-gray-900' : 'text-gray-500';
   return (
     <th
-      className={`cursor-pointer select-none py-2 pr-4 font-mono text-xs uppercase tracking-wide text-gray-500 transition-colors hover:text-[#8B3A3A] ${
+      className={`cursor-pointer select-none py-2 pr-4 font-mono text-xs uppercase tracking-wide transition-colors hover:text-[#8B3A3A] ${
         align === 'right' ? 'text-right' : 'text-left'
-      }`}
+      } ${bold ? 'font-bold' : ''} ${italic ? 'italic' : ''} ${colorCls}`}
       onClick={onClick}>
       {children}
     </th>

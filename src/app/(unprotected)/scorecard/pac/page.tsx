@@ -57,6 +57,10 @@ export default async function PacScorecardPage(props: { searchParams: Promise<Se
           corporatePacPercentage: true,
           dataSource: true,
           dataSourceUrl: true,
+          corporateIeSupportAmount: true,
+          corporateIeAgainstOpponentAmount: true,
+          corporateIeAgainstSelfAmount: true,
+          combinedCorporateRatio: true,
         },
       },
     },
@@ -66,9 +70,15 @@ export default async function PacScorecardPage(props: { searchParams: Promise<Se
   const ranked = legislators
     .map((l) => ({ ...l, latest: l.pacData[0] }))
     .filter((l) => l.latest)
-    .sort((a, b) => Number(a.latest.corporatePacPercentage) - Number(b.latest.corporatePacPercentage));
+    .sort(
+      (a, b) =>
+        Number(a.latest.combinedCorporateRatio ?? a.latest.corporatePacPercentage ?? 0) -
+        Number(b.latest.combinedCorporateRatio ?? b.latest.corporatePacPercentage ?? 0),
+    );
 
-  const refuserCount = ranked.filter((l) => Number(l.latest.corporatePacPercentage) < CORPORATE_PAC_THRESHOLD).length;
+  const refuserCount = ranked.filter(
+    (l) => Number(l.latest.combinedCorporateRatio ?? l.latest.corporatePacPercentage ?? 0) < CORPORATE_PAC_THRESHOLD,
+  ).length;
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
@@ -85,8 +95,8 @@ export default async function PacScorecardPage(props: { searchParams: Promise<Se
           threshold applied to every legislator regardless of party.
         </p>
         <p className="mt-2 text-xs text-gray-500">
-          Federal data: OpenSecrets bulk, classified per their RealCode taxonomy. California: CCDC Cal-Access exports
-          plus our hand-curated CommitteeClassification table. Methodology v1.0.
+          Current cycle data · sources: FEC + Cal-Access via CCDC. Combined % includes corporate IE spending FOR this
+          legislator and AGAINST their same-cycle opponents. Corporate IE attacking is disclosed but not scored.
         </p>
       </header>
 
@@ -117,9 +127,13 @@ export default async function PacScorecardPage(props: { searchParams: Promise<Se
               district: l.district,
               party: l.party,
               photoUrl: l.photoUrl,
-              pct: Number(l.latest.corporatePacPercentage),
+              // pct uses combinedCorporateRatio (v1.4) when available, falls back to v1.3 direct-only
+              pct: Number(l.latest.combinedCorporateRatio ?? l.latest.corporatePacPercentage ?? 0),
               corpAmount: Number(l.latest.corporatePacAmount),
               totalReceipts: Number(l.latest.totalReceipts),
+              ieSupport: Number(l.latest.corporateIeSupportAmount ?? 0),
+              ieAgainstOpponent: Number(l.latest.corporateIeAgainstOpponentAmount ?? 0),
+              ieAttacking: Number(l.latest.corporateIeAgainstSelfAmount ?? 0),
             }))}
             hideStateColumn={searchParams.jurisdiction === 'CA'}
           />
