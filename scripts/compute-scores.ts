@@ -275,7 +275,7 @@ async function main(): Promise<void> {
   // (legislator, plank) sequentially — ~3,300 round trips through Supabase
   // pooler took minutes. Batching 50 upserts per transaction cuts wall
   // time by ~30× and avoids the "compute never finishes" symptom.
-  const BATCH_SIZE = 50;
+  const BATCH_SIZE = 20;
   const operations: Array<ReturnType<typeof prisma.representativeScore.upsert>> = [];
   let totalScores = 0;
   let positiveScores = 0;
@@ -283,9 +283,10 @@ async function main(): Promise<void> {
 
   async function flushBatch() {
     if (operations.length === 0) return;
-    // 30s per batch — Supabase round-trips can push a 50-upsert batch past
-    // Prisma's 5s default, especially on cold connections after a deploy.
-    await prisma.$transaction(operations, { timeout: 30_000 });
+    // 60s per batch + 10s maxWait — Supabase pooler under v1.4 (now writing
+    // a fifth methodology version, more index pressure) was timing out 50-op
+    // batches at 5s. Smaller batches + longer ceiling is the safe combo.
+    await prisma.$transaction(operations, { timeout: 60_000, maxWait: 10_000 });
     operations.length = 0;
   }
 
