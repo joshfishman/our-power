@@ -26,6 +26,26 @@ Plank scores are signed integers — they can be positive, negative, or zero. A 
 **Plank score** = sum of all weighted points on that plank. Can be negative.  
 **Total score** = sum of plank scores across all planks. Also signed.
 
+### Corporate-PAC marker uses a continuous score, not a flat ±1
+
+Most markers score +1 (acted for) or −1 (acted against). The corporate-PAC
+marker on Plank 1 is different — it uses a gradient based on how much
+corporate money flowed for the legislator's campaign:
+
+| Combined corporate share | Marker score |
+| ------------------------ | ------------ |
+| 0%                       | +2.0         |
+| 5%                       | +1.0         |
+| 15%                      | 0 (neutral)  |
+| 35%                      | −1.0         |
+| 65%                      | −2.0         |
+| 85%+                     | −3.0         |
+
+Linear interpolation between anchors. A legislator at 1% corporate gets
++1.8; at 50% gets −1.5. The reward for being at "real zero" is bigger
+than just meeting the 5% threshold, so legislators who genuinely refuse
+corporate money get more credit than those who just barely qualify.
+
 ## The five planks
 
 Planks 1–4 apply to both federal and California legislators. Plank 5 — Peace and Strength — is federal-only; it does not map to state-level policy and is not part of the California scorecard.
@@ -95,13 +115,63 @@ Republican alternatives never qualify as the _primary_ marker for a plank. The r
 
 ## Corporate PAC money
 
-A legislator "refuses corporate PAC money" when corporate PAC contributions are under 5% of total campaign receipts in the current cycle.
+The corporate-money signal counts both direct contributions to a candidate's
+committee AND independent-expenditure spending by corporate-affiliated
+super PACs. Under v1.4:
 
-**Federal source:** OpenSecrets bulk data, which pre-classifies PACs into corporate, labor, ideological, party, candidate, and trade-association categories from FEC filings. (The OpenSecrets API was discontinued in April 2025; bulk CSV downloads remain available and are imported into our database.)
+    Combined ratio = (direct corporate PAC $ + corporate IE supporting you + corporate IE against your opponents)
+                     ──────────────────────────────────────────────────────────────────────────────────────────────
+                     (total receipts + corporate IE supporting you + corporate IE against your opponents)
 
-**California source:** Cal-Access raw data via the California Civic Data Coalition (CCDC) pipeline, hosted on Big Local News. Cal-Access does not pre-classify "corporate PAC" — that classification is maintained in our `CommitteeClassification` table, hand-curated for the top California committees. Every classification is publicly visible and open to challenge.
+Where:
 
-A future upgrade path uses FEC.gov directly with our own PAC classification. The scoring engine prefers the highest-fidelity source where multiple records exist for the same legislator.
+- **Direct corporate PAC $** — contributions from corporate-classified PACs to your campaign committee.
+- **Corporate IE supporting you** — money corporate super PACs spent on ads / mail / digital FOR you.
+- **Corporate IE against your opponents** — money corporate super PACs spent attacking the people running against you. Counts as money working on your behalf, even though you (legally) didn't ask for it.
+
+The 5% threshold still applies — under 5% combined corporate ratio earns
+the +1 partial-credit anchor on the gradient. At 0% combined, +2.
+
+**What's NOT in the formula: corporate attacks ON you.** When a corporate
+super PAC spends to defeat a legislator, that's not money working for
+them — it's money working against them. We disclose those attacks in the
+PAC scoreboard table (small italic column) because it's important
+context, but we don't reward being attacked. Race competitiveness drives
+a lot of attack spending in ways that don't track policy alignment.
+
+### How we identify your opponents
+
+For each cycle a legislator has run in, we count corporate IE against
+any of these:
+
+- **Past completed cycles**: every candidate who filed for the same seat in the same cycle, including primary challengers and the general-election opponent.
+- **Active upcoming cycle**: every candidate who has filed paperwork to run for this seat in the next election.
+
+### How we classify "corporate"
+
+**Federal:** OpenSecrets' RealCode taxonomy maps thousands of PACs and IE committees to industry sectors. Any committee tagged Business or similar for-profit is treated as corporate. Trade associations are bundled with corporate (they're the corporate sector's vehicle for collective lobbying). (The OpenSecrets API was discontinued in April 2025; bulk CSV downloads remain available and are imported into our database.)
+
+**California:** Cal-Access raw data via the California Civic Data Coalition (CCDC) pipeline, hosted on Big Local News. Cal-Access does not pre-classify "corporate PAC" — that classification is maintained in our hand-curated `CommitteeClassification` table covering the top Cal-Access filers. Same CORPORATE / LABOR / IDEOLOGICAL / TRADE ASSOCIATION buckets. Conservative-attribution rule — if we don't have a classification, we don't count it as corporate. Every classification is publicly visible and open to challenge.
+
+The scoring engine prefers the highest-fidelity source where multiple records exist for the same legislator.
+
+## Scores as percentages
+
+Each legislator's total is a signed integer (sum of weighted markers
+across planks). We display it as a percentage from −100% to +100% to
+make it easier to read at a glance:
+
+- **+100%** = the 95th-percentile legislator's raw score
+- **−100%** = the 5th-percentile legislator's raw score
+- Everyone else scales linearly between
+
+The percentile anchors are computed once per methodology version (from
+the first published compute) and frozen until the next version. That
+keeps percentages stable across the lifetime of a methodology version
+even as new bills are added.
+
+The raw integer score is always visible alongside the percentage for
+anyone who wants the unscaled signal.
 
 ## What we don't (yet) score
 
@@ -110,6 +180,8 @@ Honest accounting of current gaps:
 - **Procedural deaths.** When a bill dies in conference committee, in a suspense file, or is "held under submission," that often happens off the record — no vote roll, no cosponsorship signal. We can't score what we can't see, so those moments of legislative burial don't show up in a member's numbers even when they're consequential.
 - **Committee importance.** A committee chair who kills a bill in markup is doing something meaningfully different from a rank-and-file member who votes no on the floor. We don't yet weight by committee position or amendment authorship.
 - **Vote record completeness.** We rely on LegiScan for vote records. If LegiScan doesn't have a roll call, we don't either — a gap in their coverage becomes a gap in ours.
+- **Real-time IE tracking.** Schedule E filings update at FEC daily, but our scorecard recomputes on a schedule (weekly during election cycles, less often outside). A super PAC drop today won't show up until the next compute.
+- **Per-super-PAC drill-downs.** We aggregate corporate IE spending into one number per legislator. We don't yet show "which corporate super PAC spent the most on this senator" — that data is captured but not surfaced. Future feature.
 
 ## Provisional bills
 
@@ -119,9 +191,10 @@ Some markers track bills that have been identified as likely vehicles but haven'
 
 Each score row in the database is stamped with the methodology version it was computed under. When the methodology changes, scores are recomputed under the new version; old versions remain for audit purposes but are not shown publicly.
 
-| Version | Released   | What changed                                                                                    |
-| ------- | ---------- | ----------------------------------------------------------------------------------------------- |
-| v1.0    | 2026-04-29 | Initial 0–5 rubric, primary + secondary markers                                                 |
-| v1.1    | 2026-04-29 | Three-state position records (ACTED_FOR / ACTED_AGAINST / NO_RECORD)                            |
-| v1.2    | 2026-05-12 | Switched from 0–5 rubric to signed +1/−1 point sum                                              |
-| v1.3    | 2026-05-13 | Sponsor-tier weighted scoring (Author/Sponsor +3, Principal Coauthor/Coauthor +2, Cosponsor +1) |
+| Version | Released   | What changed                                                                                                                                  |
+| ------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| v1.0    | 2026-04-29 | Initial 0–5 rubric, primary + secondary markers                                                                                               |
+| v1.1    | 2026-04-29 | Three-state position records (ACTED_FOR / ACTED_AGAINST / NO_RECORD)                                                                          |
+| v1.2    | 2026-05-12 | Switched from 0–5 rubric to signed +1/−1 point sum                                                                                            |
+| v1.3    | 2026-05-13 | Sponsor-tier weighted scoring (Author/Sponsor +3, Principal Coauthor/Coauthor +2, Cosponsor +1)                                               |
+| v1.4    | 2026-05-14 | Super-PAC IE inclusion (corporate IE supporting you + corporate IE against your opponents), continuous PAC gradient, anchored percent display |
