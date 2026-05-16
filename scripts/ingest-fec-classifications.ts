@@ -187,7 +187,10 @@ async function parseManualCsv(csvPath: string): Promise<ParsedRow[]> {
   const rows: ParsedRow[] = [];
   return new Promise((resolve, reject) => {
     Readable.from(txt)
-      .pipe(parse({ columns: true, skip_empty_lines: true, trim: true }))
+      // quote: false — sourceNotes fields contain stray " characters from
+      // committee names like "MR." titles or "law enforcement" descriptors
+      // that csv-parse would otherwise misinterpret as field quoting.
+      .pipe(parse({ columns: true, quote: false, skip_empty_lines: true, trim: true }))
       .on('data', (row: Record<string, string>) => {
         const committeeId = row.committeeId?.trim();
         const committeeName = row.committeeName?.trim();
