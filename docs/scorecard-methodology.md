@@ -161,8 +161,8 @@ Each legislator's total is a signed integer (sum of weighted markers
 across planks). We display it as a percentage from −100% to +100% to
 make it easier to read at a glance:
 
-- **+100%** = the 95th-percentile legislator's raw score
-- **−100%** = the 5th-percentile legislator's raw score
+- **+100%** = the top-scoring legislator's raw score
+- **−100%** = the bottom-scoring legislator's raw score
 - Everyone else scales linearly between
 
 The percentile anchors are computed once per methodology version (from
