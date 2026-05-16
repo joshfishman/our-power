@@ -258,23 +258,30 @@ async function classifyIeBuckets(
   apiKey: string,
   prismaClient: PrismaClient,
 ): Promise<IeBuckets> {
-  // Pull IE FOR or AGAINST this legislator
+  // v1.5: filter by motivationClass=MONEY (concentrated-wealth-funded) rather
+  // than category=CORPORATE/TRADE_ASSOCIATION. Conservative-attribution
+  // default: any committee not in CommitteeClassification is treated as
+  // MONEY (so we don't silently miss the dominant donor-class super PACs
+  // that haven't been manually classified yet). PEOPLE-funded committees
+  // (labor unions, grassroots advocacy) are excluded from the buckets.
   const selfFilings = await fetchScheduleEForCandidate(legislatorFecId, cycle, apiKey);
   let support = 0;
   let againstSelf = 0;
-  const classifiedCorpCache = new Map<string, boolean>();
-  async function isCorpCommittee(committeeId: string): Promise<boolean> {
-    if (classifiedCorpCache.has(committeeId)) return classifiedCorpCache.get(committeeId)!;
+  const moneyCache = new Map<string, boolean>();
+  async function isMoneyCommittee(committeeId: string): Promise<boolean> {
+    if (moneyCache.has(committeeId)) return moneyCache.get(committeeId)!;
     const row = await prismaClient.committeeClassification.findUnique({
       where: { jurisdiction_committeeId: { jurisdiction: 'FEDERAL', committeeId } },
-      select: { category: true },
+      select: { motivationClass: true },
     });
-    const isCorp = row?.category === 'CORPORATE' || row?.category === 'TRADE_ASSOCIATION';
-    classifiedCorpCache.set(committeeId, isCorp);
-    return isCorp;
+    // Treat unclassified as MONEY (conservative-attribution). PEOPLE only
+    // applies when explicitly classified that way.
+    const isMoney = !row || row.motivationClass !== 'PEOPLE';
+    moneyCache.set(committeeId, isMoney);
+    return isMoney;
   }
   for (const f of selfFilings) {
-    if (!(await isCorpCommittee(f.committee_id))) continue;
+    if (!(await isMoneyCommittee(f.committee_id))) continue;
     if (f.support_oppose_indicator === 'S') support += f.expenditure_amount;
     else if (f.support_oppose_indicator === 'O') againstSelf += f.expenditure_amount;
   }
@@ -284,7 +291,7 @@ async function classifyIeBuckets(
     const oppFilings = await fetchScheduleEForCandidate(oppId, cycle, apiKey);
     for (const f of oppFilings) {
       if (f.support_oppose_indicator !== 'O') continue;
-      if (!(await isCorpCommittee(f.committee_id))) continue;
+      if (!(await isMoneyCommittee(f.committee_id))) continue;
       againstOpp += f.expenditure_amount;
     }
   }

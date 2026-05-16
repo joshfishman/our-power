@@ -56,22 +56,22 @@ const prisma = new PrismaClient({ adapter });
 const FEC_BULK_URL = (cycle: number) =>
   `https://www.fec.gov/files/bulk-downloads/${cycle}/cm${String(cycle).slice(2)}.zip`;
 
-type Category = 'CORPORATE' | 'LABOR' | 'IDEOLOGICAL' | 'TRADE_ASSOCIATION';
+type Category = 'CORPORATE' | 'LABOR' | 'IDEOLOGICAL' | 'TRADE_ASSOCIATION' | 'PARTY';
+type Motivation = 'MONEY' | 'PEOPLE';
 
 // Strict mapping per FEC's published codebook for cm.txt ORG_TP:
 //   https://www.fec.gov/campaign-finance-data/committee-master-file-description/
-// We bundle Cooperative (V) into CORPORATE because the methodology treats
-// any for-profit collective as corporate-sector. Membership orgs (M) cover
-// professional / fraternal associations like AMA and AARP — those advocate
-// for their members' professional/economic interests, but aren't strictly
-// labor or corporate; IDEOLOGICAL is the least-bad bucket.
-const ORG_TP_MAP: Record<string, Category> = {
-  C: 'CORPORATE',
-  W: 'CORPORATE', // corporation without capital stock
-  V: 'CORPORATE', // cooperative
-  L: 'LABOR',
-  M: 'IDEOLOGICAL', // membership organization (AMA, AARP, etc.)
-  T: 'TRADE_ASSOCIATION',
+const ORG_TP_MAP: Record<string, { category: Category; motivation: Motivation }> = {
+  C: { category: 'CORPORATE', motivation: 'MONEY' }, // corporation
+  W: { category: 'CORPORATE', motivation: 'MONEY' }, // corporation without capital stock
+  V: { category: 'CORPORATE', motivation: 'MONEY' }, // cooperative
+  L: { category: 'LABOR', motivation: 'PEOPLE' }, // labor union (member-dues funded)
+  // Membership orgs (M): AMA / AARP / NAR — professional/fraternal. Their
+  // funding model is concentrated (professional fees from a narrow
+  // industry) rather than mass-grassroots, so v1.5 defaults them to MONEY.
+  // A manual CSV override can move specific membership orgs to PEOPLE.
+  M: { category: 'IDEOLOGICAL', motivation: 'MONEY' },
+  T: { category: 'TRADE_ASSOCIATION', motivation: 'MONEY' }, // trade association
 };
 
 interface CliFlags {
@@ -126,6 +126,7 @@ interface ParsedRow {
   committeeId: string;
   committeeName: string;
   category: Category;
+  motivationClass: Motivation;
   sponsorName: string | null;
   sourceNotes: string;
 }
@@ -160,12 +161,13 @@ async function parseCmTxt(txt: string): Promise<ParsedRow[]> {
         const orgTp = (cols[12] ?? '').toUpperCase();
         const connectedOrg = cols[13] || null;
         if (!committeeId || !committeeName) return;
-        const category = ORG_TP_MAP[orgTp];
-        if (!category) return; // ORG_TP blank or 'U' (unknown) — skip, conservative-attribution
+        const mapped = ORG_TP_MAP[orgTp];
+        if (!mapped) return; // ORG_TP blank or 'U' (unknown) — skip, conservative-attribution
         rows.push({
           committeeId,
           committeeName,
-          category,
+          category: mapped.category,
+          motivationClass: mapped.motivation,
           sponsorName: connectedOrg,
           sourceNotes: `FEC Committee Master cm.txt: ORG_TP=${orgTp}; CONNECTED_ORG=${connectedOrg ?? ''}`,
         });
@@ -176,7 +178,11 @@ async function parseCmTxt(txt: string): Promise<ParsedRow[]> {
 }
 
 async function parseManualCsv(csvPath: string): Promise<ParsedRow[]> {
-  // Manual CSV columns: committeeId,committeeName,category,sponsorName,sourceNotes
+  // Manual CSV columns: committeeId,committeeName,category,motivationClass,sponsorName,sourceNotes
+  // The motivationClass column was added in v1.5 — MONEY vs PEOPLE binary
+  // is what the scoring engine actually uses. Category stays for historical
+  // / display purposes. If motivationClass is missing on a row, default
+  // to MONEY (conservative-attribution).
   const txt = await fs.readFile(csvPath, 'utf-8');
   const rows: ParsedRow[] = [];
   return new Promise((resolve, reject) => {
@@ -186,12 +192,15 @@ async function parseManualCsv(csvPath: string): Promise<ParsedRow[]> {
         const committeeId = row.committeeId?.trim();
         const committeeName = row.committeeName?.trim();
         const category = row.category?.trim().toUpperCase() as Category;
+        const rawMotivation = row.motivationClass?.trim().toUpperCase();
+        const motivationClass: Motivation = rawMotivation === 'PEOPLE' ? 'PEOPLE' : 'MONEY';
         if (!committeeId || !committeeName) return;
-        if (!['CORPORATE', 'LABOR', 'IDEOLOGICAL', 'TRADE_ASSOCIATION'].includes(category)) return;
+        if (!['CORPORATE', 'LABOR', 'IDEOLOGICAL', 'TRADE_ASSOCIATION', 'PARTY'].includes(category)) return;
         rows.push({
           committeeId,
           committeeName,
           category,
+          motivationClass,
           sponsorName: row.sponsorName?.trim() || null,
           sourceNotes: row.sourceNotes?.trim() || `manual classification: ${csvPath}`,
         });
@@ -241,10 +250,17 @@ async function main(): Promise<void> {
   const merged = [...byCommitteeId.values()];
   console.log(`[ingest-fec-classifications] merged total: ${merged.length} (bulk + manual de-duped)`);
 
-  // 6. Histogram by category.
-  const hist = new Map<string, number>();
-  for (const r of merged) hist.set(r.category, (hist.get(r.category) ?? 0) + 1);
-  for (const [c, n] of [...hist.entries()].sort()) console.log(`    ${c}: ${n}`);
+  // 6. Histogram by category + by motivationClass (the v1.5 signal).
+  const catHist = new Map<string, number>();
+  const motHist = new Map<string, number>();
+  for (const r of merged) {
+    catHist.set(r.category, (catHist.get(r.category) ?? 0) + 1);
+    motHist.set(r.motivationClass, (motHist.get(r.motivationClass) ?? 0) + 1);
+  }
+  console.log('  by category:');
+  for (const [c, n] of [...catHist.entries()].sort()) console.log(`    ${c}: ${n}`);
+  console.log('  by motivationClass:');
+  for (const [m, n] of [...motHist.entries()].sort()) console.log(`    ${m}: ${n}`);
 
   if (flags.dryRun) {
     console.log('[ingest-fec-classifications] DRY RUN — no DB writes');
@@ -255,7 +271,10 @@ async function main(): Promise<void> {
   // 7. Upsert in batches (PgBouncer transaction-mode is happiest under
   // small batches; 100 rows per batch ≈ 30 batches for cm.txt).
   let written = 0;
-  const BATCH = 100;
+  // Prisma 7's effective transaction ceiling under Supabase PgBouncer is
+  // ~5s regardless of the explicit timeout option (same issue compute-scores
+  // hit). 20 upserts per batch fits comfortably inside that.
+  const BATCH = 20;
   for (let i = 0; i < merged.length; i += BATCH) {
     const slice = merged.slice(i, i + BATCH);
     const ops = slice.map((r) =>
@@ -266,6 +285,7 @@ async function main(): Promise<void> {
           committeeId: r.committeeId,
           committeeName: r.committeeName,
           category: r.category,
+          motivationClass: r.motivationClass,
           sponsorName: r.sponsorName,
           sourceNotes: r.sourceNotes,
           classifiedBy: flags.manualCsv && merged === manualRows ? 'manual' : 'fec-bulk',
@@ -274,6 +294,7 @@ async function main(): Promise<void> {
         update: {
           committeeName: r.committeeName,
           category: r.category,
+          motivationClass: r.motivationClass,
           sponsorName: r.sponsorName,
           sourceNotes: r.sourceNotes,
           classifiedAt: new Date(),

@@ -113,45 +113,92 @@ Two concrete examples:
 
 Republican alternatives never qualify as the _primary_ marker for a plank. The reasoning for each two-tier call is documented in the marker's methodology notes and is publicly visible on the platform.
 
-## Corporate PAC money
+## Outside money: concentrated wealth vs. the people
 
-The corporate-money signal counts both direct contributions to a candidate's
-committee AND independent-expenditure spending by corporate-affiliated
-super PACs. Under v1.4:
+The Plank 1 score counts the money flowing into a campaign that comes from
+**concentrated wealth seeking access**, as distinct from the money flowing
+from **grassroots members or workers**. The split is binary — every
+political committee is either MONEY or PEOPLE — and only MONEY counts
+against the legislator.
 
-    Combined ratio = (direct corporate PAC $ + corporate IE supporting you + corporate IE against your opponents)
-                     ──────────────────────────────────────────────────────────────────────────────────────────────
-                     (total receipts + corporate IE supporting you + corporate IE against your opponents)
+### The MONEY bucket — counts against you
 
-Where:
+- Corporate PACs and trade-association PACs (drug companies, defense
+  contractors, banks, crypto-industry vehicles, etc.).
+- Party committees (DNC, RNC, DSCC, NRSC, DCCC, NRCC). The major-party
+  national committees are establishment vehicles regardless of which
+  side you're on.
+- Leadership super PACs: House Majority PAC, Senate Majority PAC,
+  Congressional Leadership Fund, Senate Leadership Fund. These are funded
+  by wealthy individual mega-donors and the party-aligned corporate
+  donor base.
+- Donor-class ideological super PACs: Club for Growth Action, Future
+  Forward USA, Senate Conservatives Fund, AIPAC's UDP, American Bridge.
+  A small number of wealthy donors fund each.
 
-- **Direct corporate PAC $** — contributions from corporate-classified PACs to your campaign committee.
-- **Corporate IE supporting you** — money corporate super PACs spent on ads / mail / digital FOR you.
-- **Corporate IE against your opponents** — money corporate super PACs spent attacking the people running against you. Counts as money working on your behalf, even though you (legally) didn't ask for it.
+### The PEOPLE bucket — does NOT count against you
 
-The 5% threshold still applies — under 5% combined corporate ratio earns
-the +1 partial-credit anchor on the gradient. At 0% combined, +2.
+- Labor union PACs (AFL-CIO COPE, SEIU COPE, AFSCME PEOPLE, NEA Advocacy
+  Fund, building-trades PACs). Funded by member dues from millions of
+  workers.
+- Grassroots advocacy with mass-membership funding (MoveOn, Planned
+  Parenthood Votes, LCV Victory Fund, Equality PAC).
+- Caucus member PACs (Congressional Progressive Caucus PAC, CHC Bold
+  PAC). Funded by small contributions from caucus members and aligned
+  small-dollar donors.
+- Small-dollar progressive primary-challenger PACs (Justice Democrats,
+  Leaders We Deserve).
+- Civil rights mobilization (Black Voters Matter Action PAC).
 
-**What's NOT in the formula: corporate attacks ON you.** When a corporate
+### The ratio
+
+    Outside-money ratio = (direct MONEY PAC contributions + MONEY IE supporting you + MONEY IE against your opponents)
+                          ───────────────────────────────────────────────────────────────────────────────────────────
+                          (total receipts + MONEY IE supporting you + MONEY IE against your opponents)
+
+The score follows the same gradient as v1.4: under 5% → +1, 0% → +2,
+above the upper anchors → −3.
+
+**What's NOT in the formula: MONEY attacks ON you.** When a donor-class
 super PAC spends to defeat a legislator, that's not money working for
-them — it's money working against them. We disclose those attacks in the
-PAC scoreboard table (small italic column) because it's important
-context, but we don't reward being attacked. Race competitiveness drives
-a lot of attack spending in ways that don't track policy alignment.
+them. We disclose those attacks in the PAC scoreboard table (small
+italic column) but don't reward being attacked. Race competitiveness
+drives attack spending in ways that don't track policy alignment.
+
+### Why this binary, not corporate-vs-labor
+
+Earlier methodology versions (v1.3 and v1.4) distinguished corporate
+from labor from "ideological." That split confused two questions: _what
+sector funds this committee?_ and _what kind of campaign-finance signal
+is this?_ A leadership super PAC funded by twenty mega-donors and a
+labor PAC funded by two million union members are categorically
+different signals about who the legislator is responsive to, even
+though both might oppose the same bill on a given vote.
+
+v1.5 collapses to the question that matters for an accountability
+scorecard: **does this money come from a concentrated few seeking
+access, or from many people pooling small contributions?** Lincoln's
+"government of the people, by the people, for the people" framing —
+not a left-right framing.
 
 ### How we identify your opponents
 
-For each cycle a legislator has run in, we count corporate IE against
+For each cycle a legislator has run in, we count MONEY IE against
 any of these:
 
 - **Past completed cycles**: every candidate who filed for the same seat in the same cycle, including primary challengers and the general-election opponent.
 - **Active upcoming cycle**: every candidate who has filed paperwork to run for this seat in the next election.
 
-### How we classify "corporate"
+### How we classify MONEY vs PEOPLE
 
-**Federal:** OpenSecrets' RealCode taxonomy maps thousands of PACs and IE committees to industry sectors. Any committee tagged Business or similar for-profit is treated as corporate. Trade associations are bundled with corporate (they're the corporate sector's vehicle for collective lobbying). (The OpenSecrets API was discontinued in April 2025; bulk CSV downloads remain available and are imported into our database.)
+**Federal:** Two sources combined.
 
-**California:** Cal-Access raw data via the California Civic Data Coalition (CCDC) pipeline, hosted on Big Local News. Cal-Access does not pre-classify "corporate PAC" — that classification is maintained in our hand-curated `CommitteeClassification` table covering the top Cal-Access filers. Same CORPORATE / LABOR / IDEOLOGICAL / TRADE ASSOCIATION buckets. Conservative-attribution rule — if we don't have a classification, we don't count it as corporate. Every classification is publicly visible and open to challenge.
+1. **FEC bulk Committee Master file** classifies the ~3,200 "connected" PACs sponsored by corporations, labor unions, trade associations, and membership organizations. Connected corporate / trade-association / cooperative PACs → MONEY. Connected labor PACs → PEOPLE. Membership orgs (e.g., AMA, AARP) default to MONEY because their funding model is concentrated professional fees, but specific entries can be moved to PEOPLE via the manual overlay.
+2. **Hand-curated manual classification** for the major super PACs that the FEC bulk doesn't cover (non-connected committees). Every entry is publicly visible at `data/manual-super-pac-classifications.csv` in the public repo and open to challenge.
+
+**Conservative-attribution rule:** committees with no classification default to MONEY. We'd rather over-count outside money pressure (penalizing legislators where some IE was actually grassroots) than under-count it (letting donor-class IE go unmeasured).
+
+**California:** Cal-Access raw data via the California Civic Data Coalition (CCDC) pipeline. CA classifications haven't been populated yet — CA legislators score on direct PAC ratio only until the table is filled in.
 
 The scoring engine prefers the highest-fidelity source where multiple records exist for the same legislator.
 
@@ -191,10 +238,11 @@ Some markers track bills that have been identified as likely vehicles but haven'
 
 Each score row in the database is stamped with the methodology version it was computed under. When the methodology changes, scores are recomputed under the new version; old versions remain for audit purposes but are not shown publicly.
 
-| Version | Released   | What changed                                                                                                                                  |
-| ------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| v1.0    | 2026-04-29 | Initial 0–5 rubric, primary + secondary markers                                                                                               |
-| v1.1    | 2026-04-29 | Three-state position records (ACTED_FOR / ACTED_AGAINST / NO_RECORD)                                                                          |
-| v1.2    | 2026-05-12 | Switched from 0–5 rubric to signed +1/−1 point sum                                                                                            |
-| v1.3    | 2026-05-13 | Sponsor-tier weighted scoring (Author/Sponsor +3, Principal Coauthor/Coauthor +2, Cosponsor +1)                                               |
-| v1.4    | 2026-05-14 | Super-PAC IE inclusion (corporate IE supporting you + corporate IE against your opponents), continuous PAC gradient, anchored percent display |
+| Version | Released   | What changed                                                                                                                                                                                                                                                                                                                                                       |
+| ------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| v1.0    | 2026-04-29 | Initial 0–5 rubric, primary + secondary markers                                                                                                                                                                                                                                                                                                                    |
+| v1.1    | 2026-04-29 | Three-state position records (ACTED_FOR / ACTED_AGAINST / NO_RECORD)                                                                                                                                                                                                                                                                                               |
+| v1.2    | 2026-05-12 | Switched from 0–5 rubric to signed +1/−1 point sum                                                                                                                                                                                                                                                                                                                 |
+| v1.3    | 2026-05-13 | Sponsor-tier weighted scoring (Author/Sponsor +3, Principal Coauthor/Coauthor +2, Cosponsor +1)                                                                                                                                                                                                                                                                    |
+| v1.4    | 2026-05-14 | Super-PAC IE inclusion (corporate IE supporting you + corporate IE against your opponents), continuous PAC gradient, anchored percent display                                                                                                                                                                                                                      |
+| v1.5    | 2026-05-15 | Collapse corporate-vs-labor classification to MONEY-vs-PEOPLE binary. Counts concentrated-wealth-funded committees (corporate, party leadership, donor-class super PACs) negatively; excludes grassroots / member-funded committees (labor unions, mass-membership advocacy). Plank 1 framing shifts to "government of the people, by the people, for the people." |

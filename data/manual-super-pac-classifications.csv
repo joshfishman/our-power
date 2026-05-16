@@ -1,64 +1,64 @@
-committeeId,committeeName,category,sponsorName,sourceNotes
-C00848440,PROTECT PROGRESS,CORPORATE,Crypto industry,Crypto super PAC for D-leaning candidates. Founding donors are Coinbase / Ripple / a16z (all corporate). https://www.fec.gov/data/committee/C00848440/
-C00836221,DEFEND AMERICAN JOBS,CORPORATE,Crypto industry,Crypto super PAC for R-leaning candidates. Same Coinbase/Ripple/a16z funding stack as Protect Progress and Fairshake. https://www.fec.gov/data/committee/C00836221/
-C00694323,FAIRSHAKE,CORPORATE,Crypto industry,Top-line crypto super PAC. Three founding donors all corporate: Coinbase $25M+ Ripple $25M+ a16z $25M+. https://www.fec.gov/data/committee/C00694323/
-C00804732,CRYPTO INNOVATION,CORPORATE,Crypto industry,Industry-named crypto-sector super PAC. CORPORATE by donor base. https://www.fec.gov/data/committee/C00804732/
-C00687103,AMERICANS FOR PROSPERITY ACTION,CORPORATE,Koch network,Koch Industries / Koch family network. Long-running corporate-funded ideological super PAC. DBA CVA ACTION / LIBRE ACTION. https://www.fec.gov/data/committee/C00687103/
-C00501197,AMERICANS FOR PROSPERITY ACTION (legacy),CORPORATE,Koch network,Older AFP Action registration. Same Koch network. https://www.fec.gov/data/committee/C00501197/
-C00542217,TEXANS FOR A CONSERVATIVE MAJORITY,IDEOLOGICAL,Texas Republican leadership,TX Republican leadership super PAC. Donor mix individual + corporate; primary mission ideological. https://www.fec.gov/data/committee/C00542217/
-C00908723,MAGA KY,IDEOLOGICAL,KY MAGA-aligned,Kentucky-specific Trump-aligned super PAC. Ideological mission. https://www.fec.gov/data/committee/C00908723/
-C00904623,OVERSIGHT ACTION FUND,IDEOLOGICAL,Republican accountability,Republican investigative / accountability super PAC. https://www.fec.gov/data/committee/C00904623/
-C00733352,AMERICANS 4 SECURITY PAC,IDEOLOGICAL,Defense-hawk-aligned,National-security-focused super PAC. Donor base individual + defense-industry mix. IDEOLOGICAL as primary mission. https://www.fec.gov/data/committee/C00733352/
-C00928374,JOBS AND DEMOCRACY PAC,IDEOLOGICAL,D-aligned,Pro-labor / pro-jobs Democratic super PAC. https://www.fec.gov/data/committee/C00928374/
-C00608943,CLEARPATH ACTION FUND INC.,IDEOLOGICAL,Climate-pragmatist,Jay Faison-founded climate super PAC focused on conservative-friendly clean energy. Donor mix tech VC + foundations + some energy corps. IDEOLOGICAL as primary mission. https://www.fec.gov/data/committee/C00608943/
-C00760124,NATIONAL VICTORY ACTION FUND,IDEOLOGICAL,R-aligned,Republican coordinated IE arm. Donor mix. IDEOLOGICAL. https://www.fec.gov/data/committee/C00760124/
-C00878264,CONSERVATIVE FUTURE FUND,IDEOLOGICAL,R-aligned,Generic conservative super PAC. IDEOLOGICAL. https://www.fec.gov/data/committee/C00878264/
-C00918227,KENTUCKY FIRST PAC,IDEOLOGICAL,KY local,KY-state-focused. IDEOLOGICAL. https://www.fec.gov/data/committee/C00918227/
-C00634261,DEFEND US PAC,IDEOLOGICAL,Defense-hawk-aligned,National-security super PAC. IDEOLOGICAL. https://www.fec.gov/data/committee/C00634261/
-C00892471,MAGA INC.,IDEOLOGICAL,Trump leadership,Trump-aligned super PAC. Donor mix individual + corporate; IDEOLOGICAL as primary mission. https://www.fec.gov/data/committee/C00892471/
-C00807058,MAGA INC. (legacy),IDEOLOGICAL,Trump leadership,Older MAGA Inc registration. Same donor base. https://www.fec.gov/data/committee/C00807058/
-C00813089,FIGHT TO WIN AMERICA INC.,IDEOLOGICAL,R-aligned,Conservative super PAC. https://www.fec.gov/data/committee/C00813089/
-C00495028,HMP,IDEOLOGICAL,House Majority PAC affiliate,House Democratic IE-affiliated entity. https://www.fec.gov/data/committee/C00495028/
-C00484642,HOUSE MAJORITY PAC,IDEOLOGICAL,House Democratic leadership,House Democratic IE arm. Donor mix individual + labor + corporate. https://www.fec.gov/data/committee/C00484642/
-C00484188,SENATE MAJORITY PAC,IDEOLOGICAL,Senate Democratic leadership,Senate Democratic IE arm. Donor mix individual + labor + corporate. https://www.fec.gov/data/committee/C00484188/
-C00547349,CONGRESSIONAL LEADERSHIP FUND,IDEOLOGICAL,House Republican leadership,House GOP leadership IE arm. https://www.fec.gov/data/committee/C00547349/
-C00571703,SENATE LEADERSHIP FUND,IDEOLOGICAL,Senate Republican leadership,Senate GOP IE arm. https://www.fec.gov/data/committee/C00571703/
-C00886614,YOUR COMMUNITY PAC,IDEOLOGICAL,Local D-aligned,Local Democratic super PAC. https://www.fec.gov/data/committee/C00886614/
-C00922187,FIGHTING FOR TEXAS,IDEOLOGICAL,TX D-aligned,Texas Democratic super PAC. https://www.fec.gov/data/committee/C00922187/
-C00728667,AMERICA ONE,IDEOLOGICAL,R-aligned,Conservative super PAC. https://www.fec.gov/data/committee/C00728667/
-C00931774,ARTICLE ONE PAC,IDEOLOGICAL,Constitutionalist,Article-I-focused conservative super PAC. https://www.fec.gov/data/committee/C00931774/
-C00448696,SENATE CONSERVATIVES FUND,IDEOLOGICAL,Jim DeMint-legacy,Right-wing primary-challenger super PAC. Active against 13+ legislators in our data. https://www.fec.gov/data/committee/C00448696/
-C00731133,MAKE LIBERTY WIN,IDEOLOGICAL,Libertarian,Libertarian-aligned super PAC. https://www.fec.gov/data/committee/C00731133/
-C00550970,EQUALITY PAC,IDEOLOGICAL,LGBTQ rights,LGBTQ-rights advocacy super PAC. https://www.fec.gov/data/committee/C00550970/
-C00924951,ALAMO FREEDOM FIGHTERS PAC,IDEOLOGICAL,TX R-aligned,TX conservative super PAC. https://www.fec.gov/data/committee/C00924951/
-C00901223,LONE STAR LIBERTY PAC,IDEOLOGICAL,TX R-aligned,TX conservative super PAC. https://www.fec.gov/data/committee/C00901223/
-C00830042,AMERICAN LIBERTY FOUNDATION,IDEOLOGICAL,R-aligned,Conservative super PAC. https://www.fec.gov/data/committee/C00830042/
-C00528554,RJC VICTORY FUND,IDEOLOGICAL,Republican Jewish Coalition,GOP-aligned foreign-policy / domestic-conservative super PAC. https://www.fec.gov/data/committee/C00528554/
-C00835967,CONSERVATIVES FOR AMERICAN EXCELLENCE INC.,IDEOLOGICAL,R-aligned,Conservative super PAC. https://www.fec.gov/data/committee/C00835967/
-C00905612,TAKE ME HOME WV ACTION,IDEOLOGICAL,WV local,West Virginia local super PAC. https://www.fec.gov/data/committee/C00905612/
-C00668905,AMERICAN PATRIOTS PAC,IDEOLOGICAL,R-aligned,Patriotic-named conservative super PAC. https://www.fec.gov/data/committee/C00668905/
-C00489799,PLANNED PARENTHOOD VOTES,IDEOLOGICAL,Reproductive rights,Active against 23+ legislators. IDEOLOGICAL on reproductive rights. https://www.fec.gov/data/committee/C00489799/
-C00843110,LEADERS WE DESERVE,IDEOLOGICAL,Progressive D primary,Progressive Democratic primary-challenger super PAC (David Hogg-co-founded). https://www.fec.gov/data/committee/C00843110/
-C00888867,LATINOS FOR CONSERVATIVE VALUES,IDEOLOGICAL,R-aligned Latino outreach,Latino-targeted conservative super PAC. https://www.fec.gov/data/committee/C00888867/
-C00854299,BOLD AMERICA,IDEOLOGICAL,R-aligned,Conservative super PAC. https://www.fec.gov/data/committee/C00854299/
-C00753277,BLACK VOTERS MATTER ACTION PAC,IDEOLOGICAL,Black voter mobilization,Black voter mobilization super PAC. https://www.fec.gov/data/committee/C00753277/
-C00899419,PATRIOTIC FUND INC.,IDEOLOGICAL,R-aligned,Patriotic-named conservative super PAC. https://www.fec.gov/data/committee/C00899419/
-C00681825,LAW ENFORCEMENT FOR A SAFER AMERICA PAC,IDEOLOGICAL,Police-aligned,Pro-police super PAC. https://www.fec.gov/data/committee/C00681825/
-C00922294,STRONGER MAINE,IDEOLOGICAL,ME D-aligned,Maine Democratic super PAC. https://www.fec.gov/data/committee/C00922294/
-C00523241,SPECIAL OPERATIONS FOR AMERICA,IDEOLOGICAL,Veterans-aligned,Veterans-focused conservative super PAC. https://www.fec.gov/data/committee/C00523241/
-C00928390,DEFENDING OUR VALUES PAC,IDEOLOGICAL,R-aligned,Generic conservative super PAC. https://www.fec.gov/data/committee/C00928390/
-C00844613,WIN IT BACK PAC,IDEOLOGICAL,R-aligned,Conservative primary-challenger super PAC. https://www.fec.gov/data/committee/C00844613/
-C00365536,CHC BOLD PAC,IDEOLOGICAL,Congressional Hispanic Caucus,Congressional Hispanic Caucus IE arm. Progressive-D-aligned. https://www.fec.gov/data/committee/C00365536/
-C00630665,JUSTICE DEMOCRATS PAC,IDEOLOGICAL,Progressive D primary,Progressive Democratic primary-challenger super PAC. https://www.fec.gov/data/committee/C00630665/
-C00003418,REPUBLICAN NATIONAL COMMITTEE,PARTY,Republican National Committee,National party committee. PARTY category by methodology. https://www.fec.gov/data/committee/C00003418/
-C00513176,CONGRESSIONAL PROGRESSIVE CAUCUS PAC,IDEOLOGICAL,House Progressive Caucus,Progressive caucus PAC. https://www.fec.gov/data/committee/C00513176/
-C00524181,SENATE CONSERVATIVES ACTION,IDEOLOGICAL,Sister to SCF,Sister super PAC to SCF. IDEOLOGICAL. https://www.fec.gov/data/committee/C00524181/
-C00751503,NEW LEADERSHIP PAC,IDEOLOGICAL,D-aligned,Democratic super PAC. https://www.fec.gov/data/committee/C00751503/
-C00487470,CLUB FOR GROWTH ACTION,IDEOLOGICAL,Club for Growth members,Fiscal-conservative ideological PAC. https://www.fec.gov/data/committee/C00487470/
-C00432260,CLUB FOR GROWTH ACTION (legacy),IDEOLOGICAL,Club for Growth members,Older CGA registration. https://www.fec.gov/data/committee/C00432260/
-C00341396,MOVEON.ORG POLITICAL ACTION,IDEOLOGICAL,MoveOn.org,Progressive-D-aligned IE PAC. https://www.fec.gov/data/committee/C00341396/
-C00608489,FUTURE FORWARD USA,IDEOLOGICAL,Tech individual donors,Mostly individual donors from tech sector. IDEOLOGICAL not CORPORATE. https://www.fec.gov/data/committee/C00608489/
-C00736966,UNITED DEMOCRACY PROJECT,IDEOLOGICAL,AIPAC,AIPAC's IE arm. Foreign-policy ideological. https://www.fec.gov/data/committee/C00736966/
-C00761211,AMERICAN BRIDGE 21ST CENTURY,IDEOLOGICAL,D-aligned opposition research,Democratic opposition-research IE arm. https://www.fec.gov/data/committee/C00761211/
-C00761439,WIN THE ERA PAC,IDEOLOGICAL,Andrew Yang network,Yang-aligned IE PAC. Individual + crypto donors. IDEOLOGICAL. https://www.fec.gov/data/committee/C00761439/
-C00794073,DREAM FOR AMERICA,IDEOLOGICAL,Pro-Israel,AIPAC-affiliated. https://www.fec.gov/data/committee/C00794073/
+committeeId,committeeName,category,motivationClass,sponsorName,sourceNotes
+C00848440,PROTECT PROGRESS,CORPORATE,MONEY,Crypto industry,Crypto super PAC for D-leaning candidates. Founding donors Coinbase / Ripple / a16z (corporate). https://www.fec.gov/data/committee/C00848440/
+C00836221,DEFEND AMERICAN JOBS,CORPORATE,MONEY,Crypto industry,Crypto super PAC for R-leaning candidates. Coinbase/Ripple/a16z funding stack. https://www.fec.gov/data/committee/C00836221/
+C00694323,FAIRSHAKE,CORPORATE,MONEY,Crypto industry,Top-line crypto super PAC. Three founding donors all corporate. https://www.fec.gov/data/committee/C00694323/
+C00804732,CRYPTO INNOVATION,CORPORATE,MONEY,Crypto industry,Crypto-sector super PAC. https://www.fec.gov/data/committee/C00804732/
+C00687103,AMERICANS FOR PROSPERITY ACTION,CORPORATE,MONEY,Koch network,Koch Industries / Koch family network. DBA CVA ACTION / LIBRE ACTION. https://www.fec.gov/data/committee/C00687103/
+C00501197,AMERICANS FOR PROSPERITY ACTION (legacy),CORPORATE,MONEY,Koch network,Older AFP Action registration. https://www.fec.gov/data/committee/C00501197/
+C00484642,HOUSE MAJORITY PAC,IDEOLOGICAL,MONEY,House Democratic leadership,Establishment D leadership IE arm. Donor base = wealthy individual donors + corporate + leadership. NOT grassroots-funded. https://www.fec.gov/data/committee/C00484642/
+C00484188,SENATE MAJORITY PAC,IDEOLOGICAL,MONEY,Senate Democratic leadership,Establishment D leadership IE arm. https://www.fec.gov/data/committee/C00484188/
+C00547349,CONGRESSIONAL LEADERSHIP FUND,IDEOLOGICAL,MONEY,House Republican leadership,Establishment R leadership IE arm. https://www.fec.gov/data/committee/C00547349/
+C00571703,SENATE LEADERSHIP FUND,IDEOLOGICAL,MONEY,Senate Republican leadership,Establishment R leadership IE arm. https://www.fec.gov/data/committee/C00571703/
+C00495028,HMP,IDEOLOGICAL,MONEY,House Majority PAC affiliate,D-leadership-affiliated entity. https://www.fec.gov/data/committee/C00495028/
+C00003418,REPUBLICAN NATIONAL COMMITTEE,PARTY,MONEY,Republican National Committee,National party committee = establishment. https://www.fec.gov/data/committee/C00003418/
+C00542217,TEXANS FOR A CONSERVATIVE MAJORITY,IDEOLOGICAL,MONEY,Texas Republican leadership,TX state R leadership donor-class PAC. https://www.fec.gov/data/committee/C00542217/
+C00908723,MAGA KY,IDEOLOGICAL,MONEY,KY MAGA-aligned,Establishment / donor-class. https://www.fec.gov/data/committee/C00908723/
+C00904623,OVERSIGHT ACTION FUND,IDEOLOGICAL,MONEY,Republican accountability,R donor-class accountability PAC. https://www.fec.gov/data/committee/C00904623/
+C00733352,AMERICANS 4 SECURITY PAC,IDEOLOGICAL,MONEY,Defense-hawk-aligned,National-security donor-class. https://www.fec.gov/data/committee/C00733352/
+C00928374,JOBS AND DEMOCRACY PAC,IDEOLOGICAL,MONEY,D-aligned,D establishment PAC. Donor-class funding. https://www.fec.gov/data/committee/C00928374/
+C00608943,CLEARPATH ACTION FUND INC.,IDEOLOGICAL,MONEY,Climate-pragmatist (Faison),Jay Faison-founded — donor-class climate PAC. NOT grassroots. https://www.fec.gov/data/committee/C00608943/
+C00760124,NATIONAL VICTORY ACTION FUND,IDEOLOGICAL,MONEY,R-aligned,R donor establishment. https://www.fec.gov/data/committee/C00760124/
+C00878264,CONSERVATIVE FUTURE FUND,IDEOLOGICAL,MONEY,R-aligned,R donor PAC. https://www.fec.gov/data/committee/C00878264/
+C00918227,KENTUCKY FIRST PAC,IDEOLOGICAL,MONEY,KY local establishment,KY R donor PAC. https://www.fec.gov/data/committee/C00918227/
+C00634261,DEFEND US PAC,IDEOLOGICAL,MONEY,Defense-hawk-aligned,Defense-hawk donor class. https://www.fec.gov/data/committee/C00634261/
+C00892471,MAGA INC.,IDEOLOGICAL,MONEY,Trump leadership,Trump-aligned super PAC. Wealthy donor base. https://www.fec.gov/data/committee/C00892471/
+C00807058,MAGA INC. (legacy),IDEOLOGICAL,MONEY,Trump leadership,Older MAGA Inc registration. https://www.fec.gov/data/committee/C00807058/
+C00813089,FIGHT TO WIN AMERICA INC.,IDEOLOGICAL,MONEY,R-aligned,R donor establishment. https://www.fec.gov/data/committee/C00813089/
+C00886614,YOUR COMMUNITY PAC,IDEOLOGICAL,MONEY,Local D establishment,Local D donor PAC. https://www.fec.gov/data/committee/C00886614/
+C00922187,FIGHTING FOR TEXAS,IDEOLOGICAL,MONEY,TX D-aligned,TX D donor PAC. https://www.fec.gov/data/committee/C00922187/
+C00728667,AMERICA ONE,IDEOLOGICAL,MONEY,R-aligned,R donor establishment. https://www.fec.gov/data/committee/C00728667/
+C00931774,ARTICLE ONE PAC,IDEOLOGICAL,MONEY,Constitutionalist,R donor PAC. https://www.fec.gov/data/committee/C00931774/
+C00448696,SENATE CONSERVATIVES FUND,IDEOLOGICAL,MONEY,Jim DeMint-legacy donor class,Wealthy R donor-class PAC. Primary-challenger funding from concentrated donors. https://www.fec.gov/data/committee/C00448696/
+C00731133,MAKE LIBERTY WIN,IDEOLOGICAL,MONEY,Libertarian donor class,Libertarian donor PAC. https://www.fec.gov/data/committee/C00731133/
+C00924951,ALAMO FREEDOM FIGHTERS PAC,IDEOLOGICAL,MONEY,TX R-aligned,TX R donor PAC. https://www.fec.gov/data/committee/C00924951/
+C00901223,LONE STAR LIBERTY PAC,IDEOLOGICAL,MONEY,TX R-aligned,TX R donor PAC. https://www.fec.gov/data/committee/C00901223/
+C00830042,AMERICAN LIBERTY FOUNDATION,IDEOLOGICAL,MONEY,R-aligned,R donor PAC. https://www.fec.gov/data/committee/C00830042/
+C00528554,RJC VICTORY FUND,IDEOLOGICAL,MONEY,Republican Jewish Coalition,Donor-class establishment. https://www.fec.gov/data/committee/C00528554/
+C00835967,CONSERVATIVES FOR AMERICAN EXCELLENCE INC.,IDEOLOGICAL,MONEY,R-aligned,R donor PAC. https://www.fec.gov/data/committee/C00835967/
+C00905612,TAKE ME HOME WV ACTION,IDEOLOGICAL,MONEY,WV local,WV donor PAC. https://www.fec.gov/data/committee/C00905612/
+C00668905,AMERICAN PATRIOTS PAC,IDEOLOGICAL,MONEY,R-aligned,R donor PAC. https://www.fec.gov/data/committee/C00668905/
+C00888867,LATINOS FOR CONSERVATIVE VALUES,IDEOLOGICAL,MONEY,R Latino outreach,R donor PAC. https://www.fec.gov/data/committee/C00888867/
+C00854299,BOLD AMERICA,IDEOLOGICAL,MONEY,R-aligned,R donor PAC. https://www.fec.gov/data/committee/C00854299/
+C00899419,PATRIOTIC FUND INC.,IDEOLOGICAL,MONEY,R-aligned,R donor PAC. https://www.fec.gov/data/committee/C00899419/
+C00681825,LAW ENFORCEMENT FOR A SAFER AMERICA PAC,IDEOLOGICAL,MONEY,Police-aligned donor class,Pro-police donor PAC. Most "law enforcement" PACs draw from wealthy police-allied donors not member dues. https://www.fec.gov/data/committee/C00681825/
+C00922294,STRONGER MAINE,IDEOLOGICAL,MONEY,ME D-aligned,ME D donor PAC. https://www.fec.gov/data/committee/C00922294/
+C00523241,SPECIAL OPERATIONS FOR AMERICA,IDEOLOGICAL,MONEY,Veterans donor class,Veterans-affinity R donor PAC. https://www.fec.gov/data/committee/C00523241/
+C00928390,DEFENDING OUR VALUES PAC,IDEOLOGICAL,MONEY,R-aligned,R donor PAC. https://www.fec.gov/data/committee/C00928390/
+C00844613,WIN IT BACK PAC,IDEOLOGICAL,MONEY,R-aligned donor class,R donor primary-challenger PAC. https://www.fec.gov/data/committee/C00844613/
+C00524181,SENATE CONSERVATIVES ACTION,IDEOLOGICAL,MONEY,Sister to SCF,Donor-class. https://www.fec.gov/data/committee/C00524181/
+C00751503,NEW LEADERSHIP PAC,IDEOLOGICAL,MONEY,D-aligned donor class,D donor PAC. https://www.fec.gov/data/committee/C00751503/
+C00487470,CLUB FOR GROWTH ACTION,IDEOLOGICAL,MONEY,Club for Growth donor class,Wealthy fiscal-conservative donors. https://www.fec.gov/data/committee/C00487470/
+C00432260,CLUB FOR GROWTH ACTION (legacy),IDEOLOGICAL,MONEY,Club for Growth donor class,Older CGA registration. https://www.fec.gov/data/committee/C00432260/
+C00608489,FUTURE FORWARD USA,IDEOLOGICAL,MONEY,Tech VC mega-donors,Donor-class — Hoffman/Powell Jobs/etc. NOT grassroots-funded. https://www.fec.gov/data/committee/C00608489/
+C00736966,UNITED DEMOCRACY PROJECT,IDEOLOGICAL,MONEY,AIPAC establishment,AIPAC's IE arm. Donor-class. https://www.fec.gov/data/committee/C00736966/
+C00761211,AMERICAN BRIDGE 21ST CENTURY,IDEOLOGICAL,MONEY,D-aligned donor class,D donor opposition-research PAC. https://www.fec.gov/data/committee/C00761211/
+C00761439,WIN THE ERA PAC,IDEOLOGICAL,MONEY,Yang network donor class,Yang network. Crypto + individual donor mix. https://www.fec.gov/data/committee/C00761439/
+C00794073,DREAM FOR AMERICA,IDEOLOGICAL,MONEY,AIPAC-affiliated,AIPAC-affiliated donor class. https://www.fec.gov/data/committee/C00794073/
+C00550970,EQUALITY PAC,IDEOLOGICAL,PEOPLE,LGBTQ rights member-funded,LGBTQ-rights advocacy. Member-funded grassroots model. https://www.fec.gov/data/committee/C00550970/
+C00489799,PLANNED PARENTHOOD VOTES,IDEOLOGICAL,PEOPLE,Reproductive rights membership,Member-funded reproductive-rights advocacy. https://www.fec.gov/data/committee/C00489799/
+C00843110,LEADERS WE DESERVE,IDEOLOGICAL,PEOPLE,David Hogg grassroots,Small-dollar progressive primary-challenger PAC. Grassroots model. https://www.fec.gov/data/committee/C00843110/
+C00365536,CHC BOLD PAC,IDEOLOGICAL,PEOPLE,Congressional Hispanic Caucus members,Caucus member PAC — small-dollar member contributions. https://www.fec.gov/data/committee/C00365536/
+C00630665,JUSTICE DEMOCRATS PAC,IDEOLOGICAL,PEOPLE,Progressive primary grassroots,Small-dollar progressive primary-challenger PAC. Grassroots funding model. https://www.fec.gov/data/committee/C00630665/
+C00753277,BLACK VOTERS MATTER ACTION PAC,IDEOLOGICAL,PEOPLE,Black voter mobilization grassroots,Grassroots Black voter mobilization. https://www.fec.gov/data/committee/C00753277/
+C00513176,CONGRESSIONAL PROGRESSIVE CAUCUS PAC,IDEOLOGICAL,PEOPLE,House Progressive Caucus members,Caucus member PAC. https://www.fec.gov/data/committee/C00513176/
+C00341396,MOVEON.ORG POLITICAL ACTION,IDEOLOGICAL,PEOPLE,MoveOn.org membership,Grassroots progressive — 5M+ small-dollar members. https://www.fec.gov/data/committee/C00341396/
