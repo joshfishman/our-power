@@ -369,13 +369,15 @@ async function main(): Promise<void> {
     totalsByLegislator.set(s.legislatorId, (totalsByLegislator.get(s.legislatorId) ?? 0) + s.score);
   }
   const totals = [...totalsByLegislator.values()].sort((a, b) => a - b);
-  function percentile(p: number): number {
-    if (totals.length === 0) return 0;
-    const idx = Math.min(totals.length - 1, Math.max(0, Math.floor((p / 100) * totals.length)));
-    return totals[idx];
-  }
-  const positiveAnchor = percentile(95);
-  const negativeAnchor = percentile(5);
+  // Anchor strategy: min/max. Earlier draft used 95th/5th percentiles —
+  // that crushed ≥35 top-scoring legislators (everyone at +11 and above)
+  // to indistinguishable +100% display, defeating the point of having a
+  // scaled view. With a bounded distribution (658 legislators, integer
+  // scores roughly in [-3, +17] for v1.4) there are no statistical
+  // outliers to protect against, so min/max gives every legislator a
+  // unique slot on the -100%..+100% scale.
+  const positiveAnchor = totals.length > 0 ? totals[totals.length - 1] : 0;
+  const negativeAnchor = totals.length > 0 ? totals[0] : 0;
   await prisma.scoreCalibration.upsert({
     where: { methodologyVersion: 'v1.4' },
     create: {

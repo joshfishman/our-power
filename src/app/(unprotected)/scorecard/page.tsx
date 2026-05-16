@@ -252,17 +252,11 @@ export default async function ScorecardIndexPage(props: { searchParams: Promise<
                             : percent > -50
                             ? 'text-red-500'
                             : 'text-red-700';
-                        const sign = percent > 0 ? '+' : '';
-                        const rawSign = total > 0 ? '+' : '';
                         return (
                           <>
-                            <p className={`font-serif text-2xl font-bold tabular-nums ${colorClass}`}>
-                              {sign}
-                              {percent}%
-                            </p>
+                            <p className={`font-serif text-2xl font-bold tabular-nums ${colorClass}`}>{percent}%</p>
                             <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wide text-gray-500">
-                              raw {rawSign}
-                              {total}
+                              raw {total}
                             </p>
                           </>
                         );
