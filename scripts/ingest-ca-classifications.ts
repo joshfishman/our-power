@@ -187,42 +187,63 @@ async function main(): Promise<void> {
     return;
   }
 
+  // Build a Set of manual-overridden IDs once (avoids O(n²) lookup in the loop).
+  const manualIds = new Set(manualRows.map((m) => m.committeeId));
+
+  // Bulk upsert via raw SQL — single INSERT ... ON CONFLICT ... DO UPDATE
+  // per batch instead of per-row Prisma upserts. Per-row over PgBouncer
+  // averaged ~50ms × 29,695 rows = 25 min. A batched VALUES insert with
+  // 500 rows in one statement collapses that to ~2 min. The conflict
+  // target matches the @@unique([jurisdiction, committeeId]).
   let written = 0;
-  // Prisma 7 + Supabase pooler: small batches keep us inside the 5s
-  // effective transaction ceiling.
-  const BATCH = 20;
+  const BATCH = 500;
+  const now = new Date();
   for (let i = 0; i < merged.length; i += BATCH) {
     const slice = merged.slice(i, i + BATCH);
-    const ops = slice.map((r) =>
-      prisma.committeeClassification.upsert({
-        where: { jurisdiction_committeeId: { jurisdiction: 'CA', committeeId: r.committeeId } },
-        create: {
-          jurisdiction: 'CA',
-          committeeId: r.committeeId,
-          committeeName: r.committeeName,
-          category: r.category,
-          motivationClass: r.motivationClass,
-          sourceNotes: r.sourceNotes,
-          classifiedBy:
-            flags.manualCsv && manualRows.some((m) => m.committeeId === r.committeeId) ? 'manual' : 'ca-bulk-heuristic',
-          classifiedAt: new Date(),
-        },
-        update: {
-          committeeName: r.committeeName,
-          category: r.category,
-          motivationClass: r.motivationClass,
-          sourceNotes: r.sourceNotes,
-          classifiedAt: new Date(),
-        },
-      }),
-    );
-    await prisma.$transaction(ops, { timeout: 60_000, maxWait: 10_000 });
+    // Each row: 8 placeholders (id auto, plus 7 columns + classifiedBy + classifiedAt)
+    // Columns: jurisdiction, committeeId, committeeName, category, motivationClass, sourceNotes, classifiedBy, classifiedAt
+    const params: unknown[] = [];
+    const valuesSql = slice
+      .map((r, idx) => {
+        const base = idx * 8;
+        params.push(
+          'CA',
+          r.committeeId,
+          r.committeeName,
+          r.category,
+          r.motivationClass,
+          r.sourceNotes,
+          manualIds.has(r.committeeId) ? 'manual' : 'ca-bulk-heuristic',
+          now,
+        );
+        // cuid() default works at the DB level (Prisma applies via the @id default).
+        // Casting jurisdiction to the enum type explicitly avoids implicit-cast issues.
+        return `(gen_random_uuid()::text, $${base + 1}::"Jurisdiction", $${base + 2}, $${base + 3}, $${
+          base + 4
+        }::"CommitteeCategory", $${base + 5}::"MotivationClass", $${base + 6}, $${base + 7}, $${
+          base + 8
+        }, NOW(), NOW())`;
+      })
+      .join(',');
+    const sql =
+      `INSERT INTO "CommitteeClassification" ` +
+      `("id", "jurisdiction", "committeeId", "committeeName", "category", "motivationClass", "sourceNotes", "classifiedBy", "classifiedAt", "createdAt", "updatedAt") ` +
+      `VALUES ${valuesSql} ` +
+      `ON CONFLICT ("jurisdiction", "committeeId") DO UPDATE SET ` +
+      `"committeeName" = EXCLUDED."committeeName", ` +
+      `"category" = EXCLUDED."category", ` +
+      `"motivationClass" = EXCLUDED."motivationClass", ` +
+      `"sourceNotes" = EXCLUDED."sourceNotes", ` +
+      `"classifiedAt" = EXCLUDED."classifiedAt", ` +
+      `"updatedAt" = NOW()`;
+
+    await prisma.$executeRawUnsafe(sql, ...params);
     written += slice.length;
-    if (i % 1000 === 0 || written === merged.length) {
+    if (i % 5000 === 0 || written === merged.length) {
       console.log(`[ingest-ca-classifications] upserted ${written}/${merged.length}`);
     }
   }
-  console.log(`[ingest-ca-classifications] ✓ wrote ${written} CA CommitteeClassification rows`);
+  console.log(`[ingest-ca-classifications] ✓ wrote ${written} CA CommitteeClassification rows (bulk-upsert path)`);
   await prisma.$disconnect();
 }
 

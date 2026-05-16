@@ -271,24 +271,23 @@ async function main(): Promise<void> {
     console.log(`[compute-scores] scoring ${legislators.length} legislator(s)`);
   }
 
-  // BATCH WRITES via $transaction. The old version did one upsert per
-  // (legislator, plank) sequentially — ~3,300 round trips through Supabase
-  // pooler took minutes. Batching 50 upserts per transaction cuts wall
-  // time by ~30× and avoids the "compute never finishes" symptom.
-  const BATCH_SIZE = 20;
-  const operations: Array<ReturnType<typeof prisma.representativeScore.upsert>> = [];
+  // BULK WRITES via raw INSERT ... ON CONFLICT ... DO UPDATE. Per-row
+  // Prisma upsert in $transaction batches was ~30 seconds for 3,170 rows;
+  // a 500-row parameterised VALUES insert collapses that to ~3 sec and
+  // scales linearly as we add more legislators or methodology versions.
+  // Same pattern proven on CA classifications (29k rows in ~4 min).
+  interface ScoreRow {
+    legislatorId: string;
+    plankId: string;
+    score: number;
+    forCount: number;
+    againstCount: number;
+    notes: string | null;
+  }
+  const pendingScores: ScoreRow[] = [];
   let totalScores = 0;
   let positiveScores = 0;
   let negativeScores = 0;
-
-  async function flushBatch() {
-    if (operations.length === 0) return;
-    // 60s per batch + 10s maxWait — Supabase pooler under v1.4 (now writing
-    // a fifth methodology version, more index pressure) was timing out 50-op
-    // batches at 5s. Smaller batches + longer ceiling is the safe combo.
-    await prisma.$transaction(operations, { timeout: 60_000, maxWait: 10_000 });
-    operations.length = 0;
-  }
 
   for (const leg of candidates) {
     const jurisdiction = leg.jurisdiction as 'FEDERAL' | 'CA';
@@ -311,44 +310,65 @@ async function main(): Promise<void> {
       totalScores += 1;
       if (ps.score > 0) positiveScores += 1;
       else if (ps.score < 0) negativeScores += 1;
-
       if (flags.dryRun) continue;
-
-      operations.push(
-        prisma.representativeScore.upsert({
-          where: {
-            legislatorId_plankId_methodologyVersion: {
-              legislatorId: leg.id,
-              plankId: ps.plankId,
-              methodologyVersion: METHODOLOGY_VERSION,
-            },
-          },
-          create: {
-            legislatorId: leg.id,
-            plankId: ps.plankId,
-            score: ps.score,
-            forCount: ps.forCount,
-            againstCount: ps.againstCount,
-            methodologyVersion: METHODOLOGY_VERSION,
-            notes: ps.notes,
-            publishedAt: flags.publish ? new Date() : null,
-          },
-          update: {
-            score: ps.score,
-            forCount: ps.forCount,
-            againstCount: ps.againstCount,
-            notes: ps.notes,
-            ...(flags.publish ? { publishedAt: new Date() } : {}),
-          },
-        }),
-      );
-
-      if (operations.length >= BATCH_SIZE) {
-        await flushBatch();
-      }
+      pendingScores.push({
+        legislatorId: leg.id,
+        plankId: ps.plankId,
+        score: ps.score,
+        forCount: ps.forCount,
+        againstCount: ps.againstCount,
+        notes: ps.notes,
+      });
     }
   }
-  await flushBatch();
+
+  if (!flags.dryRun && pendingScores.length > 0) {
+    const BATCH = 500;
+    const now = new Date();
+    let written = 0;
+    for (let i = 0; i < pendingScores.length; i += BATCH) {
+      const slice = pendingScores.slice(i, i + BATCH);
+      const params: unknown[] = [];
+      const values = slice
+        .map((row, idx) => {
+          const base = idx * 8;
+          // score column is Int in schema. The continuous PAC gradient
+          // produces floats; Prisma's typed upsert silently rounded, raw SQL
+          // doesn't — so we round here for parity with prior behavior.
+          params.push(
+            row.legislatorId,
+            row.plankId,
+            Math.round(row.score),
+            row.forCount,
+            row.againstCount,
+            METHODOLOGY_VERSION,
+            row.notes,
+            flags.publish ? now : null,
+          );
+          return `(gen_random_uuid()::text, $${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${
+            base + 6
+          }, $${base + 7}, $${base + 8}, NOW(), NOW())`;
+        })
+        .join(',');
+      const publishedClause = flags.publish ? `"publishedAt" = EXCLUDED."publishedAt",` : '';
+      const sql =
+        `INSERT INTO "RepresentativeScore" ` +
+        `("id", "legislatorId", "plankId", "score", "forCount", "againstCount", "methodologyVersion", "notes", "publishedAt", "createdAt", "updatedAt") ` +
+        `VALUES ${values} ` +
+        `ON CONFLICT ("legislatorId", "plankId", "methodologyVersion") DO UPDATE SET ` +
+        `"score" = EXCLUDED."score", ` +
+        `"forCount" = EXCLUDED."forCount", ` +
+        `"againstCount" = EXCLUDED."againstCount", ` +
+        `"notes" = EXCLUDED."notes", ` +
+        publishedClause +
+        `"updatedAt" = NOW()`;
+      await prisma.$executeRawUnsafe(sql, ...params);
+      written += slice.length;
+    }
+    console.log(
+      `[compute-scores] bulk-upsert path: ${written} rows in ${Math.ceil(pendingScores.length / BATCH)} batch(es)`,
+    );
+  }
 
   console.log(
     `[compute-scores] summary: ${totalScores} score row(s) written · ${positiveScores} positive · ${negativeScores} negative · ${
@@ -357,10 +377,13 @@ async function main(): Promise<void> {
   );
   if (flags.dryRun) console.log('[compute-scores] DRY RUN — no DB writes performed.');
 
-  // v1.4: compute ScoreCalibration anchors from the just-written score rows
-  console.log('[compute-scores] computing v1.4 percentile anchors...');
+  // Compute ScoreCalibration anchors for the CURRENT methodology version,
+  // from the score rows we just wrote. Earlier hardcoded 'v1.4' refs were
+  // a bug — bumped here to track METHODOLOGY_VERSION so the anchors always
+  // belong to the version the engine just published.
+  console.log(`[compute-scores] computing ${METHODOLOGY_VERSION} percentile anchors...`);
   const allScores = await prisma.representativeScore.findMany({
-    where: { methodologyVersion: 'v1.4', publishedAt: { not: null } },
+    where: { methodologyVersion: METHODOLOGY_VERSION, publishedAt: { not: null } },
     select: { legislatorId: true, score: true },
   });
   // Aggregate to per-legislator totals (sum across planks)
@@ -379,9 +402,9 @@ async function main(): Promise<void> {
   const positiveAnchor = totals.length > 0 ? totals[totals.length - 1] : 0;
   const negativeAnchor = totals.length > 0 ? totals[0] : 0;
   await prisma.scoreCalibration.upsert({
-    where: { methodologyVersion: 'v1.4' },
+    where: { methodologyVersion: METHODOLOGY_VERSION },
     create: {
-      methodologyVersion: 'v1.4',
+      methodologyVersion: METHODOLOGY_VERSION,
       positiveAnchor,
       negativeAnchor,
       computedFromCount: totalsByLegislator.size,
@@ -394,7 +417,7 @@ async function main(): Promise<void> {
     },
   });
   console.log(
-    `[compute-scores] v1.4 anchors: +100% = ${positiveAnchor} raw, -100% = ${negativeAnchor} raw (from ${totalsByLegislator.size} legislators)`,
+    `[compute-scores] ${METHODOLOGY_VERSION} anchors: +100% = ${positiveAnchor} raw, -100% = ${negativeAnchor} raw (from ${totalsByLegislator.size} legislators)`,
   );
 }
 
