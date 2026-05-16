@@ -262,19 +262,13 @@ function HeroPercent({
       : percent > -50
       ? 'text-red-500'
       : 'text-red-700';
-  const sign = percent > 0 ? '+' : '';
-  const rawSign = total > 0 ? '+' : '';
   const sumFor = scores.reduce((s, ps) => s + (ps.forCount ?? 0), 0);
   const sumAgainst = scores.reduce((s, ps) => s + (ps.againstCount ?? 0), 0);
   return (
     <div>
-      <p className={`font-serif text-6xl font-bold tabular-nums ${colorClass}`}>
-        {sign}
-        {percent}%
-      </p>
+      <p className={`font-serif text-6xl font-bold tabular-nums ${colorClass}`}>{percent}%</p>
       <p className="mt-1 font-mono text-xs uppercase tracking-widest text-gray-500">
-        Score · raw {rawSign}
-        {total} · {sumFor} for · {sumAgainst} against
+        Score · raw {total} · {sumFor} for · {sumAgainst} against
       </p>
     </div>
   );
@@ -297,10 +291,8 @@ function PacContinuousScore({
   if (!Number.isFinite(score)) return null;
   const ratioMatch = evidenceNotes?.match(/combined-corporate=(\d+(?:\.\d+)?)%/);
   const ratio = ratioMatch ? parseFloat(ratioMatch[1]) : null;
-  const sign = score >= 0 ? '+' : '';
   return (
     <span className="ml-2 font-mono text-xs text-gray-600">
-      {sign}
       {score.toFixed(1)}
       {ratio !== null ? ` · ${ratio.toFixed(1)}% combined corporate donations` : ''}
     </span>
@@ -315,8 +307,7 @@ function ScoreNumber({ value, size }: { value: number; size: 'hero' | 'plank' })
     value > 0 ? 'text-green-600 dark:text-green-400' : value < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-500';
   const sizeClass =
     size === 'hero' ? 'font-serif text-5xl font-bold tabular-nums' : 'font-serif text-2xl font-bold tabular-nums';
-  const display = value > 0 ? `+${value}` : `${value}`;
-  return <span className={`${sizeClass} ${colorClass}`}>{display}</span>;
+  return <span className={`${sizeClass} ${colorClass}`}>{value}</span>;
 }
 
 /** Three-state position icon. ACTED_FOR = brick-red ✓, ACTED_AGAINST = solid
