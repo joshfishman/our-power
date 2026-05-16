@@ -36,6 +36,7 @@
     "scorecard:backfill-people": "npx tsx ./scripts/backfill-legiscan-people.ts",
     "scorecard:ingest-fec": "npx tsx ./scripts/ingest-fec.ts",
     "scorecard:ingest-fec-classifications": "npx tsx ./scripts/ingest-fec-classifications.ts",
+    "scorecard:ingest-ca-classifications": "npx tsx ./scripts/ingest-ca-classifications.ts",
     "scorecard:ingest-ca-pac": "npx tsx ./scripts/ingest-cal-access.ts",
     "scorecard:find-historical": "npx tsx ./scripts/find-historical-bills.ts",
     "scorecard:ingest-opensecrets-classifications": "npx tsx ./scripts/ingest-opensecrets-classifications.ts",
