@@ -871,6 +871,13 @@ model CommitteeClassification {
   committeeId   String // FEC committee ID for federal, Cal-Access filer ID for CA
   committeeName String
   category      CommitteeCategory
+  /// v1.5 — funding-model classification used by the scoring engine.
+  /// MONEY = concentrated-wealth-funded (corporate / leadership-establishment /
+  /// donor-class / party committees). PEOPLE = grassroots-funded (member dues,
+  /// small-dollar mass contribution, worker organizations). The MONEY bucket
+  /// is what counts negatively against legislators on Plank 1. Defaults to
+  /// MONEY for conservative-attribution under v1.5.
+  motivationClass MotivationClass @default(MONEY)
   sponsorName   String? // Sponsor org for sponsored committees (CA FPPC)
   sourceNotes   String?           @db.Text // Public reasoning for the classification call
   classifiedBy  String? // Reviewer identifier
@@ -881,6 +888,15 @@ model CommitteeClassification {
 
   @@unique([jurisdiction, committeeId])
   @@index([jurisdiction, category])
+  @@index([jurisdiction, motivationClass])
+}
+
+/// v1.5 binary classification: is this committee funded by concentrated
+/// wealth seeking access (MONEY) or by grassroots / members / workers
+/// (PEOPLE)? Replaces the v1.4 corporate-vs-non-corporate distinction.
+enum MotivationClass {
+  MONEY
+  PEOPLE
 }
 
 enum ApiCallSource {
