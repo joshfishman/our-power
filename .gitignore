@@ -44,8 +44,13 @@ next-env.d.ts
 # custom
 /public/uploads/data/
 
-# LegiScan / OpenSecrets / Cal-Access dataset dumps (large, keep out of repo)
-/data/
+# LegiScan / OpenSecrets / Cal-Access dataset dumps (large, keep out of repo).
+# /data/ contents are ignored EXCEPT small hand-curated CSV overlays
+# (data/manual-*.csv) that need to ship with the repo. Git can only re-
+# include children if the parent directory itself isn't fully ignored,
+# so we ignore /data/* (contents) rather than /data/ (directory).
+/data/*
+!/data/manual-*.csv
 /CA/
 
 # Claude Code / Cursor working directories
