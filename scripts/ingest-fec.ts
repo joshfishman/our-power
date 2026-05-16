@@ -212,10 +212,29 @@ async function fetchScheduleEForCandidate(
       `&per_page=100&page=${page}`;
     const res = await fetch(url);
     if (!res.ok) {
-      // Some candidates have no IE filings; FEC returns 404 in some cases. Don't fail the whole run.
+      // 404 means "no filings" — common, don't fail the run.
       if (res.status === 404) return out;
-      throw new Error(`Schedule E fetch failed for ${candidateId} cycle ${cycle}: ${res.status}`);
+      // 429 / 403 with OVER_RATE_LIMIT — back off and retry the same page.
+      // Mirror the totals-endpoint retry behavior: escalating wait, cap
+      // at 5 min, no infinite loop (consecutive guard via rateLimitState).
+      const body = await res.text().catch(() => '');
+      const isRateLimit = res.status === 429 || /OVER_RATE_LIMIT|over_rate_limit|rate limit/i.test(body);
+      if (isRateLimit) {
+        const wait = rateLimitState.consecutive < 3 ? 60_000 : 300_000;
+        rateLimitState.consecutive += 1;
+        console.warn(
+          `  [warn] Schedule E rate limit (#${rateLimitState.consecutive}) for ${candidateId}; sleeping ${
+            wait / 1000
+          }s before retry`,
+        );
+        await new Promise((r) => setTimeout(r, wait));
+        continue; // retry same page
+      }
+      throw new Error(
+        `Schedule E fetch failed for ${candidateId} cycle ${cycle}: ${res.status} — ${body.slice(0, 200)}`,
+      );
     }
+    rateLimitState.consecutive = 0;
     const data = (await res.json()) as { results?: ScheduleEFiling[]; pagination?: { pages?: number } };
     out.push(...(data.results ?? []));
     const pages = data.pagination?.pages ?? 1;
