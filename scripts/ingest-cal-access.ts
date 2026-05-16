@@ -229,15 +229,11 @@ async function runIePass(
     );
   }
 
-  // v1.5: filter spenders by motivationClass=MONEY rather than category in
-  // (CORPORATE, TRADE_ASSOCIATION). Captures donor-class party / ideological
-  // PACs alongside corporate / trade-association money. Excludes labor +
-  // grassroots-classified spenders.
-  const moneyCmtes = await prisma.committeeClassification.findMany({
-    where: { jurisdiction: 'CA', motivationClass: 'MONEY' },
+  const corpCmtes = await prisma.committeeClassification.findMany({
+    where: { jurisdiction: 'CA', category: { in: ['CORPORATE', 'TRADE_ASSOCIATION'] } },
     select: { committeeId: true },
   });
-  const corporateSpenderFilerIds = new Set(moneyCmtes.map((c) => c.committeeId));
+  const corporateSpenderFilerIds = new Set(corpCmtes.map((c) => c.committeeId));
 
   const result = await parseCalAccessIe({
     dataDir: dir,
