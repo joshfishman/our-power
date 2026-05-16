@@ -98,22 +98,34 @@ async function pace(): Promise<void> {
   lastCallAt = Date.now();
 }
 
+// Minimum receipts (USD) for a cycle to count as "substantive" rather than
+// the few-dollar early-filing nominal cycle. Senators raise an order of
+// magnitude more than House members, so the floors differ. If neither of
+// the candidate's two most recent cycles clears the floor, we fall through
+// to the latest one anyway (avoids dropping legitimately small campaigns).
+const SUBSTANTIVE_RECEIPTS_FLOOR: Record<'SEN' | 'REP', number> = {
+  SEN: 250_000,
+  REP: 50_000,
+};
+
 async function fecCandidateTotals(
   candidateId: string,
   preferredCycle: number,
   apiKey: string,
+  chamber: 'SEN' | 'REP' = 'REP',
 ): Promise<FecCandidateTotals | null> {
   await pace();
   // FEC candidate totals: /candidate/{candidate_id}/totals/.
-  // We DON'T filter by cycle — that would force a separate call per
-  // candidate-per-cycle for senators not on the current ballot. Instead
-  // we ask for the most recent cycle the candidate has filed for,
-  // sorted descending. The caller stores whatever cycle FEC returned.
-  // The preferredCycle parameter is retained so the call returns 2026
-  // data when present and falls back to older cycles transparently.
+  // We ask for the TOP 2 cycles, sorted descending, and pick the latest one
+  // with substantive receipts. This avoids the "Kennedy registered for 2028
+  // and raised $10k so far" problem — that cycle's PAC ratio would dominate
+  // his real 2022 re-election cycle's numbers. Floor is chamber-specific
+  // (senators raise far more than House members). If neither cycle clears
+  // the floor we fall back to the latest one — legitimately small campaigns
+  // shouldn't be silently dropped.
   const url = `${FEC_BASE}/candidate/${encodeURIComponent(
     candidateId,
-  )}/totals/?api_key=${apiKey}&per_page=1&sort=-cycle`;
+  )}/totals/?api_key=${apiKey}&per_page=2&sort=-cycle`;
   void preferredCycle;
   let response;
   try {
@@ -138,7 +150,7 @@ async function fecCandidateTotals(
         `  [warn] FEC rate limit hit (#${rateLimitState.consecutive}); sleeping ${wait / 1000}s before retry`,
       );
       await new Promise((r) => setTimeout(r, wait));
-      return fecCandidateTotals(candidateId, preferredCycle, apiKey);
+      return fecCandidateTotals(candidateId, preferredCycle, apiKey, chamber);
     }
     rateLimitState.consecutive = 0;
     console.warn(`  [warn] FEC HTTP ${response.status} for ${candidateId} — ${body.slice(0, 200)}`);
@@ -147,7 +159,11 @@ async function fecCandidateTotals(
   rateLimitState.consecutive = 0;
   const json = (await response.json()) as FecResponse<FecCandidateTotals>;
   if (!json.results?.length) return null;
-  return json.results[0];
+  const floor = SUBSTANTIVE_RECEIPTS_FLOOR[chamber];
+  // Cycles arrive in descending order. Pick the latest with substantive
+  // receipts; if none clear the floor, fall back to the latest (results[0]).
+  const substantive = json.results.find((r) => Number(r.receipts ?? 0) >= floor);
+  return substantive ?? json.results[0];
 }
 
 async function logApiCall(args: {
@@ -337,7 +353,7 @@ async function main(): Promise<void> {
     // even with retries.
     const usedFecId = leg.fecIds[leg.fecIds.length - 1];
     const start = Date.now();
-    const totals = await fecCandidateTotals(usedFecId, flags.cycleYear, apiKey);
+    const totals = await fecCandidateTotals(usedFecId, flags.cycleYear, apiKey, leg.chamber === 'SEN' ? 'SEN' : 'REP');
     void logApiCall({
       endpoint: 'candidate_totals',
       candidateId: usedFecId,
