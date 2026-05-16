@@ -539,9 +539,15 @@ export interface ParseCalAccessIeArgs {
   legislators: ReadonlyArray<ParseCalAccessIeLegislator>;
   raceCandidatesByCycle: Map<number, ReadonlyArray<ParseCalAccessIeRaceCandidate>>;
   /**
-   * Cal-Access FILER_IDs (committeeId on CommitteeClassification) classified
-   * as CORPORATE or TRADE_ASSOCIATION for jurisdiction=CA. Only IE rows
-   * whose spending filer is in this set contribute to the buckets.
+   * Cal-Access FILER_IDs (committeeId on CommitteeClassification) whose
+   * motivationClass = MONEY (v1.5 — concentrated-wealth-funded committees).
+   * Only IE rows whose spending filer is in this set contribute to the
+   * buckets. PEOPLE-classified filers (labor unions, grassroots
+   * advocacy) are excluded.
+   *
+   * NOTE on the field name: still called `corporateSpenderFilerIds` for
+   * code-historic reasons (predates v1.5). The semantic under v1.5 is
+   * "money-motivated spender filer IDs."
    */
   corporateSpenderFilerIds: ReadonlySet<string>;
   cycles: ReadonlyArray<number>;
