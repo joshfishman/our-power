@@ -2,38 +2,59 @@
 
 This scorecard measures every sitting member of Congress and every sitting member of the California State Legislature against five planks of a cross-partisan civic platform (four planks for California — see below). The same rubric applies to every legislator regardless of party: Bernie Sanders and Josh Hawley are scored against identical markers. Every point in every score traces to a public source — a vote roll, a cosponsorship record, an FEC filing, or a Cal-Access filing — and every score is reviewed by a human before it goes public.
 
-## How v1.6 works
+## How v1.7 works
 
-Each plank score is an **alignment percentage** — the share of plank-relevant votes the legislator cast the platform-aligned way. Same approach LCV (environmental scorecard), ACU (conservative scorecard), AFL-CIO (labor scorecard) use, applied to the five Common Ground planks.
+Every legislator gets **two scores**, each 0–100%. The headline number on the scorecard is the **average of the two**.
 
-For every roll-call vote in the 119th Congress (House and Senate) and every roll-call vote in the California 2025-26 legislative session:
+### Score 1 — PAC Score
 
-1. **Classify the vote** — does it relate to one or more of the five planks? Bills purely outside the planks (judicial nominations, naming post offices, censures, ceremonial resolutions, procedural rules for considering other bills) don't contribute to scoring.
-2. **Identify the platform-aligned position** — for plank-relevant votes, what's the YES/NO that aligns with the Common Ground platform? Most pro-plank bills are aligned=YES; bills that cut against the planks are aligned=NO. Republican-led Plank-3 and Plank-4 alternatives (Option C bills like Hawley's Higher Wages Act or Bice-Houlahan paid leave) are platform-aligned regardless of party.
-3. **Tally** — for each (legislator, plank): aligned votes / (aligned + non-aligned) × 100.
+Corporate-PAC money corrupts the work before any vote is cast. The PAC Score answers one question: what share of this legislator's campaign receipts came from somewhere other than corporate PACs?
 
-Non-aligned includes the legislator's recorded "wrong" vote AND missed votes (NOT_VOTING, EXCUSED, ABSENT) — preserves the v1.5 stance that "the bill needed your position to pass, and you didn't deliver it." Procedural absences count the same as deliberate absences.
+> **PAC Score = (1 − combined_corporate_ratio) × 100**
 
-The total score across all five planks is the simple mean of per-plank percentages.
+`combined_corporate_ratio` is the share of total receipts coming from corporate PACs plus corporate-classified independent-expenditure spending (federal) or pre-classified corporate PACs from Cal-Access (California). Data sources: FEC for federal, Cal-Access for California — both public filings, refreshed each cycle.
 
-### Classification — how votes get tagged
+A legislator who takes zero corporate-PAC money scores 100. A legislator with half their funding from corporate PACs scores 50.
+
+This was previously a sub-component of Plank 1. In v1.7 we promoted it to its own headline score because the corporate-money signal is independent of voting record — refusing the money is its own commitment, separate from how you vote once you're in office — and because burying it inside Plank 1 made it invisible to readers comparing legislators side-by-side.
+
+### Score 2 — Voting Record
+
+For every plank-relevant bill in this legislator's chamber, did they support it?
+
+> **Voting Score = aligned_bills / total_bills × 100**
+
+A legislator is "aligned on a bill" if they either:
+
+1. Voted the platform-aligned way on **any** roll-call vote attached to that bill, OR
+2. Cosponsored that bill.
+
+Cosponsorship counts as full alignment under v1.7. Filing your name on a bill is a public commitment to it — same signal weight as casting a vote. This was the biggest v1.6 → v1.7 gap: a senator who cosponsored eight Plank-2 bills but cast no recorded vote on any of them used to score 0 on Plank 2. Now they score 100.
+
+**Bill-level dedup.** A single bill that comes up in four procedural roll calls counts as one bill, not four. This was the second v1.6 gap: procedural votes inflated denominators and let one substantive disagreement read as four. We dedupe at the bill level, then look at the legislator's most-supportive position across all roll calls on that bill.
+
+**Chamber gating.** A senator only gets credit (or blame) for Senate bills; a House member only for House bills. CA Assembly and CA Senate likewise scored independently. A legislator isn't penalized for the other chamber's roll calls they were never eligible to vote on.
+
+**Non-aligned.** Bills the legislator opposed on a recorded vote AND bills they were absent for AND bills they neither cosponsored nor voted on count as not aligned. The bill needed your position to pass, and you didn't deliver it — same stance as v1.5/v1.6. Cosponsoring lets you off the hook even if you missed the vote.
+
+### Per-plank drill-down
+
+The legislator detail page shows five per-plank Voting percentages (four for California) underneath the two headline scores. Each plank's percent is computed the same bill-level / cosponsorship-inclusive way as the overall Voting Score, restricted to bills tagged to that plank. The PAC Score has no per-plank breakdown — it's a single signal across all giving.
+
+The total Voting Score is the simple mean of per-plank percentages.
+
+### Classification — how bills get tagged
 
 Two stages:
 
 1. **Rule-based first pass** — Congress.gov policy areas map to planks (Energy → Plank 2, Labor and Employment → Plank 3, Armed Forces → Plank 5, etc.). Subject-level keywords disambiguate (e.g., a bill in "Government Operations and Politics" about voting rights is Plank 1; about postal service is unrelated).
-2. **LLM disambiguation** for ambiguous cases — bills where the policy area maps to multiple planks, or where sponsor party doesn't predict direction (bipartisan ethics bills, Option C alternatives). An LLM reads the bill title, summary, subjects, and sponsor party and proposes plank assignment + aligned direction + confidence.
+2. **LLM disambiguation** for ambiguous cases — bills where the policy area maps to multiple planks, or where sponsor party doesn't predict direction (bipartisan ethics bills, Option C alternatives). An LLM reads the title, summary, subjects, and sponsor party and proposes plank assignment + aligned direction + confidence.
 
-Confidence below 0.5 → vote is **not scorable** (excluded from any plank's tally).
-
-Every classification is logged with reasoning. Methodology version v1.6 ships with rule-based + LLM classifications. Human-review admin UI for borderline cases is v1.6.1 work.
+Confidence below 0.5 → bill is **not scorable** (excluded from any tally). Borderline classifications surface in a human-review admin queue; reviewed classifications stick across re-runs.
 
 ### Calibration check
 
-v1.6 correlates with DW-NOMINATE (the academic legislator-ideology standard from Voteview) at Pearson r ≈ **−0.69 to −0.91** (range across House-only vs full federal+CA dataset). Higher than v1.5 (−0.49). Below the −0.90 ceiling because the Common Ground methodology deliberately diverges from a pure left-right axis on a few dimensions — Hawley's anti-corporate-PAC stance is platform-aligned even though he's economically conservative, AFP-aligned spending counts negatively even when bipartisan-supported, etc.
-
-### Corporate-PAC marker — separate Plank 1 overlay
-
-The corporate-money score (refusal of corporate PAC money + corporate IE classification — see "Outside money" below) remains as a **separate Plank 1 component** alongside the vote-alignment percentage. v1.6 keeps it parallel rather than collapsed into a single Plank 1 number; the Plank 1 display shows both signals.
+v1.7 correlates with DW-NOMINATE (the academic legislator-ideology standard from Voteview) at Pearson r in the same range as v1.6 (−0.69 to −0.91 depending on subset). Below the −0.90 ceiling because the Common Ground methodology deliberately diverges from a pure left-right axis on a few dimensions — Hawley's anti-corporate-PAC stance is platform-aligned even though he's economically conservative, AFP-aligned spending counts against legislators even when bipartisan-supported, etc.
 
 ## The five planks
 

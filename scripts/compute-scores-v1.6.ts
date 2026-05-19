@@ -80,19 +80,22 @@ async function main(): Promise<void> {
   }
   console.log(`[compute-v16] ${tally.size} (legislator, plank) cells tallied`);
 
-  // Lookup planks by number (one row per plank, jurisdiction=FEDERAL)
+  // Lookup planks by (jurisdiction, number) — each jurisdiction has its own
+  // set of plank rows (federal has 5, CA has 4 since Plank 5 is federal-only).
   const planks = await prisma.plank.findMany({
-    where: { jurisdiction: 'FEDERAL' },
-    select: { id: true, number: true },
+    select: { id: true, number: true, jurisdiction: true },
   });
-  const plankIdByNumber = new Map(planks.map((p) => [p.number, p.id]));
+  const plankIdByJurisdictionAndNumber = new Map<string, string>();
+  for (const p of planks) {
+    plankIdByJurisdictionAndNumber.set(`${p.jurisdiction}|${p.number}`, p.id);
+  }
 
-  // Build per-legislator score rows
+  // Build per-legislator score rows — federal AND CA both get v1.6 scoring
   const legs = await prisma.legislator.findMany({
-    where: { jurisdiction: 'FEDERAL', isActive: true },
-    select: { id: true },
+    where: { isActive: true },
+    select: { id: true, jurisdiction: true },
   });
-  console.log(`[compute-v16] computing scores for ${legs.length} federal legislators`);
+  console.log(`[compute-v16] computing scores for ${legs.length} legislators (federal + CA)`);
 
   interface ScoreRow {
     legislatorId: string;
@@ -105,7 +108,10 @@ async function main(): Promise<void> {
   let scoredLegislators = 0;
   for (const leg of legs) {
     let plankScoreCount = 0;
-    for (const [plankNum, plankId] of plankIdByNumber.entries()) {
+    // Pick the plank set for this legislator's jurisdiction
+    for (let plankNum = 1; plankNum <= 5; plankNum += 1) {
+      const plankId = plankIdByJurisdictionAndNumber.get(`${leg.jurisdiction}|${plankNum}`);
+      if (!plankId) continue; // CA has no plank 5 — skip
       const key = `${leg.id}|${plankNum}`;
       const t = tally.get(key);
       if (!t) continue;

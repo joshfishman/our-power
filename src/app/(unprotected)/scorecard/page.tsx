@@ -7,8 +7,10 @@ import {
   parseJurisdictionParam,
   computePublishedTotal,
   getScoreCalibration,
+  getPacScoresByLegislator,
+  computeTwoScoreAverage,
 } from '@/lib/scorecard/queries';
-import { rawToPercent, METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
+import { METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
 import { LegislatorAvatar } from '@/components/scorecard/LegislatorAvatar';
 
 export const metadata: Metadata = {
@@ -63,7 +65,12 @@ export default async function ScorecardIndexPage(props: { searchParams: Promise<
   ]);
   // Fallback anchors keep the page rendering on a fresh methodology version
   // before the first compute-scores pass populates ScoreCalibration.
-  const calibration = calibrationRow ?? { positiveAnchor: 25, negativeAnchor: -10 };
+  // (Retained for forward-compat with non-v1.7 methodology versions; v1.7
+  // uses natural percentages and does not anchor.)
+  void calibrationRow;
+
+  // v1.7 — bulk PAC scores for everyone on this page, keyed by legislatorId.
+  const pacScoresById = await getPacScoresByLegislator(legislators.map((l) => l.id));
 
   const buildHref = (overrides: Partial<SearchParams>): string => {
     const params = new URLSearchParams();
@@ -81,9 +88,10 @@ export default async function ScorecardIndexPage(props: { searchParams: Promise<
         <p className="font-mono text-xs uppercase tracking-widest text-gray-500">The Scorecard</p>
         <h1 className="mt-1 font-serif text-4xl font-bold text-gray-900">We the People</h1>
         <p className="mt-2 max-w-2xl text-base text-gray-700">
-          Every legislator scored against the same {jurisdiction === 'FEDERAL' ? 'five' : 'four'} commitments. Same
-          rubric for everyone, every score backed by a public source. Each vote or cosponsorship is +1; each recorded
-          vote-against or no-show on a recorded vote is &minus;1.{' '}
+          Two scores per legislator, each 0&ndash;100%: <strong>PAC</strong> measures freedom from corporate-PAC money,{' '}
+          <strong>Voting</strong> measures alignment across every plank-relevant bill in this Congress (vote +
+          cosponsorship). The <strong>Average</strong> of the two is the headline number. Same rubric for everyone,
+          every score backed by a public source.{' '}
           <Link href="/scorecard/methodology" className="underline hover:text-[#8B3A3A]">
             Read the full methodology →
           </Link>
@@ -136,9 +144,9 @@ export default async function ScorecardIndexPage(props: { searchParams: Promise<
       </div>
 
       <section className="mt-8 rounded border border-[#2C4A5E] bg-[#2C4A5E]/60 p-5">
-        <h2 className="font-mono text-xs uppercase tracking-widest text-[#F5DEB3]">Plank 1 — Honest Government</h2>
+        <h2 className="font-mono text-xs uppercase tracking-widest text-[#F5DEB3]">PAC Score — full ranking</h2>
         <p className="mt-2 text-sm text-[#F5DEB3]">
-          Every legislator, ranked by corporate PAC share of campaign receipts.{' '}
+          Every legislator, ranked by corporate-PAC share of campaign receipts.{' '}
           <Link
             href="/scorecard/pac"
             className="font-medium text-[#FFE9B8] underline underline-offset-2 hover:no-underline">
@@ -197,19 +205,28 @@ export default async function ScorecardIndexPage(props: { searchParams: Promise<
 
       <ul className="mt-4 divide-y divide-gray-200 border border-gray-200">
         {legislators
-          .map((leg) => ({ leg, total: computePublishedTotal(leg.scores) }))
+          .map((leg) => {
+            // v1.7 — two-score model. Voting Record is the mean of per-plank
+            // v1.7 alignment percentages (already 0-100). PAC Score is the
+            // (1 − combined_corp_ratio) × 100 from the legislator's
+            // most-recent PacMoneyData row. Average is the simple mean.
+            const votingScore = computePublishedTotal(leg.scores);
+            const pacScore = pacScoresById.get(leg.id) ?? null;
+            const avg = computeTwoScoreAverage(pacScore, votingScore);
+            return { leg, votingScore, pacScore, avg };
+          })
           .sort((a, b) => {
-            // Pending (null) totals always fall to the bottom regardless of
+            // Pending (null) averages always fall to the bottom regardless of
             // toggle direction — we want "scored" content first either way.
-            const aHas = a.total !== null;
-            const bHas = b.total !== null;
+            const aHas = a.avg !== null;
+            const bHas = b.avg !== null;
             if (aHas !== bHas) return aHas ? -1 : 1;
-            if (a.total === null || b.total === null) return 0;
-            const cmp = sortOrder === 'best' ? b.total - a.total : a.total - b.total;
+            if (a.avg === null || b.avg === null) return 0;
+            const cmp = sortOrder === 'best' ? b.avg - a.avg : a.avg - b.avg;
             if (cmp !== 0) return cmp;
             return a.leg.lastName.localeCompare(b.leg.lastName);
           })
-          .map(({ leg, total }) => {
+          .map(({ leg, votingScore, pacScore, avg }) => {
             const idForUrl = leg.bioguideId ?? leg.openStatesId ?? leg.id;
             return (
               <li
@@ -230,62 +247,10 @@ export default async function ScorecardIndexPage(props: { searchParams: Promise<
                     </p>
                   </div>
                 </Link>
-                <div className="ml-4 shrink-0 text-right">
-                  {total === null ? (
-                    <span className="font-mono text-xs uppercase tracking-wide text-gray-500">Pending</span>
-                  ) : (
-                    <>
-                      {(() => {
-                        // v1.4 display: anchored percent (primary) + raw (secondary).
-                        // Calibration anchors are frozen per methodology version
-                        // and fall back to {25, -10} before the first compute pass.
-                        const percent = Math.round(
-                          rawToPercent(total, calibration.positiveAnchor, calibration.negativeAnchor),
-                        );
-                        // v1.6 — natural alignment percent. Real distribution
-                        // sits 30-70% with the top legislator at ~77% and the
-                        // bottom (non-voting delegates aside) at ~30%. Use a
-                        // steep color gradient inside that band so each 5%
-                        // shift is visible, with deep dark-green/dark-red at
-                        // the extremes for the few outliers above 70% or
-                        // below 30%.
-                        const colorClass =
-                          percent >= 70
-                            ? 'text-green-700'
-                            : percent >= 60
-                            ? 'text-green-600'
-                            : percent >= 55
-                            ? 'text-lime-600'
-                            : percent >= 50
-                            ? 'text-yellow-600'
-                            : percent >= 45
-                            ? 'text-amber-600'
-                            : percent >= 40
-                            ? 'text-orange-600'
-                            : percent >= 30
-                            ? 'text-red-500'
-                            : 'text-red-700';
-                        return <p className={`font-serif text-2xl font-bold tabular-nums ${colorClass}`}>{percent}%</p>;
-                      })()}
-                      {(() => {
-                        // Pull from RepresentativeScore rows (single source of
-                        // truth — written atomically with score). Guarantees
-                        // total = forCount − againstCount always holds.
-                        const scores = (leg.scores ?? []) as Array<{
-                          forCount?: number;
-                          againstCount?: number;
-                        }>;
-                        const forCount = scores.reduce((s, x) => s + (x.forCount ?? 0), 0);
-                        const againstCount = scores.reduce((s, x) => s + (x.againstCount ?? 0), 0);
-                        if (forCount + againstCount === 0) return null;
-                        return (
-                          <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wide text-gray-500">
-                            {forCount} for · {againstCount} against
-                          </p>
-                        );
-                      })()}
-                    </>
-                  )}
+                <div className="ml-4 flex shrink-0 items-center gap-3 text-right">
+                  <ScoreCell label="PAC" value={pacScore} />
+                  <ScoreCell label="Voting" value={votingScore} />
+                  <ScoreCell label="Avg" value={avg} large />
                 </div>
               </li>
             );
@@ -307,6 +272,39 @@ export default async function ScorecardIndexPage(props: { searchParams: Promise<
           Republican-authored alternatives count as secondary markers under the two-tier methodology adopted 2026-04-29.
         </p>
       </footer>
+    </div>
+  );
+}
+
+// v1.7 — color band for a 0-100 score. Steep grading inside the natural
+// 30-70% band where most legislators sit; deep colors for the extremes.
+function colorClassFor(percent: number): string {
+  if (percent >= 80) return 'text-green-700';
+  if (percent >= 70) return 'text-green-600';
+  if (percent >= 60) return 'text-lime-600';
+  if (percent >= 50) return 'text-yellow-600';
+  if (percent >= 40) return 'text-amber-600';
+  if (percent >= 30) return 'text-orange-600';
+  if (percent >= 20) return 'text-red-500';
+  return 'text-red-700';
+}
+
+function ScoreCell({ label, value, large = false }: { label: string; value: number | null; large?: boolean }) {
+  // Each cell is a labeled column: tiny uppercase label on top, big % below.
+  // `large` flag makes the Average cell a step bigger so the eye lands on it.
+  const sizeClass = large ? 'text-3xl' : 'text-xl';
+  if (value === null) {
+    return (
+      <div className="w-14">
+        <p className="font-mono text-[9px] uppercase tracking-wide text-gray-500">{label}</p>
+        <p className={`font-serif font-bold tabular-nums text-gray-400 ${sizeClass}`}>—</p>
+      </div>
+    );
+  }
+  return (
+    <div className="w-14">
+      <p className="font-mono text-[9px] uppercase tracking-wide text-gray-500">{label}</p>
+      <p className={`font-serif font-bold tabular-nums ${colorClassFor(value)} ${sizeClass}`}>{value}%</p>
     </div>
   );
 }
