@@ -242,24 +242,30 @@ export default async function ScorecardIndexPage(props: { searchParams: Promise<
                         const percent = Math.round(
                           rawToPercent(total, calibration.positiveAnchor, calibration.negativeAnchor),
                         );
+                        // v1.6 — natural alignment percent. Real distribution
+                        // sits 30-70% with the top legislator at ~77% and the
+                        // bottom (non-voting delegates aside) at ~30%. Use a
+                        // steep color gradient inside that band so each 5%
+                        // shift is visible, with deep dark-green/dark-red at
+                        // the extremes for the few outliers above 70% or
+                        // below 30%.
                         const colorClass =
-                          percent > 50
+                          percent >= 70
                             ? 'text-green-700'
-                            : percent > 0
+                            : percent >= 60
                             ? 'text-green-600'
-                            : percent === 0
-                            ? 'text-gray-500'
-                            : percent > -50
+                            : percent >= 55
+                            ? 'text-lime-600'
+                            : percent >= 50
+                            ? 'text-yellow-600'
+                            : percent >= 45
+                            ? 'text-amber-600'
+                            : percent >= 40
+                            ? 'text-orange-600'
+                            : percent >= 30
                             ? 'text-red-500'
                             : 'text-red-700';
-                        return (
-                          <>
-                            <p className={`font-serif text-2xl font-bold tabular-nums ${colorClass}`}>{percent}%</p>
-                            <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wide text-gray-500">
-                              raw {total}
-                            </p>
-                          </>
-                        );
+                        return <p className={`font-serif text-2xl font-bold tabular-nums ${colorClass}`}>{percent}%</p>;
                       })()}
                       {(() => {
                         // Pull from RepresentativeScore rows (single source of

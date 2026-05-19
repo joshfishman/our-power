@@ -677,6 +677,91 @@ model BillVote {
   @@index([legislatorId])
 }
 
+// v1.6 — roll-call-alignment methodology.
+//
+// Replaces the v1.5 marker-based scoring with "% of plank-relevant votes
+// where the legislator voted with the platform-preferred direction."
+// Same approach as LCV, ACU, AFL-CIO scorecards.
+//
+// One RollCallVote row per (chamber, congress, session, rollcall-number).
+// One RollCallPosition row per (vote, legislator).
+// Classification happens at the RollCallVote level — which plank(s) does
+// this vote relate to, and what's the platform-aligned position?
+enum RollCallChamber {
+  HOUSE
+  SENATE
+  CA_ASSEMBLY
+  CA_SENATE
+}
+
+model RollCallVote {
+  id              String          @id @default(cuid())
+  chamber         RollCallChamber
+  congressNumber  Int // 119 for federal current; CA session encoded as e.g. 20232024
+  sessionNumber   Int // 1 or 2 for federal; 1 for CA
+  rollCallNumber  Int // sequential within (chamber, congress, session)
+  voteDate        DateTime
+  voteQuestion    String // e.g. "On Passage", "On Motion to Suspend the Rules and Pass"
+  voteResult      String // "Passed" / "Failed" / "Agreed To"
+  voteType        String // e.g. "Yea-And-Nay", "2/3 Yea-And-Nay"
+
+  // Bill / resolution linkage (null when vote isn't tied to a bill — e.g.
+  // election of the speaker, censure, motion to table without a target).
+  billType        String? // HR / S / HJRES / SJRES / HCONRES / etc.
+  billNumber      String?
+  billTitle       String? // Bill official short title (cached from Congress.gov)
+  billPolicyArea  String? // Congress.gov policy-area label, e.g. "Energy"
+  billSubjects    Json? // Array<string> of Congress.gov legislative-subject tags
+  billSponsorParty String? // 'D' / 'R' / 'I' — needed for aligned-position inference
+  billSponsorBioguide String? // bioguide id of first listed sponsor
+
+  // v1.6 plank classification — one vote can hit multiple planks.
+  // Empty array = "not plank-relevant" (procedural / off-topic) and the
+  // vote contributes nothing to any score.
+  plankNumbers    Int[]
+  alignedPosition VotePosition? // YES or NO — what counts as platform-aligned
+  classificationConfidence  Float? // 0.0-1.0; LLM-reported (when LLM-classified)
+  classificationSource      String  @default("auto") // 'auto' | 'human' | 'auto-then-human'
+  classificationReasoning   String? @db.Text
+  classifiedAt              DateTime?
+  classifiedBy              String? // 'llm-claude-sonnet-4' | reviewer ID
+  reviewedAt                DateTime?
+  reviewedBy                String?
+
+  // Procedural-vote filter. Substantive votes (On Passage, etc.) get
+  // isScorable=true after classification. Procedural votes (Previous
+  // Question, Motion to Table, etc.) get false and don't drive scoring.
+  isScorable      Boolean @default(false)
+
+  sourceUrl       String? // Permalink to the roll-call detail
+
+  positions       RollCallPosition[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([chamber, congressNumber, sessionNumber, rollCallNumber])
+  @@index([plankNumbers], type: Gin)
+  @@index([chamber, congressNumber])
+  @@index([classifiedAt])
+  @@index([isScorable])
+}
+
+model RollCallPosition {
+  id           String       @id @default(cuid())
+  vote         RollCallVote @relation(fields: [voteId], references: [id], onDelete: Cascade)
+  voteId       String
+  legislator   Legislator   @relation(fields: [legislatorId], references: [id], onDelete: Cascade)
+  legislatorId String
+  position     VotePosition
+
+  createdAt DateTime @default(now())
+
+  @@unique([voteId, legislatorId])
+  @@index([legislatorId])
+  @@index([voteId])
+}
+
 model Legislator {
   // Primary key is bioguideId for federal, openStatesId for CA.
   // We use a generic cuid id to keep the model uniform; bioguideId/openStatesId are unique secondary keys.
@@ -705,6 +790,7 @@ model Legislator {
   races        RaceCandidate[]
   billVotes        BillVote[]
   billSponsorships BillSponsorship[]
+  rollCallPositions RollCallPosition[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
