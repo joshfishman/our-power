@@ -111,11 +111,27 @@ export async function findLegislatorByAnyId(id: string) {
 }
 
 /**
- * Computes a total score across published plank scores. Returns null
- * if no scores are published yet (used to render "pending" state).
+ * Computes a total score across published plank scores.
+ *
+ * v1.5 and earlier: per-plank score is a signed integer; total = sum.
+ * v1.6 (current): per-plank score is a 0-100 alignment percentage; total
+ * is the MEAN across planks (not the sum, which would exceed 100).
+ *
+ * Behavior: under v1.6 each plank stores an alignment percent in `score`,
+ * so summing would compound. We detect v1.6-shaped data when every score
+ * sits in [0, 100] and average instead.
+ *
+ * Returns null if no scores are published yet (used to render "pending").
  */
 export function computePublishedTotal(scores: Array<{ score: number }>): number | null {
   if (scores.length === 0) return null;
+  // v1.6 heuristic: all scores in [0, 100] → treat as alignment percent and average.
+  const allInPercentRange = scores.every((s) => s.score >= 0 && s.score <= 100);
+  if (allInPercentRange) {
+    const sum = scores.reduce((acc, s) => acc + s.score, 0);
+    return Math.round(sum / scores.length);
+  }
+  // v1.5 fallback: signed integer sum.
   return scores.reduce((acc, s) => acc + s.score, 0);
 }
 

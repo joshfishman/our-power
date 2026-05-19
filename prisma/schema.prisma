@@ -712,6 +712,8 @@ model RollCallVote {
   billTitle       String? // Bill official short title (cached from Congress.gov)
   billPolicyArea  String? // Congress.gov policy-area label, e.g. "Energy"
   billSubjects    Json? // Array<string> of Congress.gov legislative-subject tags
+  billSponsorParty String? // 'D' / 'R' / 'I' — needed for aligned-position inference
+  billSponsorBioguide String? // bioguide id of first listed sponsor
 
   // v1.6 plank classification — one vote can hit multiple planks.
   // Empty array = "not plank-relevant" (procedural / off-topic) and the

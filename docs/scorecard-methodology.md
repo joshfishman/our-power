@@ -2,49 +2,38 @@
 
 This scorecard measures every sitting member of Congress and every sitting member of the California State Legislature against five planks of a cross-partisan civic platform (four planks for California — see below). The same rubric applies to every legislator regardless of party: Bernie Sanders and Josh Hawley are scored against identical markers. Every point in every score traces to a public source — a vote roll, a cosponsorship record, an FEC filing, or a Cal-Access filing — and every score is reviewed by a human before it goes public.
 
-## The basics
+## How v1.6 works
 
-Each legislator earns or loses points based on what they actually do on the bills tracked under each plank. Yes votes and cosponsorship earn points. A recorded "no" vote, an unexcused or excused absence on a recorded roll, or a vote of "present" loses a point. A position we have no record of doesn't count either way — it doesn't penalize a legislator, but it also doesn't help them. Thin coverage shows up explicitly on each plank as a "based on X of Y markers measured" indicator, so a score based on three markers reads differently from one based on twelve.
+Each plank score is an **alignment percentage** — the share of plank-relevant votes the legislator cast the platform-aligned way. Same approach LCV (environmental scorecard), ACU (conservative scorecard), AFL-CIO (labor scorecard) use, applied to the five Common Ground planks.
 
-Plank scores are signed integers — they can be positive, negative, or zero. A positive total renders green, a negative total renders red, zero renders neutral. There is no artificial denominator: the number reflects the cumulative weight of every recorded position.
+For every roll-call vote in the 119th Congress (House and Senate) and every roll-call vote in the California 2025-26 legislative session:
 
-## The weight table
+1. **Classify the vote** — does it relate to one or more of the five planks? Bills purely outside the planks (judicial nominations, naming post offices, censures, ceremonial resolutions, procedural rules for considering other bills) don't contribute to scoring.
+2. **Identify the platform-aligned position** — for plank-relevant votes, what's the YES/NO that aligns with the Common Ground platform? Most pro-plank bills are aligned=YES; bills that cut against the planks are aligned=NO. Republican-led Plank-3 and Plank-4 alternatives (Option C bills like Hawley's Higher Wages Act or Bice-Houlahan paid leave) are platform-aligned regardless of party.
+3. **Tally** — for each (legislator, plank): aligned votes / (aligned + non-aligned) × 100.
 
-| What                                                                         | Points |
-| ---------------------------------------------------------------------------- | ------ |
-| Wrote the bill (author / lead sponsor)                                       | +3     |
-| Co-led the bill (principal coauthor / coauthor)                              | +2     |
-| Signed on (cosponsor)                                                        | +1     |
-| Voted yes (committee or floor)                                               | +1     |
-| Voted no, didn't vote when present, was excused, abstained, or voted present | −1     |
-| Took less than 5% of campaign money from corporate PACs                      | +1     |
-| Took 5% or more from corporate PACs                                          | −1     |
-| No record on this marker                                                     | 0      |
+Non-aligned includes the legislator's recorded "wrong" vote AND missed votes (NOT_VOTING, EXCUSED, ABSENT) — preserves the v1.5 stance that "the bill needed your position to pass, and you didn't deliver it." Procedural absences count the same as deliberate absences.
 
-> All five non-yes vote positions count the same: −1. Including officially-excused absences. We treat them the same because the bill needed your yes to pass — if you weren't there to give it, the procedural effect is identical regardless of why.
+The total score across all five planks is the simple mean of per-plank percentages.
 
-**Plank score** = sum of all weighted points on that plank. Can be negative.  
-**Total score** = sum of plank scores across all planks. Also signed.
+### Classification — how votes get tagged
 
-### Corporate-PAC marker uses a continuous score, not a flat ±1
+Two stages:
 
-Most markers score +1 (acted for) or −1 (acted against). The corporate-PAC
-marker on Plank 1 is different — it uses a gradient based on how much
-corporate money flowed for the legislator's campaign:
+1. **Rule-based first pass** — Congress.gov policy areas map to planks (Energy → Plank 2, Labor and Employment → Plank 3, Armed Forces → Plank 5, etc.). Subject-level keywords disambiguate (e.g., a bill in "Government Operations and Politics" about voting rights is Plank 1; about postal service is unrelated).
+2. **LLM disambiguation** for ambiguous cases — bills where the policy area maps to multiple planks, or where sponsor party doesn't predict direction (bipartisan ethics bills, Option C alternatives). An LLM reads the bill title, summary, subjects, and sponsor party and proposes plank assignment + aligned direction + confidence.
 
-| Combined corporate share | Marker score |
-| ------------------------ | ------------ |
-| 0%                       | +2.0         |
-| 5%                       | +1.0         |
-| 15%                      | 0 (neutral)  |
-| 35%                      | −1.0         |
-| 65%                      | −2.0         |
-| 85%+                     | −3.0         |
+Confidence below 0.5 → vote is **not scorable** (excluded from any plank's tally).
 
-Linear interpolation between anchors. A legislator at 1% corporate gets
-+1.8; at 50% gets −1.5. The reward for being at "real zero" is bigger
-than just meeting the 5% threshold, so legislators who genuinely refuse
-corporate money get more credit than those who just barely qualify.
+Every classification is logged with reasoning. Methodology version v1.6 ships with rule-based + LLM classifications. Human-review admin UI for borderline cases is v1.6.1 work.
+
+### Calibration check
+
+v1.6 correlates with DW-NOMINATE (the academic legislator-ideology standard from Voteview) at Pearson r ≈ **−0.69 to −0.91** (range across House-only vs full federal+CA dataset). Higher than v1.5 (−0.49). Below the −0.90 ceiling because the Common Ground methodology deliberately diverges from a pure left-right axis on a few dimensions — Hawley's anti-corporate-PAC stance is platform-aligned even though he's economically conservative, AFP-aligned spending counts negatively even when bipartisan-supported, etc.
+
+### Corporate-PAC marker — separate Plank 1 overlay
+
+The corporate-money score (refusal of corporate PAC money + corporate IE classification — see "Outside money" below) remains as a **separate Plank 1 component** alongside the vote-alignment percentage. v1.6 keeps it parallel rather than collapsed into a single Plank 1 number; the Plank 1 display shows both signals.
 
 ## The five planks
 
@@ -238,11 +227,12 @@ Some markers track bills that have been identified as likely vehicles but haven'
 
 Each score row in the database is stamped with the methodology version it was computed under. When the methodology changes, scores are recomputed under the new version; old versions remain for audit purposes but are not shown publicly.
 
-| Version | Released   | What changed                                                                                                                                                                                                                                                                                                                                                       |
-| ------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| v1.0    | 2026-04-29 | Initial 0–5 rubric, primary + secondary markers                                                                                                                                                                                                                                                                                                                    |
-| v1.1    | 2026-04-29 | Three-state position records (ACTED_FOR / ACTED_AGAINST / NO_RECORD)                                                                                                                                                                                                                                                                                               |
-| v1.2    | 2026-05-12 | Switched from 0–5 rubric to signed +1/−1 point sum                                                                                                                                                                                                                                                                                                                 |
-| v1.3    | 2026-05-13 | Sponsor-tier weighted scoring (Author/Sponsor +3, Principal Coauthor/Coauthor +2, Cosponsor +1)                                                                                                                                                                                                                                                                    |
-| v1.4    | 2026-05-14 | Super-PAC IE inclusion (corporate IE supporting you + corporate IE against your opponents), continuous PAC gradient, anchored percent display                                                                                                                                                                                                                      |
-| v1.5    | 2026-05-15 | Collapse corporate-vs-labor classification to MONEY-vs-PEOPLE binary. Counts concentrated-wealth-funded committees (corporate, party leadership, donor-class super PACs) negatively; excludes grassroots / member-funded committees (labor unions, mass-membership advocacy). Plank 1 framing shifts to "government of the people, by the people, for the people." |
+| Version | Released   | What changed                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| v1.0    | 2026-04-29 | Initial 0–5 rubric, primary + secondary markers                                                                                                                                                                                                                                                                                                                                                                                                            |
+| v1.1    | 2026-04-29 | Three-state position records (ACTED_FOR / ACTED_AGAINST / NO_RECORD)                                                                                                                                                                                                                                                                                                                                                                                       |
+| v1.2    | 2026-05-12 | Switched from 0–5 rubric to signed +1/−1 point sum                                                                                                                                                                                                                                                                                                                                                                                                         |
+| v1.3    | 2026-05-13 | Sponsor-tier weighted scoring (Author/Sponsor +3, Principal Coauthor/Coauthor +2, Cosponsor +1)                                                                                                                                                                                                                                                                                                                                                            |
+| v1.4    | 2026-05-14 | Super-PAC IE inclusion (corporate IE supporting you + corporate IE against your opponents), continuous PAC gradient, anchored percent display                                                                                                                                                                                                                                                                                                              |
+| v1.5    | 2026-05-15 | Collapse corporate-vs-labor classification to MONEY-vs-PEOPLE binary. Counts concentrated-wealth-funded committees (corporate, party leadership, donor-class super PACs) negatively; excludes grassroots / member-funded committees (labor unions, mass-membership advocacy). Plank 1 framing shifts to "government of the people, by the people, for the people."                                                                                         |
+| v1.6    | 2026-05-19 | Methodology shift from curated marker bills to **alignment-percentage on every roll-call vote**. Pulls all 119th Congress House + Senate votes (~780) and all CA 2025-26 floor votes; classifies each by plank via rule-based + LLM hybrid; scores legislators on % of plank-relevant votes voted the platform-aligned way. ~270k vote records vs v1.5's ~430. Calibration vs DW-NOMINATE jumped from r=-0.49 (v1.5) to r=-0.69 full / r=-0.91 House-only. |
