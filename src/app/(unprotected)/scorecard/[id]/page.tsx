@@ -7,9 +7,10 @@ import {
   getPublicPlanks,
   computePublishedTotal,
   computePlankCoverage,
-  getScoreCalibration,
+  getLegislatorPacScore,
+  computeTwoScoreAverage,
 } from '@/lib/scorecard/queries';
-import { METHODOLOGY_VERSION, rawToPercent } from '@/lib/scorecard/scoring';
+import { METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
 import { LegislatorAvatar } from '@/components/scorecard/LegislatorAvatar';
 
 type Props = { params: Promise<{ id: string }> };
@@ -47,11 +48,13 @@ export default async function LegislatorScorecardPage(props: Props) {
 
   const jurisdiction = legislator.jurisdiction as 'FEDERAL' | 'CA';
   const planks = await getPublicPlanks(jurisdiction);
-  const total = computePublishedTotal(legislator.scores);
-  const calibration = (await getScoreCalibration(METHODOLOGY_VERSION)) ?? {
-    positiveAnchor: 25,
-    negativeAnchor: -10,
-  };
+  // v1.7 two-score model:
+  //   Voting Record = mean of per-plank alignment percentages (already 0-100)
+  //   PAC Score     = (1 − combined_corporate_ratio) × 100
+  //   Avg           = simple mean of the two
+  const votingScore = computePublishedTotal(legislator.scores);
+  const pacScore = await getLegislatorPacScore(legislator.id);
+  const avgScore = computeTwoScoreAverage(pacScore, votingScore);
   const chamberLabel =
     jurisdiction === 'FEDERAL' ? CHAMBER_LABEL_FEDERAL[legislator.chamber] : CHAMBER_LABEL_STATE[legislator.chamber];
 
@@ -91,18 +94,23 @@ export default async function LegislatorScorecardPage(props: Props) {
           </p>
         </div>
         <div className="text-right">
-          {total === null ? (
+          {avgScore === null ? (
             <div>
               <p className="font-mono text-xs uppercase tracking-widest text-gray-500">Score pending</p>
               <p className="mt-1 text-sm text-gray-600">Methodology {METHODOLOGY_VERSION} — no data yet</p>
             </div>
           ) : (
-            <HeroPercent total={total} calibration={calibration} scores={legislator.scores} />
+            <HeroTwoScore
+              pacScore={pacScore}
+              votingScore={votingScore}
+              avgScore={avgScore}
+              planksCount={legislator.scores.length}
+            />
           )}
         </div>
       </header>
 
-      {total === null && (
+      {avgScore === null && (
         <div className="mt-6 rounded border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           <p className="font-semibold">Scoring is in development.</p>
           <p className="mt-1">
@@ -237,44 +245,76 @@ export default async function LegislatorScorecardPage(props: Props) {
   );
 }
 
-/** v1.4 hero — renders the legislator's overall as a percentage of the
- *  calibrated raw range (positiveAnchor = top of pack, negativeAnchor =
- *  bottom of pack), with raw and for/against counts as a sub-line. The
- *  percent is signed: positive shows "+", zero shows neither sign, negative
- *  shows native "-". Color tracks magnitude in both directions. */
-function HeroPercent({
-  total,
-  calibration,
-  scores,
+/** v1.7 hero — two scores side-by-side with the Average as the headline.
+ *  Layout (right-aligned in the page header):
+ *
+ *     ┌───────┬───────┬───────────┐
+ *     │  PAC  │ Voting│  AVERAGE  │
+ *     │  82%  │  67%  │    75%    │
+ *     └───────┴───────┴───────────┘
+ *
+ *  The Average is rendered a step larger so the eye lands on it first.
+ *  Either of PAC or Voting can be null (e.g. no PAC data yet) — we render
+ *  "—" for the missing side and let the user know via a sub-line. */
+function HeroTwoScore({
+  pacScore,
+  votingScore,
+  avgScore,
+  planksCount,
 }: {
-  total: number;
-  calibration: { positiveAnchor: number; negativeAnchor: number };
-  scores: Array<{ forCount?: number | null; againstCount?: number | null }>;
+  pacScore: number | null;
+  votingScore: number | null;
+  avgScore: number;
+  planksCount: number;
 }) {
-  const percent = Math.round(rawToPercent(total, calibration.positiveAnchor, calibration.negativeAnchor));
-  // v1.6 — steep gradient inside the 30-70% band where the real distribution lives.
+  return (
+    <div className="flex items-end justify-end gap-3">
+      <HeroCell label="PAC" value={pacScore} />
+      <HeroCell label="Voting" value={votingScore} subline={planksCount > 0 ? `${planksCount}-plank avg` : undefined} />
+      <HeroCell label="Average" value={avgScore} large />
+    </div>
+  );
+}
+
+function HeroCell({
+  label,
+  value,
+  large = false,
+  subline,
+}: {
+  label: string;
+  value: number | null;
+  large?: boolean;
+  subline?: string;
+}) {
+  // v1.7 — steep gradient inside the 30-70% band where the real distribution
+  // lives. Pinned to natural percentages, no calibration.
   const colorClass =
-    percent >= 70
+    value === null
+      ? 'text-gray-400'
+      : value >= 80
       ? 'text-green-700'
-      : percent >= 60
+      : value >= 70
       ? 'text-green-600'
-      : percent >= 55
+      : value >= 60
       ? 'text-lime-600'
-      : percent >= 50
+      : value >= 50
       ? 'text-yellow-600'
-      : percent >= 45
+      : value >= 40
       ? 'text-amber-600'
-      : percent >= 40
+      : value >= 30
       ? 'text-orange-600'
-      : percent >= 30
+      : value >= 20
       ? 'text-red-500'
       : 'text-red-700';
+  const sizeClass = large ? 'text-6xl' : 'text-4xl';
   return (
-    <div>
-      <p className={`font-serif text-6xl font-bold tabular-nums ${colorClass}`}>{percent}%</p>
-      <p className="mt-1 font-mono text-xs uppercase tracking-widest text-gray-500">
-        Aligned across {scores.length} plank{scores.length === 1 ? '' : 's'}
+    <div className={large ? 'min-w-[6rem]' : 'min-w-[4rem]'}>
+      <p className="font-mono text-[10px] uppercase tracking-widest text-gray-500">{label}</p>
+      <p className={`mt-0.5 font-serif font-bold tabular-nums ${colorClass} ${sizeClass}`}>
+        {value === null ? '—' : `${value}%`}
       </p>
+      {subline && <p className="mt-0.5 font-mono text-[9px] uppercase tracking-wide text-gray-400">{subline}</p>}
     </div>
   );
 }
@@ -304,15 +344,29 @@ function PacContinuousScore({
   );
 }
 
-/** Score number renderer. Positive = green, negative = red, zero = neutral.
- *  Always prefixes positive numbers with "+" for clarity; negatives render
- *  with their native "-". Used at both hero (page header) and per-plank size. */
+/** Per-plank score renderer. Under v1.7 each plank score is a 0-100
+ *  alignment percent (votes + cosponsorship folded together at the bill
+ *  level), so we color it on the same steep gradient as the hero. */
 function ScoreNumber({ value, size }: { value: number; size: 'hero' | 'plank' }) {
   const colorClass =
-    value > 0 ? 'text-green-600 dark:text-green-400' : value < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-500';
+    value >= 80
+      ? 'text-green-700'
+      : value >= 70
+      ? 'text-green-600'
+      : value >= 60
+      ? 'text-lime-600'
+      : value >= 50
+      ? 'text-yellow-600'
+      : value >= 40
+      ? 'text-amber-600'
+      : value >= 30
+      ? 'text-orange-600'
+      : value >= 20
+      ? 'text-red-500'
+      : 'text-red-700';
   const sizeClass =
     size === 'hero' ? 'font-serif text-5xl font-bold tabular-nums' : 'font-serif text-2xl font-bold tabular-nums';
-  return <span className={`${sizeClass} ${colorClass}`}>{value}</span>;
+  return <span className={`${sizeClass} ${colorClass}`}>{value}%</span>;
 }
 
 /** Three-state position icon. ACTED_FOR = brick-red ✓, ACTED_AGAINST = solid

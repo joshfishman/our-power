@@ -762,6 +762,30 @@ model RollCallPosition {
   @@index([voteId])
 }
 
+/// Per-bill cosponsorship record, scoped to (jurisdiction, congress, billType, billNumber).
+/// Distinct from BillSponsorship (which only tracks markered bills). This table
+/// captures EVERY cosponsorship for any bill that appears in our roll-call /
+/// classification universe, so v1.7 scoring can fold cosponsorship into the
+/// per-bill alignment tally. Aligned bills classified to a plank pull in
+/// cosponsors as +1 aligned signals even when the legislator did not cast a
+/// recorded vote (or when no recorded vote ever happened).
+model BillCosponsor {
+  id              String       @id @default(cuid())
+  jurisdiction    Jurisdiction
+  congressNumber  Int
+  billType        String
+  billNumber      String
+  legislator      Legislator   @relation(fields: [legislatorId], references: [id], onDelete: Cascade)
+  legislatorId    String
+  cosponsoredAt   DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@unique([jurisdiction, congressNumber, billType, billNumber, legislatorId])
+  @@index([jurisdiction, congressNumber, billType, billNumber])
+  @@index([legislatorId])
+}
+
 model Legislator {
   // Primary key is bioguideId for federal, openStatesId for CA.
   // We use a generic cuid id to keep the model uniform; bioguideId/openStatesId are unique secondary keys.
@@ -791,6 +815,7 @@ model Legislator {
   billVotes        BillVote[]
   billSponsorships BillSponsorship[]
   rollCallPositions RollCallPosition[]
+  billCosponsorships BillCosponsor[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -114,18 +114,22 @@ export async function findLegislatorByAnyId(id: string) {
  * Computes a total score across published plank scores.
  *
  * v1.5 and earlier: per-plank score is a signed integer; total = sum.
- * v1.6 (current): per-plank score is a 0-100 alignment percentage; total
- * is the MEAN across planks (not the sum, which would exceed 100).
+ * v1.6: per-plank score is a 0-100 alignment percentage; total is the
+ *       MEAN across planks (not the sum, which would exceed 100).
+ * v1.7 (current): per-plank score is the same shape as v1.6 (bill-level
+ *       alignment percent, with cosponsorship folded in). The "total"
+ *       under v1.7 is just the per-plank mean — i.e. the legislator's
+ *       Voting Record. The Average of (PAC, Voting) is computed by
+ *       `computeTwoScoreAverage` below, NOT by this helper.
  *
- * Behavior: under v1.6 each plank stores an alignment percent in `score`,
- * so summing would compound. We detect v1.6-shaped data when every score
- * sits in [0, 100] and average instead.
+ * Behavior: when every score sits in [0, 100] we treat it as v1.6/v1.7-shaped
+ * (alignment percent) and average. Otherwise we fall back to v1.5 signed sum.
  *
  * Returns null if no scores are published yet (used to render "pending").
  */
 export function computePublishedTotal(scores: Array<{ score: number }>): number | null {
   if (scores.length === 0) return null;
-  // v1.6 heuristic: all scores in [0, 100] → treat as alignment percent and average.
+  // v1.6/v1.7 heuristic: all scores in [0, 100] → treat as alignment percent and average.
   const allInPercentRange = scores.every((s) => s.score >= 0 && s.score <= 100);
   if (allInPercentRange) {
     const sum = scores.reduce((acc, s) => acc + s.score, 0);
@@ -133,6 +137,71 @@ export function computePublishedTotal(scores: Array<{ score: number }>): number 
   }
   // v1.5 fallback: signed integer sum.
   return scores.reduce((acc, s) => acc + s.score, 0);
+}
+
+/**
+ * v1.7 — corporate-PAC score for one legislator.
+ *
+ * Score = (1 − combined_corporate_ratio) × 100, clamped to [0, 100].
+ *
+ * `combined_corporate_ratio` reads the legislator's most-recent PacMoneyData
+ * row (any cycle, any source). If no PAC data exists we return null and the
+ * page renders a "no PAC data" badge instead of a misleading 100%.
+ */
+export async function getLegislatorPacScore(legislatorId: string): Promise<number | null> {
+  const row = await prisma.pacMoneyData.findFirst({
+    where: { legislatorId },
+    orderBy: [{ dataSource: 'asc' }, { cycleYear: 'desc' }],
+    select: { combinedCorporateRatio: true, corporatePacPercentage: true },
+  });
+  if (!row) return null;
+  const ratioRaw = row.combinedCorporateRatio ?? row.corporatePacPercentage;
+  if (ratioRaw === null) return null;
+  const ratio = Number(ratioRaw);
+  if (!Number.isFinite(ratio)) return null;
+  return Math.max(0, Math.min(100, Math.round((1 - ratio) * 100)));
+}
+
+/**
+ * v1.7 — combine PAC + Voting into a single average. Either input can be
+ * null (e.g. no PAC data, or no voting record yet); when one is missing we
+ * return the other unrounded.
+ */
+export function computeTwoScoreAverage(pacScore: number | null, votingScore: number | null): number | null {
+  if (pacScore === null && votingScore === null) return null;
+  if (pacScore === null) return votingScore;
+  if (votingScore === null) return pacScore;
+  return Math.round((pacScore + votingScore) / 2);
+}
+
+/**
+ * v1.7 — bulk PAC scores for a list of legislators. Used by the index page
+ * so we don't fire N+1 queries. Returns a Map<legislatorId, score|null>.
+ */
+export async function getPacScoresByLegislator(legislatorIds: string[]): Promise<Map<string, number | null>> {
+  if (legislatorIds.length === 0) return new Map();
+  // Most-recent PAC row per legislator. We use DISTINCT ON in raw SQL since
+  // Prisma doesn't expose it directly — the per-row dataSource priority is
+  // already deterministic via ORDER BY.
+  const rows = await prisma.$queryRaw<
+    Array<{ legislatorId: string; combinedCorporateRatio: number | null; corporatePacPercentage: number | null }>
+  >`
+    SELECT DISTINCT ON ("legislatorId")
+      "legislatorId",
+      "combinedCorporateRatio"::float AS "combinedCorporateRatio",
+      "corporatePacPercentage"::float AS "corporatePacPercentage"
+    FROM "PacMoneyData"
+    WHERE "legislatorId" = ANY(${legislatorIds})
+    ORDER BY "legislatorId" ASC, "dataSource" ASC, "cycleYear" DESC
+  `;
+  const out = new Map<string, number | null>();
+  for (const id of legislatorIds) out.set(id, null);
+  for (const r of rows) {
+    const ratio = r.combinedCorporateRatio ?? r.corporatePacPercentage;
+    if (ratio === null || ratio === undefined || !Number.isFinite(ratio)) continue;
+    out.set(r.legislatorId, Math.max(0, Math.min(100, Math.round((1 - ratio) * 100))));
+  }
+  return out;
 }
 
 /**
