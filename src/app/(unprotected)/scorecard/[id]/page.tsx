@@ -252,23 +252,28 @@ function HeroPercent({
   scores: Array<{ forCount?: number | null; againstCount?: number | null }>;
 }) {
   const percent = Math.round(rawToPercent(total, calibration.positiveAnchor, calibration.negativeAnchor));
+  // v1.6 — steep gradient inside the 30-70% band where the real distribution lives.
   const colorClass =
-    percent > 50
+    percent >= 70
       ? 'text-green-700'
-      : percent > 0
+      : percent >= 60
       ? 'text-green-600'
-      : percent === 0
-      ? 'text-gray-500'
-      : percent > -50
+      : percent >= 55
+      ? 'text-lime-600'
+      : percent >= 50
+      ? 'text-yellow-600'
+      : percent >= 45
+      ? 'text-amber-600'
+      : percent >= 40
+      ? 'text-orange-600'
+      : percent >= 30
       ? 'text-red-500'
       : 'text-red-700';
-  const sumFor = scores.reduce((s, ps) => s + (ps.forCount ?? 0), 0);
-  const sumAgainst = scores.reduce((s, ps) => s + (ps.againstCount ?? 0), 0);
   return (
     <div>
       <p className={`font-serif text-6xl font-bold tabular-nums ${colorClass}`}>{percent}%</p>
       <p className="mt-1 font-mono text-xs uppercase tracking-widest text-gray-500">
-        Score · raw {total} · {sumFor} for · {sumAgainst} against
+        Aligned across {scores.length} plank{scores.length === 1 ? '' : 's'}
       </p>
     </div>
   );
