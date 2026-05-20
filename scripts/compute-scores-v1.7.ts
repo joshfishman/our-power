@@ -26,7 +26,7 @@ import './load-env';
 import { PrismaClient } from '../src/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 
-const METHODOLOGY_VERSION = 'v1.7';
+const METHODOLOGY_VERSION = 'v1.7.1';
 
 const adapter = new PrismaPg({
   connectionString: process.env.DIRECT_URL || process.env.DATABASE_URL!,
@@ -153,6 +153,94 @@ async function main(): Promise<void> {
   const plankIdByJurNum = new Map<string, string>();
   for (const p of planks) plankIdByJurNum.set(`${p.jurisdiction}|${p.number}`, p.id);
 
+  // 4a. v1.7.1 — load Marker scoring slots from BillSponsorship.
+  //
+  // Why: 32 of 33 federal marker bills never reached a roll-call vote (e.g.
+  // H.Con.Res.38 war powers — 94 sponsors but no floor action). v1.7 looked
+  // only at roll-call universe + BillCosponsor and missed all of them.
+  // A senator who cosponsored zero marker bills inflated to 100% off 11
+  // routine party-line votes; a House member who sponsored a marker bill
+  // didn't see the credit. v1.7.1 adds markers as cross-chamber scoring
+  // slots: every federal leg is scored on every federal marker, every CA
+  // leg on every CA marker. Aligned iff sponsorship row exists for any of
+  // the marker's bills.
+  //
+  // Markers without bills (e.g. "Refuses corporate PAC money") are skipped —
+  // the PAC Score already handles that signal as its own headline number.
+  const markers = await prisma.marker.findMany({
+    include: {
+      plank: { select: { number: true, jurisdiction: true } },
+      bills: {
+        select: {
+          id: true,
+          congressNumber: true,
+          billType: true,
+          billNumber: true,
+          sponsorships: { select: { legislatorId: true } },
+        },
+      },
+    },
+  });
+  interface MarkerSlot {
+    markerId: string;
+    plankNumber: number;
+    jurisdiction: Jurisdiction;
+    alignedLegIds: Set<string>;
+  }
+  // Normalize MarkerBill billType + billNumber → BillCosponsor's storage form,
+  // so we can union with the freshly-ingested marker cosponsor rows.
+  const STORAGE_TYPE_MAP: Record<string, string> = {
+    HOUSE_BILL: 'HR',
+    SENATE_BILL: 'S',
+    HOUSE_JOINT_RES: 'HJRES',
+    SENATE_JOINT_RES: 'SJRES',
+    HOUSE_CONCURRENT_RES: 'HCONRES',
+    SENATE_CONCURRENT_RES: 'SCONRES',
+    HOUSE_RES: 'HRES',
+    SENATE_RES: 'SRES',
+    CA_ASSEMBLY_BILL: 'CA_BILL',
+    CA_SENATE_BILL: 'CA_BILL',
+    CA_HOUSE_BILL: 'CA_BILL',
+  };
+  function stripBillNum(raw: string): string | null {
+    const m = raw.match(/\d+/);
+    return m ? m[0] : null;
+  }
+  const markerSlots: MarkerSlot[] = [];
+  for (const m of markers) {
+    if (m.bills.length === 0) continue; // bill-less markers (PAC) handled elsewhere
+    const jur = m.plank.jurisdiction as Jurisdiction;
+    const aligned = new Set<string>();
+    // Source A: legacy BillSponsorship (curated, partial coverage)
+    for (const b of m.bills) for (const s of b.sponsorships) aligned.add(s.legislatorId);
+    // Source B: BillCosponsor — full Congress.gov-sourced rows ingested via
+    // ingest-marker-cosponsors.ts. This gives uniform coverage across all 538
+    // federal legs (and CA via ingest-cosponsors-ca.ts) so a senator who
+    // sponsored a marker bill registers regardless of whether the older
+    // BillSponsorship ingest picked them up.
+    for (const b of m.bills) {
+      const storageType = STORAGE_TYPE_MAP[b.billType];
+      if (!storageType) continue;
+      const num = stripBillNum(b.billNumber);
+      if (!num) continue;
+      const billNumStored = jur === 'CA' ? b.billNumber : num;
+      const cosponsorKey = `${jur}|${storageType}|${billNumStored}`;
+      const ids = cosponsorsByBill.get(cosponsorKey);
+      if (ids) for (const id of ids) aligned.add(id);
+    }
+    markerSlots.push({
+      markerId: m.id,
+      plankNumber: m.plank.number,
+      jurisdiction: jur,
+      alignedLegIds: aligned,
+    });
+  }
+  console.log(
+    `[compute-v17] ${markerSlots.length} marker scoring slots loaded (${
+      markers.length - markerSlots.length
+    } bill-less markers skipped)`,
+  );
+
   // 5. For each (leg, plank): count aligned_bills / total_bills.
   //    A bill is in the leg's universe if:
   //      - bill.chamber matches leg's chamber (House/Senate gating)
@@ -204,6 +292,24 @@ async function main(): Promise<void> {
         if (isAlignedOnBill) cur.aligned += 1;
         perPlank[plankNum] = cur;
       }
+    }
+
+    // v1.7.1 — marker scoring slots. Cross-chamber: every federal leg is
+    // scored on every federal marker (and CA leg on every CA marker), since
+    // the marker captures a cross-chamber policy goal even when its specific
+    // bills sit in one chamber. Aligned iff the leg sponsored any of the
+    // marker's seeded bills.
+    for (const slot of markerSlots) {
+      if (slot.jurisdiction !== legJur) continue;
+      const plankId = plankIdByJurNum.get(`${legJur}|${slot.plankNumber}`);
+      if (!plankId) continue;
+      const aligned = slot.alignedLegIds.has(leg.id);
+      overallTotal += 1;
+      if (aligned) overallAligned += 1;
+      const cur = perPlank[slot.plankNumber] ?? { aligned: 0, total: 0 };
+      cur.total += 1;
+      if (aligned) cur.aligned += 1;
+      perPlank[slot.plankNumber] = cur;
     }
 
     for (const [plankNumStr, t] of Object.entries(perPlank)) {
@@ -295,9 +401,9 @@ async function main(): Promise<void> {
           row.aligned,
           row.total - row.aligned,
           METHODOLOGY_VERSION,
-          `aligned=${row.aligned}, total=${row.total}, percent=${row.percent.toFixed(
+          `v1.7.1: aligned=${row.aligned}, total=${row.total}, percent=${row.percent.toFixed(
             2,
-          )} (bill-level, includes cosponsorship)`,
+          )} (bill-level: roll-call ∪ cosponsorship ∪ marker-sponsorship)`,
           flags.publish ? now : null,
         );
         return `(gen_random_uuid()::text, $${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${

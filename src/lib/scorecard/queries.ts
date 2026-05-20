@@ -205,6 +205,260 @@ export async function getPacScoresByLegislator(legislatorIds: string[]): Promise
 }
 
 /**
+ * v1.7.1 — Bill-level breakdown of one legislator's scoring universe.
+ *
+ * Returns, for every plank, the bills that contribute to the legislator's
+ * Voting Score and how they were counted: voted aligned, voted misaligned,
+ * no vote on record, cosponsored, or sponsored as a marker bill.
+ *
+ * Used by the legislator detail page to make every percent traceable to
+ * the specific bills behind it. A 38% on Plank 2 means "of the X
+ * plank-2-tagged bills in your chamber, you supported Y" — and here are
+ * the X bills with your position on each.
+ *
+ * Returns: Map<plankNumber, { bills: BillBreakdownRow[] }>
+ */
+export interface BillBreakdownRow {
+  billType: string;
+  billNumber: string;
+  billTitle: string | null;
+  source: 'rollcall' | 'marker'; // which side of the universe this bill came from
+  alignedPosition: 'YES' | 'NO' | null; // what was the platform-aligned position
+  legPosition: 'YES' | 'NO' | 'NOT_VOTING' | 'EXCUSED' | 'PRESENT' | null; // null = no vote on record
+  cosponsored: boolean;
+  isAligned: boolean; // final v1.7.1 decision: did this leg support this bill?
+  markerName: string | null; // populated only when source = 'marker'
+}
+
+export interface PlankBreakdown {
+  plankNumber: number;
+  bills: BillBreakdownRow[];
+}
+
+export async function getLegislatorBillBreakdown(
+  legislatorId: string,
+  jurisdiction: ScorecardJurisdiction,
+  legChamber: 'SEN' | 'REP',
+): Promise<Map<number, PlankBreakdown>> {
+  // 1. Roll-call universe (chamber-gated). Same filter the compute uses.
+  const rcChambers =
+    jurisdiction === 'FEDERAL'
+      ? legChamber === 'SEN'
+        ? ['SENATE']
+        : ['HOUSE']
+      : legChamber === 'SEN'
+      ? ['CA_SENATE']
+      : ['CA_ASSEMBLY'];
+  const rcVotes = await prisma.rollCallVote.findMany({
+    where: {
+      isScorable: true,
+      alignedPosition: { not: null },
+      plankNumbers: { isEmpty: false },
+      chamber: { in: rcChambers as ('SENATE' | 'HOUSE' | 'CA_SENATE' | 'CA_ASSEMBLY')[] },
+    },
+    select: {
+      id: true,
+      billType: true,
+      billNumber: true,
+      billTitle: true,
+      plankNumbers: true,
+      alignedPosition: true,
+      positions: { where: { legislatorId }, select: { position: true } },
+    },
+  });
+
+  // 2. Legislator's cosponsor set (jurisdiction-scoped).
+  const cosponsors = await prisma.billCosponsor.findMany({
+    where: { legislatorId, jurisdiction },
+    select: { billType: true, billNumber: true },
+  });
+  const cosponsorKeys = new Set(cosponsors.map((c) => `${c.billType}|${c.billNumber}`));
+
+  // 3. Marker bills for this jurisdiction. Match compute logic.
+  const markers = await prisma.marker.findMany({
+    where: { plank: { jurisdiction } },
+    include: {
+      plank: { select: { number: true } },
+      bills: {
+        select: {
+          billType: true,
+          billNumber: true,
+          billTitle: true,
+        },
+      },
+    },
+  });
+
+  const STORAGE_TYPE_MAP: Record<string, string> = {
+    HOUSE_BILL: 'HR',
+    SENATE_BILL: 'S',
+    HOUSE_JOINT_RES: 'HJRES',
+    SENATE_JOINT_RES: 'SJRES',
+    HOUSE_CONCURRENT_RES: 'HCONRES',
+    SENATE_CONCURRENT_RES: 'SCONRES',
+    HOUSE_RES: 'HRES',
+    SENATE_RES: 'SRES',
+    CA_ASSEMBLY_BILL: 'CA_BILL',
+    CA_SENATE_BILL: 'CA_BILL',
+    CA_HOUSE_BILL: 'CA_BILL',
+  };
+  const stripBillNum = (raw: string) => raw.match(/\d+/)?.[0] ?? null;
+
+  const byPlank = new Map<number, PlankBreakdown>();
+  // Use bill-level dedup keyed by (storage-form billType|billNumber). A bill
+  // may surface from BOTH roll-call and marker sources — we keep the marker
+  // metadata if so but use whichever path has more information.
+  const seen = new Map<number, Set<string>>(); // plank → bill key set
+
+  // 1a. Reduce roll-call votes into bill-level aggregates (the compute does
+  // the same — pick the leg's most-aligned position across multiple roll
+  // calls on the same bill).
+  interface BillAgg {
+    chamber: string;
+    billType: string;
+    billNumber: string;
+    billTitle: string | null;
+    plankNumbers: number[];
+    alignedPosition: 'YES' | 'NO';
+    legPosition: 'YES' | 'NO' | 'NOT_VOTING' | 'EXCUSED' | 'PRESENT' | null;
+    votedAligned: boolean;
+  }
+  const billAggs = new Map<string, BillAgg>();
+  for (const v of rcVotes) {
+    if (!v.billType || !v.billNumber || !v.alignedPosition) continue;
+    const key = `${v.billType}|${v.billNumber}`;
+    const legPos = v.positions[0]?.position ?? null;
+    const isAligned = legPos === v.alignedPosition;
+    const existing = billAggs.get(key);
+    if (!existing) {
+      billAggs.set(key, {
+        chamber: rcChambers[0],
+        billType: v.billType,
+        billNumber: v.billNumber,
+        billTitle: v.billTitle ?? null,
+        plankNumbers: [...v.plankNumbers],
+        alignedPosition: v.alignedPosition as 'YES' | 'NO',
+        legPosition: legPos as BillAgg['legPosition'],
+        votedAligned: isAligned,
+      });
+    } else {
+      for (const p of v.plankNumbers) if (!existing.plankNumbers.includes(p)) existing.plankNumbers.push(p);
+      if (isAligned) existing.votedAligned = true;
+      if (existing.legPosition === null && legPos) existing.legPosition = legPos as BillAgg['legPosition'];
+    }
+  }
+
+  function pushRow(plankNum: number, row: BillBreakdownRow) {
+    let pb = byPlank.get(plankNum);
+    if (!pb) {
+      pb = { plankNumber: plankNum, bills: [] };
+      byPlank.set(plankNum, pb);
+    }
+    pb.bills.push(row);
+    let s = seen.get(plankNum);
+    if (!s) {
+      s = new Set();
+      seen.set(plankNum, s);
+    }
+    s.add(`${row.billType}|${row.billNumber}`);
+  }
+
+  // 4. Emit roll-call rows.
+  for (const a of billAggs.values()) {
+    const cosponsored = cosponsorKeys.has(`${a.billType}|${a.billNumber}`);
+    const isAligned = a.votedAligned || cosponsored;
+    for (const plankNum of a.plankNumbers) {
+      pushRow(plankNum, {
+        billType: a.billType,
+        billNumber: a.billNumber,
+        billTitle: a.billTitle,
+        source: 'rollcall',
+        alignedPosition: a.alignedPosition,
+        legPosition: a.legPosition,
+        cosponsored,
+        isAligned,
+        markerName: null,
+      });
+    }
+  }
+
+  // 5. Emit marker rows (cross-chamber; dedup against roll-call rows).
+  for (const m of markers) {
+    if (m.bills.length === 0) continue;
+    const plankNum = m.plank.number;
+    const alreadyHave = seen.get(plankNum);
+    // Compute alignment ACROSS all of the marker's bills — sponsoring any of
+    // them counts as aligned on the marker. Pick the bill with the most-aligned
+    // signal (sponsored > anything) as the representative row.
+    let representative: BillBreakdownRow | null = null;
+    let anyAligned = false;
+    for (const b of m.bills) {
+      const storageType = STORAGE_TYPE_MAP[b.billType];
+      if (!storageType) continue;
+      const num = stripBillNum(b.billNumber);
+      if (!num) continue;
+      const billNumStored = jurisdiction === 'CA' ? b.billNumber : num;
+      const key = `${storageType}|${billNumStored}`;
+      // Skip if this exact bill is already counted via roll-call universe —
+      // it's already in the breakdown for this plank.
+      if (alreadyHave?.has(key)) {
+        // But the existing row may not credit cosponsorship of THIS marker's
+        // bill if it wasn't in the leg's cosponsor set. The compute counts
+        // marker-bill-sponsored as aligned regardless, so flag it.
+        // For UI simplicity we'll leave the roll-call row as-is — it already
+        // has the cosponsored flag if it applies.
+        const cosp = cosponsorKeys.has(key);
+        if (cosp) anyAligned = true;
+        if (!representative && cosp)
+          representative = {
+            billType: storageType,
+            billNumber: billNumStored,
+            billTitle: b.billTitle ?? null,
+            source: 'marker',
+            alignedPosition: 'YES',
+            legPosition: null,
+            cosponsored: cosp,
+            isAligned: cosp,
+            markerName: m.name,
+          };
+        continue;
+      }
+      const cosp = cosponsorKeys.has(key);
+      if (cosp) anyAligned = true;
+      if (!representative || (cosp && !representative.cosponsored)) {
+        representative = {
+          billType: storageType,
+          billNumber: billNumStored,
+          billTitle: b.billTitle ?? null,
+          source: 'marker',
+          alignedPosition: 'YES',
+          legPosition: null,
+          cosponsored: cosp,
+          isAligned: cosp,
+          markerName: m.name,
+        };
+      }
+    }
+    if (representative) {
+      representative.isAligned = anyAligned;
+      pushRow(plankNum, representative);
+    }
+  }
+
+  // 6. Sort each plank's bills: aligned first, then by bill number.
+  for (const pb of byPlank.values()) {
+    pb.bills.sort((a, b) => {
+      if (a.isAligned !== b.isAligned) return a.isAligned ? -1 : 1;
+      // Marker bills (cosponsorship-driven) above pure roll-call when aligned same
+      if (a.source !== b.source) return a.source === 'marker' ? -1 : 1;
+      return a.billNumber.localeCompare(b.billNumber, undefined, { numeric: true });
+    });
+  }
+
+  return byPlank;
+}
+
+/**
  * Per-plank coverage stat: how many of the plank's markers have a
  * three-state position record (ACTED_FOR or ACTED_AGAINST) for this
  * legislator. NO_RECORD markers are not counted as coverage. Used by
