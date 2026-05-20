@@ -9,7 +9,9 @@ import {
   computePlankCoverage,
   getLegislatorPacScore,
   computeTwoScoreAverage,
+  getLegislatorBillBreakdown,
 } from '@/lib/scorecard/queries';
+import type { BillBreakdownRow } from '@/lib/scorecard/queries';
 import { METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
 import { LegislatorAvatar } from '@/components/scorecard/LegislatorAvatar';
 
@@ -57,6 +59,14 @@ export default async function LegislatorScorecardPage(props: Props) {
   const avgScore = computeTwoScoreAverage(pacScore, votingScore);
   const chamberLabel =
     jurisdiction === 'FEDERAL' ? CHAMBER_LABEL_FEDERAL[legislator.chamber] : CHAMBER_LABEL_STATE[legislator.chamber];
+
+  // v1.7.1 — per-plank bill breakdown. Every bill that contributes to each
+  // plank's score, with the legislator's position (vote and/or cosponsorship).
+  const billBreakdown = await getLegislatorBillBreakdown(
+    legislator.id,
+    jurisdiction,
+    legislator.chamber as 'SEN' | 'REP',
+  );
 
   // Index achievements by markerId for fast lookup in the per-plank grid.
   const achievementByMarker = new Map(legislator.achievements.map((a) => [a.markerId, a]));
@@ -154,6 +164,8 @@ export default async function LegislatorScorecardPage(props: Props) {
                     : `Based on ${coverage.measuredMarkers} of ${coverage.totalMarkers} markers measured · ${coverage.forCount} for · ${coverage.againstCount} against`}
                 </p>
               )}
+
+              <BillBreakdownList breakdown={billBreakdown.get(plank.number)?.bills ?? []} />
 
               {(() => {
                 // Only render markers where this legislator has a recorded
@@ -509,5 +521,77 @@ function NoRecordOpportunities({
         )}
       </ul>
     </section>
+  );
+}
+
+/** v1.7.1 — per-plank bill list. Shows every bill in the leg's universe with
+ *  the position (✓ aligned vote, ✗ misaligned vote, — no vote) plus tier badges
+ *  for cosponsor / marker-sponsor. Empty list renders nothing — the plank's
+ *  score is still pending if we have no data. */
+function BillBreakdownList({ breakdown }: { breakdown: BillBreakdownRow[] }) {
+  if (breakdown.length === 0) return null;
+  return (
+    <div className="mt-3 space-y-1">
+      <p className="font-mono text-[10px] uppercase tracking-widest text-gray-500">
+        {breakdown.filter((b) => b.isAligned).length} aligned of {breakdown.length} bills
+      </p>
+      <ul className="divide-y divide-gray-200 rounded border border-gray-200 text-sm">
+        {breakdown.map((b) => (
+          <li key={`${b.source}|${b.billType}|${b.billNumber}`} className="flex items-center gap-2 px-3 py-1.5">
+            <BillPositionIcon row={b} />
+            <span className="font-mono text-xs text-gray-600">
+              {b.billType}/{b.billNumber}
+            </span>
+            <span className="flex-1 truncate text-sm text-gray-800">
+              {b.markerName ? <span className="italic text-gray-500">{b.markerName} · </span> : null}
+              {b.billTitle ?? <span className="text-gray-400">(no title)</span>}
+            </span>
+            {b.cosponsored && (
+              <span className="rounded bg-[#8B3A3A] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide text-white">
+                cosponsor
+              </span>
+            )}
+            {b.source === 'marker' && !b.cosponsored && (
+              <span className="rounded border border-gray-300 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide text-gray-500">
+                marker
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** Icon column for the bill breakdown. Communicates the leg's relationship to
+ *  the bill in one glyph:
+ *    ✓ — aligned: voted aligned OR cosponsored (final v1.7.1 decision)
+ *    ✗ — voted misaligned
+ *    — — no recorded vote, no cosponsorship */
+function BillPositionIcon({ row }: { row: BillBreakdownRow }) {
+  if (row.isAligned) {
+    return (
+      <span
+        title={row.cosponsored ? 'Cosponsored' : `Voted ${row.legPosition ?? 'aligned'}`}
+        className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green-600 text-xs font-bold text-white">
+        ✓
+      </span>
+    );
+  }
+  if (row.legPosition && row.legPosition !== row.alignedPosition) {
+    return (
+      <span
+        title={`Voted ${row.legPosition} (aligned position was ${row.alignedPosition})`}
+        className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white">
+        ✗
+      </span>
+    );
+  }
+  return (
+    <span
+      title="No recorded vote or cosponsorship"
+      className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-dashed border-gray-400 text-xs text-gray-400">
+      —
+    </span>
   );
 }
