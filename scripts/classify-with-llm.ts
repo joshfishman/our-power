@@ -28,18 +28,30 @@ const prisma = new PrismaClient({ adapter });
 interface CliFlags {
   dryRun: boolean;
   reclassifyAll: boolean;
+  force: boolean;
   limit: number;
 }
 
 function parseFlags(argv: string[]): CliFlags {
-  const flags: CliFlags = { dryRun: false, reclassifyAll: false, limit: 0 };
+  const flags: CliFlags = { dryRun: false, reclassifyAll: false, force: false, limit: 0 };
   for (const arg of argv.slice(2)) {
     if (arg === '--dry-run') flags.dryRun = true;
     else if (arg === '--reclassify-all') flags.reclassifyAll = true;
+    else if (arg === '--force') flags.force = true;
     else if (arg.startsWith('--limit=')) flags.limit = Number(arg.split('=')[1]);
   }
   return flags;
 }
+
+// v1.6.2 — classification stability gates. A classification is "locked" if
+// it was either reviewed by a human OR has high model confidence. Default
+// behavior: skip locked rows so re-runs of classify-llm don't churn
+// already-good classifications (which caused calibration drift between
+// v1.6 spot-checks and the federal compute).
+//
+// Override with --force to bypass the lock (useful when the system prompt
+// or methodology has changed and you want a full re-classification).
+const LOCK_CONFIDENCE_THRESHOLD = 0.85;
 
 const SYSTEM_PROMPT = `You are a methodology analyst for the Common Ground civic scorecard, a cross-partisan accountability rating for U.S. Congress.
 
@@ -180,16 +192,36 @@ async function main(): Promise<void> {
 
   // Pull unique bills from RollCallVote. We classify per bill (one LLM call),
   // then apply the classification to all votes on that bill.
+  //
+  // v1.6.2 lock semantics:
+  //   - Default mode: classify only bills that are low-confidence (< 0.8) or
+  //     never-classified. Locked rows (reviewed OR confidence ≥ 0.85) are
+  //     skipped. This is the right behavior 99% of the time.
+  //   - --reclassify-all: classify every bill except locked ones. Useful
+  //     when expanding the LLM coverage to bills we deliberately skipped.
+  //   - --force: classify EVERYTHING, even locked rows. Use when methodology
+  //     or system prompt has changed and you genuinely want to overwrite
+  //     prior decisions.
+  const baseWhere: Record<string, unknown> = {
+    billNumber: { not: null },
+    billType: { not: null },
+  };
+  if (!flags.force) {
+    // Skip human-reviewed rows always (unless --force)
+    baseWhere.reviewedAt = null;
+    // Skip high-confidence LLM rows always (unless --force)
+    baseWhere.OR = [
+      { classificationConfidence: { lt: LOCK_CONFIDENCE_THRESHOLD } },
+      { classificationConfidence: null },
+    ];
+  }
+  if (!flags.reclassifyAll && !flags.force) {
+    // Stricter default: also exclude anything already at the 0.8 floor.
+    baseWhere.OR = [{ classificationConfidence: { lt: 0.8 } }, { classificationConfidence: null }];
+  }
   let bills = await prisma.rollCallVote.groupBy({
     by: ['billType', 'billNumber', 'billTitle', 'billPolicyArea', 'billSubjects', 'billSponsorParty'],
-    where: {
-      billNumber: { not: null },
-      billType: { not: null },
-      // Default: only re-classify bills whose current classification is low-confidence
-      ...(flags.reclassifyAll
-        ? {}
-        : { OR: [{ classificationConfidence: { lt: 0.8 } }, { classificationConfidence: null }] }),
-    },
+    where: baseWhere,
     _count: { _all: true },
   });
   console.log(`[classify-llm] ${bills.length} unique bills to LLM-classify`);
@@ -265,8 +297,23 @@ async function main(): Promise<void> {
     const isScorable =
       c.result.plankNumbers.length > 0 && c.result.alignedPosition !== null && c.result.confidence >= 0.5;
     try {
+      // v1.6.2 defense-in-depth: even though the query filter above already
+      // excludes locked rows under normal flags, also gate the WHERE clause
+      // here so an admin re-classifying a single bill in --force mode still
+      // can't accidentally overwrite a human-reviewed row.
+      const writeWhere: Record<string, unknown> = {
+        billType: c.bill.billType,
+        billNumber: c.bill.billNumber,
+      };
+      if (!flags.force) {
+        writeWhere.reviewedAt = null;
+        writeWhere.OR = [
+          { classificationConfidence: { lt: LOCK_CONFIDENCE_THRESHOLD } },
+          { classificationConfidence: null },
+        ];
+      }
       const r = await prisma.rollCallVote.updateMany({
-        where: { billType: c.bill.billType, billNumber: c.bill.billNumber },
+        where: writeWhere,
         data: {
           plankNumbers: c.result.plankNumbers,
           alignedPosition: c.result.alignedPosition,
