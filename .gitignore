@@ -51,8 +51,17 @@ next-env.d.ts
 # so we ignore /data/* (contents) rather than /data/ (directory).
 /data/*
 !/data/manual-*.csv
+!/data/pac-candidates.csv
 /CA/
 
 # Claude Code / Cursor working directories
 /.claude/
 /.cursor/
+
+# FEC bulk data files (large, downloadable from fec.gov)
+/data/fec-bulk-*/*.txt
+/data/fec-bulk-*/*.zip
+
+# Inline classification batches (intermediate; final state is in pac-candidates.csv)
+/data/inline-classifications-batch*.json
+
