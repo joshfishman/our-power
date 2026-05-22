@@ -214,10 +214,10 @@ enum ActivityType {
   REPLY_LIKE
 
   // Our Power activity types
-  CAMPAIGN_JOIN        // User joined a campaign
-  ACTION_RSVP          // User RSVP'd to an action
-  ACTION_COMPLETED     // User completed an action
-  ACTION_REMINDER      // Reminder for upcoming action
+  CAMPAIGN_JOIN // User joined a campaign
+  ACTION_RSVP // User RSVP'd to an action
+  ACTION_COMPLETED // User completed an action
+  ACTION_REMINDER // Reminder for upcoming action
 }
 
 enum VisualMediaType {
@@ -247,7 +247,7 @@ model Organization {
   name        String
   description String?
   logoUrl     String?
-  imageUrl    String?    // Cover/banner image
+  imageUrl    String? // Cover/banner image
   website     String?
   managers    User[]     @relation("OrgManagers")
   campaigns   Campaign[]
@@ -256,23 +256,23 @@ model Organization {
   // null = not a formal Common Ground partner (default for any org in the
   // platform that isn't part of the movement coalition). USER, AFFILIATE,
   // ANCHOR map to the brief's three tiers.
-  cgPartnerTier            CgPartnerTier?
-  cgPartnerTierAssignedAt  DateTime?
+  cgPartnerTier           CgPartnerTier?
+  cgPartnerTierAssignedAt DateTime?
   // Free-form per-tier commitments (e.g. plank focus, Promise Day cadence).
   // Schema deliberately loose so brief refinements don't require migrations.
-  cgPartnerCommitments     Json?
+  cgPartnerCommitments    Json?
 
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([cgPartnerTier])
 }
 
 // Common Ground partnership tiers, per partner-pitch brief slide 08.
 enum CgPartnerTier {
-  USER       // open-license access. No commitments expected.
-  AFFILIATE  // public endorsement + one Promise Day per quarter.
-  ANCHOR     // staff time + seat on coordinating council.
+  USER // open-license access. No commitments expected.
+  AFFILIATE // public endorsement + one Promise Day per quarter.
+  ANCHOR // staff time + seat on coordinating council.
 }
 
 model Cause {
@@ -635,7 +635,7 @@ model MarkerBill {
   /// Shape: [{ date: string, chamber: 'A'|'S'|'X', action: string }, ...]
   /// We store as JSON rather than a separate table because the timeline is always
   /// rendered together and never queried individually.
-  procedureHistory  Json?
+  procedureHistory Json?
 
   votes        BillVote[]
   sponsorships BillSponsorship[]
@@ -658,16 +658,16 @@ enum VotePosition {
 }
 
 model BillVote {
-  id           String       @id @default(cuid())
-  bill         MarkerBill   @relation(fields: [billId], references: [id], onDelete: Cascade)
-  billId       String
-  legislator   Legislator   @relation(fields: [legislatorId], references: [id], onDelete: Cascade)
-  legislatorId String
-  position     VotePosition
-  voteDate     DateTime?
-  voteContext  String? // e.g. "Floor vote", "Committee on Health, 2024-01-11"
-  sourceUrl    String? // Permanent link back to the official roll record
-  isProvisional Boolean    @default(true) // Mirror MarkerBill provisionality — votes need source verification
+  id            String       @id @default(cuid())
+  bill          MarkerBill   @relation(fields: [billId], references: [id], onDelete: Cascade)
+  billId        String
+  legislator    Legislator   @relation(fields: [legislatorId], references: [id], onDelete: Cascade)
+  legislatorId  String
+  position      VotePosition
+  voteDate      DateTime?
+  voteContext   String? // e.g. "Floor vote", "Committee on Health, 2024-01-11"
+  sourceUrl     String? // Permanent link back to the official roll record
+  isProvisional Boolean      @default(true) // Mirror MarkerBill provisionality — votes need source verification
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -695,47 +695,47 @@ enum RollCallChamber {
 }
 
 model RollCallVote {
-  id              String          @id @default(cuid())
-  chamber         RollCallChamber
-  congressNumber  Int // 119 for federal current; CA session encoded as e.g. 20232024
-  sessionNumber   Int // 1 or 2 for federal; 1 for CA
-  rollCallNumber  Int // sequential within (chamber, congress, session)
-  voteDate        DateTime
-  voteQuestion    String // e.g. "On Passage", "On Motion to Suspend the Rules and Pass"
-  voteResult      String // "Passed" / "Failed" / "Agreed To"
-  voteType        String // e.g. "Yea-And-Nay", "2/3 Yea-And-Nay"
+  id             String          @id @default(cuid())
+  chamber        RollCallChamber
+  congressNumber Int // 119 for federal current; CA session encoded as e.g. 20232024
+  sessionNumber  Int // 1 or 2 for federal; 1 for CA
+  rollCallNumber Int // sequential within (chamber, congress, session)
+  voteDate       DateTime
+  voteQuestion   String // e.g. "On Passage", "On Motion to Suspend the Rules and Pass"
+  voteResult     String // "Passed" / "Failed" / "Agreed To"
+  voteType       String // e.g. "Yea-And-Nay", "2/3 Yea-And-Nay"
 
   // Bill / resolution linkage (null when vote isn't tied to a bill — e.g.
   // election of the speaker, censure, motion to table without a target).
-  billType        String? // HR / S / HJRES / SJRES / HCONRES / etc.
-  billNumber      String?
-  billTitle       String? // Bill official short title (cached from Congress.gov)
-  billPolicyArea  String? // Congress.gov policy-area label, e.g. "Energy"
-  billSubjects    Json? // Array<string> of Congress.gov legislative-subject tags
-  billSponsorParty String? // 'D' / 'R' / 'I' — needed for aligned-position inference
+  billType            String? // HR / S / HJRES / SJRES / HCONRES / etc.
+  billNumber          String?
+  billTitle           String? // Bill official short title (cached from Congress.gov)
+  billPolicyArea      String? // Congress.gov policy-area label, e.g. "Energy"
+  billSubjects        Json? // Array<string> of Congress.gov legislative-subject tags
+  billSponsorParty    String? // 'D' / 'R' / 'I' — needed for aligned-position inference
   billSponsorBioguide String? // bioguide id of first listed sponsor
 
   // v1.6 plank classification — one vote can hit multiple planks.
   // Empty array = "not plank-relevant" (procedural / off-topic) and the
   // vote contributes nothing to any score.
-  plankNumbers    Int[]
-  alignedPosition VotePosition? // YES or NO — what counts as platform-aligned
-  classificationConfidence  Float? // 0.0-1.0; LLM-reported (when LLM-classified)
-  classificationSource      String  @default("auto") // 'auto' | 'human' | 'auto-then-human'
-  classificationReasoning   String? @db.Text
-  classifiedAt              DateTime?
-  classifiedBy              String? // 'llm-claude-sonnet-4' | reviewer ID
-  reviewedAt                DateTime?
-  reviewedBy                String?
+  plankNumbers             Int[]
+  alignedPosition          VotePosition? // YES or NO — what counts as platform-aligned
+  classificationConfidence Float? // 0.0-1.0; LLM-reported (when LLM-classified)
+  classificationSource     String        @default("auto") // 'auto' | 'human' | 'auto-then-human'
+  classificationReasoning  String?       @db.Text
+  classifiedAt             DateTime?
+  classifiedBy             String? // 'llm-claude-sonnet-4' | reviewer ID
+  reviewedAt               DateTime?
+  reviewedBy               String?
 
   // Procedural-vote filter. Substantive votes (On Passage, etc.) get
   // isScorable=true after classification. Procedural votes (Previous
   // Question, Motion to Table, etc.) get false and don't drive scoring.
-  isScorable      Boolean @default(false)
+  isScorable Boolean @default(false)
 
-  sourceUrl       String? // Permalink to the roll-call detail
+  sourceUrl String? // Permalink to the roll-call detail
 
-  positions       RollCallPosition[]
+  positions RollCallPosition[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -770,14 +770,14 @@ model RollCallPosition {
 /// cosponsors as +1 aligned signals even when the legislator did not cast a
 /// recorded vote (or when no recorded vote ever happened).
 model BillCosponsor {
-  id              String       @id @default(cuid())
-  jurisdiction    Jurisdiction
-  congressNumber  Int
-  billType        String
-  billNumber      String
-  legislator      Legislator   @relation(fields: [legislatorId], references: [id], onDelete: Cascade)
-  legislatorId    String
-  cosponsoredAt   DateTime?
+  id             String       @id @default(cuid())
+  jurisdiction   Jurisdiction
+  congressNumber Int
+  billType       String
+  billNumber     String
+  legislator     Legislator   @relation(fields: [legislatorId], references: [id], onDelete: Cascade)
+  legislatorId   String
+  cosponsoredAt  DateTime?
 
   createdAt DateTime @default(now())
 
@@ -789,33 +789,36 @@ model BillCosponsor {
 model Legislator {
   // Primary key is bioguideId for federal, openStatesId for CA.
   // We use a generic cuid id to keep the model uniform; bioguideId/openStatesId are unique secondary keys.
-  id            String       @id @default(cuid())
-  jurisdiction  Jurisdiction
+  id               String       @id @default(cuid())
+  jurisdiction     Jurisdiction
   bioguideId       String?      @unique // Federal members of Congress
   openStatesId     String?      @unique // CA state legislators (and any other state expansion later)
   legiscanPeopleId Int?         @unique // LegiScan's people_id (federal + state)
-  firstName     String
-  lastName      String
-  fullName      String
-  chamber       Chamber
-  state         String // 2-letter state abbreviation
-  district      Int? // null for U.S. Senate; required for U.S. House and state legislatures
-  party         Party
+  firstName        String
+  lastName         String
+  fullName         String
+  chamber          Chamber
+  state            String // 2-letter state abbreviation
+  district         Int? // null for U.S. Senate; required for U.S. House and state legislatures
+  party            Party
   // Cross-system identifiers (federal)
-  opensecretsId String? // OpenSecrets CID
-  fecIds        String[] // FEC committee IDs (sometimes multiple)
-  govtrackId    Int?
-  photoUrl      String?
-  isActive      Boolean      @default(true)
+  opensecretsId    String? // OpenSecrets CID
+  fecIds           String[] // FEC committee IDs (sometimes multiple)
+  govtrackId       Int?
+  photoUrl         String?
+  isActive         Boolean      @default(true)
 
-  scores       RepresentativeScore[]
-  achievements MarkerAchievement[]
-  pacData      PacMoneyData[]
-  races        RaceCandidate[]
-  billVotes        BillVote[]
-  billSponsorships BillSponsorship[]
-  rollCallPositions RollCallPosition[]
+  scores             RepresentativeScore[]
+  achievements       MarkerAchievement[]
+  pacData            PacMoneyData[]
+  races              RaceCandidate[]
+  billVotes          BillVote[]
+  billSponsorships   BillSponsorship[]
+  rollCallPositions  RollCallPosition[]
   billCosponsorships BillCosponsor[]
+  pacContributions   PacContribution[]
+  // Leadership PACs sponsored by this legislator (set by map-leadership-pacs.ts).
+  leadershipPacs     PacClassification[] @relation("LegislatorLeadershipPacs")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -826,22 +829,22 @@ model Legislator {
 }
 
 model RepresentativeScore {
-  id                  String   @id @default(cuid())
-  legislator          Legislator @relation(fields: [legislatorId], references: [id], onDelete: Cascade)
-  legislatorId        String
-  plank               Plank    @relation(fields: [plankId], references: [id], onDelete: Cascade)
-  plankId             String
-  score               Int // signed integer under methodology v1.2 (+/-)
+  id                 String     @id @default(cuid())
+  legislator         Legislator @relation(fields: [legislatorId], references: [id], onDelete: Cascade)
+  legislatorId       String
+  plank              Plank      @relation(fields: [plankId], references: [id], onDelete: Cascade)
+  plankId            String
+  score              Int // signed integer under methodology v1.2 (+/-)
   // For/against counts stored alongside the score so the index page can
   // render "+N · X for · Y against" from a single source of truth. The
   // invariant `score = forCount - againstCount` must hold; both are
   // written atomically by compute-scores.
-  forCount            Int      @default(0)
-  againstCount        Int      @default(0)
-  computedAt          DateTime @default(now())
-  methodologyVersion  String // e.g. "v1.0"
-  notes               String?  @db.Text
-  publishedAt         DateTime? // null = unpublished/internal
+  forCount           Int        @default(0)
+  againstCount       Int        @default(0)
+  computedAt         DateTime   @default(now())
+  methodologyVersion String // e.g. "v1.0"
+  notes              String?    @db.Text
+  publishedAt        DateTime? // null = unpublished/internal
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -875,17 +878,17 @@ model BillSponsorship {
 }
 
 model MarkerAchievement {
-  id                String              @id @default(cuid())
-  legislator        Legislator          @relation(fields: [legislatorId], references: [id], onDelete: Cascade)
+  id                String             @id @default(cuid())
+  legislator        Legislator         @relation(fields: [legislatorId], references: [id], onDelete: Cascade)
   legislatorId      String
-  marker            Marker              @relation(fields: [markerId], references: [id], onDelete: Cascade)
+  marker            Marker             @relation(fields: [markerId], references: [id], onDelete: Cascade)
   markerId          String
   achieved          Boolean // Retained for back-compat with scoring engine; derived from actionTaken
   // Three-state position evidence — distinguishes "took the right side"
   // from "took the wrong side" from "no public record yet" so legislators
   // with limited data don't get penalized as if they opposed everything.
   // Absence of a row is the implicit fourth state: NO_RECORD.
-  actionTaken       AchievementStatus?  // null = legacy row written before three-state rollout
+  actionTaken       AchievementStatus? // null = legacy row written before three-state rollout
   // When the achievement comes from sponsorship (rather than a vote),
   // record the sponsor tier so the page can render an "Author" or
   // "Cosponsor" badge. Null when the achievement comes from a vote roll
@@ -893,11 +896,11 @@ model MarkerAchievement {
   sponsorTier       SponsorTier?
   evidenceType      EvidenceType
   evidenceSourceUrl String? // Public link the score traces to
-  evidenceNotes     String?             @db.Text
+  evidenceNotes     String?            @db.Text
   // v1.4 continuous marker score (currently used for PAC marker only — null for all
   // other achievement types). Scoring engine prefers this over the v1.3 integer
   // weight when present.
-  achievementScore  Decimal?            @db.Decimal(6, 2)
+  achievementScore  Decimal?           @db.Decimal(6, 2)
   verifiedAt        DateTime?
   verifiedBy        String? // User id or admin email; resolved at app layer
 
@@ -910,24 +913,134 @@ model MarkerAchievement {
   @@index([actionTaken])
 }
 
+/// v1.7.1 PAC classification — one row per FEC committee_id mapping to its
+/// taxonomy class. Populated from data/pac-candidates.csv. The CSV is the
+/// source of truth for human review; this table is the queryable mirror.
+/// committeeId is the FEC C00... id (or C9... for state-level filers).
+enum PacClass {
+  CORPORATE
+  DARK_MONEY
+  FOREIGN_POLICY
+  ACTIVIST
+  LABOR
+  LEADERSHIP
+  IDEOLOGICAL
+  CONDUIT
+  UNKNOWN
+}
+
+model PacClassification {
+  committeeId   String   @id // FEC committee_id, e.g. C00053553
+  name          String // PAC name
+  committeeType String? // Q, N, O, I, V, W, U, E
+  orgType       String?
+  connectedOrg  String?
+  class         PacClass
+  reason        String? // Why this classification (regex hit, override, llm)
+  source        String   @default("auto") // 'auto', 'inline', 'override', 'llm'
+  finalClass    String? // Human-locked final class (if set, overrides `class`)
+
+  // For LEADERSHIP PACs: the sitting legislator who sponsors this committee.
+  // Set by scripts/map-leadership-pacs.ts from cm.txt's CAND_ID linkage.
+  // Lets the detail page surface "leg X's leadership PAC took $Y from corp
+  // sources" as an informational signal separate from the PAC Score.
+  affiliatedLegislator   Legislator? @relation("LegislatorLeadershipPacs", fields: [affiliatedLegislatorId], references: [id])
+  affiliatedLegislatorId String?
+
+  contributions PacContribution[]
+
+  // Inflows TO this committee when it's a leadership PAC (one row per donor PAC + cycle)
+  inflowsReceived LeadershipPacInflow[] @relation("LeadershipPacInflowsReceived")
+  // Outflows FROM this committee when it's a donor to some leadership PAC
+  inflowsAsDonor  LeadershipPacInflow[] @relation("LeadershipPacInflowsAsDonor")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([class])
+  @@index([source])
+  @@index([affiliatedLegislatorId])
+}
+
+/// v1.7.2 — money flowing INTO a leadership PAC from another committee.
+/// Leadership PACs (cm.txt CMTE_DSGN='D') are sponsored by a sitting
+/// legislator but legally separate from their campaign. Corporate PACs
+/// often route money here because limits are looser. These dollars do NOT
+/// count toward the sponsor's PAC Score (it's not their campaign money)
+/// but are informational on the detail page: "this leg's leadership PAC
+/// took $X from corp sources" is an influence signal worth surfacing.
+model LeadershipPacInflow {
+  id                String              @id @default(cuid())
+  // The leadership PAC receiving the money. References PacClassification.committeeId.
+  leadershipPacId   String
+  leadershipPac     PacClassification?  @relation("LeadershipPacInflowsReceived", fields: [leadershipPacId], references: [committeeId])
+  // The donor committee sending the money.
+  donorCommitteeId  String
+  donor             PacClassification?  @relation("LeadershipPacInflowsAsDonor", fields: [donorCommitteeId], references: [committeeId])
+  cycleYear         Int
+  amount            Decimal             @db.Decimal(14, 2)
+
+  createdAt DateTime @default(now())
+
+  @@unique([leadershipPacId, donorCommitteeId, cycleYear])
+  @@index([leadershipPacId])
+  @@index([donorCommitteeId])
+}
+
+/// v1.7.1 per-(legislator, donor PAC, cycle, kind) contribution aggregate.
+/// Sourced from FEC bulk itpas2.txt across 2018/2020/2022/2024 cycles.
+/// kind distinguishes direct PAC-to-candidate contribs from JFC pass-throughs
+/// and Super PAC IE spending so the score / display can attribute by path.
+enum ContributionKind {
+  DIRECT // 24K — direct PAC contribution to candidate principal committee
+  JFC_FEED // 22Y — PAC-to-PAC transfer feeding the candidate's JFC (reserved, unused)
+  JFC_PASS_THROUGH // 22Y attributed to legislator — corp PAC → JFC → candidate principal, proportionally apportioned to the JFC's outbound recipients
+  IE_SUPPORT // 24E — Super PAC IE supporting THIS candidate
+  IE_OPPOSE // 24A — Super PAC IE OPPOSING this candidate (info only)
+}
+
+model PacContribution {
+  id                String             @id @default(cuid())
+  legislator        Legislator         @relation(fields: [legislatorId], references: [id], onDelete: Cascade)
+  legislatorId      String
+  pacClassification PacClassification? @relation(fields: [donorCommitteeId], references: [committeeId])
+  donorCommitteeId  String
+  cycleYear         Int
+  kind              ContributionKind
+  amount            Decimal            @db.Decimal(14, 2)
+  // For JFC_PASS_THROUGH rows: comma-separated list of JFC committee IDs that
+  // routed money from this corp PAC to this candidate (a corp PAC may have
+  // contributed to multiple JFCs that each apportioned to the candidate).
+  // For DIRECT / IE_SUPPORT / IE_OPPOSE rows: null. Informational only — the
+  // unique key still aggregates per (leg, donor, cycle, kind) so the score
+  // queries don't double-count.
+  viaJfcCommitteeIds String[]           @default([])
+
+  createdAt DateTime @default(now())
+
+  @@unique([legislatorId, donorCommitteeId, cycleYear, kind])
+  @@index([legislatorId, cycleYear])
+  @@index([donorCommitteeId])
+}
+
 model PacMoneyData {
-  id                     String        @id @default(cuid())
-  legislator             Legislator    @relation(fields: [legislatorId], references: [id], onDelete: Cascade)
-  legislatorId           String
-  cycleYear              Int // e.g. 2026
-  corporatePacAmount     Decimal       @db.Decimal(14, 2)
-  totalReceipts          Decimal       @db.Decimal(14, 2)
-  corporatePacPercentage Decimal       @db.Decimal(6, 4) // Stored as 0.0000-1.0000 for precision
+  id                               String        @id @default(cuid())
+  legislator                       Legislator    @relation(fields: [legislatorId], references: [id], onDelete: Cascade)
+  legislatorId                     String
+  cycleYear                        Int // e.g. 2026
+  corporatePacAmount               Decimal       @db.Decimal(14, 2)
+  totalReceipts                    Decimal       @db.Decimal(14, 2)
+  corporatePacPercentage           Decimal       @db.Decimal(6, 4) // Stored as 0.0000-1.0000 for precision
   // v1.4 IE breakdown (nullable; default 0 in queries). corporateIeAgainstSelfAmount
   // is disclosed in the PAC scoreboard but does NOT count toward the combined ratio.
-  corporateIeSupportAmount          Decimal?      @db.Decimal(14, 2)
-  corporateIeAgainstOpponentAmount  Decimal?      @db.Decimal(14, 2)
-  corporateIeAgainstSelfAmount      Decimal?      @db.Decimal(14, 2)
+  corporateIeSupportAmount         Decimal?      @db.Decimal(14, 2)
+  corporateIeAgainstOpponentAmount Decimal?      @db.Decimal(14, 2)
+  corporateIeAgainstSelfAmount     Decimal?      @db.Decimal(14, 2)
   // Cached v1.4 ratio: (direct corp + IE for + IE vs opponent) / (total receipts + same IE).
-  combinedCorporateRatio            Decimal?      @db.Decimal(6, 4)
-  dataSource             PacDataSource
-  dataSourceUrl          String? // Link back to the underlying filing or summary
-  fetchedAt              DateTime      @default(now())
+  combinedCorporateRatio           Decimal?      @db.Decimal(6, 4)
+  dataSource                       PacDataSource
+  dataSourceUrl                    String? // Link back to the underlying filing or summary
+  fetchedAt                        DateTime      @default(now())
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -944,17 +1057,17 @@ model PacMoneyData {
 /// ratio to count corporate IE spending against the legislator's opponents.
 /// Indexed for "who ran against legislator X in cycle Y" lookups.
 model RaceCandidate {
-  id                   String        @id @default(cuid())
-  legislator           Legislator?   @relation(fields: [legislatorId], references: [id], onDelete: SetNull)
-  legislatorId         String?
-  cycleYear            Int
-  jurisdiction         Jurisdiction
-  state                String
-  chamber              Chamber
-  district             Int?
-  externalCandidateId  String
-  candidateName        String
-  outcome              RaceOutcome
+  id                  String       @id @default(cuid())
+  legislator          Legislator?  @relation(fields: [legislatorId], references: [id], onDelete: SetNull)
+  legislatorId        String?
+  cycleYear           Int
+  jurisdiction        Jurisdiction
+  state               String
+  chamber             Chamber
+  district            Int?
+  externalCandidateId String
+  candidateName       String
+  outcome             RaceOutcome
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -977,22 +1090,22 @@ model ScoreCalibration {
 }
 
 model CommitteeClassification {
-  id            String            @id @default(cuid())
-  jurisdiction  Jurisdiction
-  committeeId   String // FEC committee ID for federal, Cal-Access filer ID for CA
-  committeeName String
-  category      CommitteeCategory
+  id              String            @id @default(cuid())
+  jurisdiction    Jurisdiction
+  committeeId     String // FEC committee ID for federal, Cal-Access filer ID for CA
+  committeeName   String
+  category        CommitteeCategory
   /// v1.5 — funding-model classification used by the scoring engine.
   /// MONEY = concentrated-wealth-funded (corporate / leadership-establishment /
   /// donor-class / party committees). PEOPLE = grassroots-funded (member dues,
   /// small-dollar mass contribution, worker organizations). The MONEY bucket
   /// is what counts negatively against legislators on Plank 1. Defaults to
   /// MONEY for conservative-attribution under v1.5.
-  motivationClass MotivationClass @default(MONEY)
-  sponsorName   String? // Sponsor org for sponsored committees (CA FPPC)
-  sourceNotes   String?           @db.Text // Public reasoning for the classification call
-  classifiedBy  String? // Reviewer identifier
-  classifiedAt  DateTime?
+  motivationClass MotivationClass   @default(MONEY)
+  sponsorName     String? // Sponsor org for sponsored committees (CA FPPC)
+  sourceNotes     String?           @db.Text // Public reasoning for the classification call
+  classifiedBy    String? // Reviewer identifier
+  classifiedAt    DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -8,6 +8,7 @@ import {
   computePublishedTotal,
   getScoreCalibration,
   getPacScoresByLegislator,
+  getPacScoresByLegislatorV171,
   computeTwoScoreAverage,
 } from '@/lib/scorecard/queries';
 import { METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
@@ -70,7 +71,19 @@ export default async function ScorecardIndexPage(props: { searchParams: Promise<
   void calibrationRow;
 
   // v1.7 — bulk PAC scores for everyone on this page, keyed by legislatorId.
-  const pacScoresById = await getPacScoresByLegislator(legislators.map((l) => l.id));
+  // v1.7.1 PAC scores come from PacContribution (computed live from FEC
+  // bulk data). For federal legs we use the new score; for CA legs (no FEC
+  // contribution data yet) we fall back to the legacy PacMoneyData number.
+  const legIds = legislators.map((l) => l.id);
+  const [v171ScoresById, legacyScoresById] = await Promise.all([
+    getPacScoresByLegislatorV171(legIds),
+    getPacScoresByLegislator(legIds),
+  ]);
+  const pacScoresById = new Map<string, number | null>();
+  for (const id of legIds) {
+    const v171 = v171ScoresById.get(id);
+    pacScoresById.set(id, v171 ?? legacyScoresById.get(id) ?? null);
+  }
 
   const buildHref = (overrides: Partial<SearchParams>): string => {
     const params = new URLSearchParams();

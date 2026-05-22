@@ -1,0 +1,28 @@
+## Curated leadership-PAC → sponsor-legislator mapping.
+##
+## ccl.txt (FEC's candidate-committee linkage file) only registers ~30 of
+## the ~800 leadership PACs in cm.txt because the candidate's principal
+## committee has to voluntarily declare the linkage. Most don't. This CSV
+## is a manual catch-all for high-profile leadership PACs whose sponsor
+## is publicly known but isn't in ccl.txt.
+##
+## Format: committee_id,bioguide_id,leadership_pac_name,sponsor_name,notes
+## Lines starting with # are skipped. The first non-comment, non-empty line
+## is treated as the header.
+##
+## Verification rule: a mapping enters this file ONLY after the committee_id
+## is verified in data/fec-bulk-{cycle}/cm.txt (CMTE_DSGN='D') and the
+## sponsor is verified via column 13 (CONNECTED_ORG_NM) which is typically
+## the candidate's last name in caps.
+##
+## This is a starter file. Add to it as you verify additional leadership
+## PACs (OpenSecrets and similar sources publish curated lists; cross-check
+## any entry against cm.txt before committing).
+committee_id,bioguide_id,leadership_pac_name,sponsor_name,notes
+C00467431,S001176,THE EYE OF THE TIGER POLITICAL ACTION COMMITTEE,Steve Scalise,House Republican Leader; cm.txt 2024 row CMTE_DSGN='D'
+C00235655,M000355,BLUEGRASS COMMITTEE,Mitch McConnell,cm.txt 2024 connected_org=MCCONNELL FOR MAJORITY LEADER COMMITTEE
+C00344234,P000197,PAC TO THE FUTURE,Nancy Pelosi,cm.txt 2024 connected_org=PELOSI
+C00271338,H000874,AMERIPAC: THE FUND FOR A GREATER AMERICA,Steny Hoyer,cm.txt 2024 connected_org=HOYER
+C00409003,T000250,HEARTLAND VALUES PAC,John Thune,cm.txt 2024 (Thune)
+C00748186,T000250,COMMONSENSE CONSERVATIVE VALUES PAC,John Thune,cm.txt 2024 second-leadership-PAC tied to HEARTLAND VALUES PAC
+C00617803,J000294,JOBS EDUCATION & FAMILIES FIRST (JEFF PAC),Hakeem Jeffries,cm.txt 2024 connected_org=JEFFRIES

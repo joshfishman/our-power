@@ -204,6 +204,320 @@ export async function getPacScoresByLegislator(legislatorIds: string[]): Promise
   return out;
 }
 
+// ─── v1.7.1 PAC scoring (from PacContribution table) ────────────────────────
+//
+// The v1.7.1 PAC Score is computed from per-(leg, donor, cycle, kind) rows
+// in PacContribution joined to the donor's class in PacClassification.
+//
+//   counts_against  = Σ amount where class ∈ {CORPORATE, DARK_MONEY,
+//                       FOREIGN_POLICY} AND kind ∈ {DIRECT, IE_SUPPORT}
+//   denominator     = principal-committee multi-cycle receipts
+//                     (PacMoneyData.totalReceipts summed) + Σ IE_SUPPORT
+//                     This matches the v1.7.1 spike: the denominator is the
+//                     legislator's total fundraising universe, not just PAC
+//                     dollars. Using a PAC-only denominator produced
+//                     misleadingly-low scores (Booker 75% vs spike 97%)
+//                     because incumbents raise most of their money from
+//                     individuals.
+//   PAC Score       = (1 − counts_against / denominator) × 100
+//
+// denominator = 0 → score is null (no PAC data, render "no data" badge).
+//
+// IE_OPPOSE is tracked separately (info-only): a Super PAC spending against
+// the legislator doesn't change their score either way.
+
+const COUNTS_AGAINST_CLASSES = ['CORPORATE', 'DARK_MONEY', 'FOREIGN_POLICY'] as const;
+
+export interface PacMoneyTrail {
+  countsAgainst: number; // $ from CORPORATE+DARK_MONEY+FOREIGN_POLICY (counted)
+  totalInfluence: number; // $ from all classes via DIRECT or IE_SUPPORT or JFC_PASS_THROUGH
+  totalReceipts: number; // principal-committee 4-cycle receipts (the denominator base)
+  denominator: number; // totalReceipts + IE_SUPPORT — the score denominator
+  pacScore: number | null; // (1 − counts_against / denominator) × 100
+  byClass: Record<string, number>; // direct + IE-support + JFC-passthrough per class
+  ieOpposeTotal: number; // info only — Super PAC IE against this leg
+  ieSupportTotal: number; // IE_SUPPORT subtotal (helpful for the page UI)
+  jfcPassThroughTotal: number; // $ apportioned via JFCs (any class) — for the "via JFC" subline
+}
+
+/**
+ * v1.7.1 — bulk PAC scores for many legislators in one query. Used by the
+ * index page so we don't fire N+1 sums. Returns Map<legislatorId, score|null>.
+ */
+export async function getPacScoresByLegislatorV171(legislatorIds: string[]): Promise<Map<string, number | null>> {
+  if (legislatorIds.length === 0) return new Map();
+  // Two halves, joined in JS:
+  //   contribAgg  — counts-against and IE_SUPPORT from PacContribution
+  //   receiptsAgg — multi-cycle principal-committee receipts from PacMoneyData
+  // The denominator is receipts + IE_SUPPORT — matching the v1.7.1 spike.
+  const contribAgg = await prisma.$queryRaw<Array<{ legislatorId: string; countsAgainst: string; ieSupport: string }>>`
+    SELECT
+      pcontrib."legislatorId" AS "legislatorId",
+      COALESCE(SUM(CASE
+        WHEN pc.class IN ('CORPORATE', 'DARK_MONEY', 'FOREIGN_POLICY')
+         AND pcontrib.kind IN ('DIRECT', 'IE_SUPPORT', 'JFC_PASS_THROUGH')
+        THEN pcontrib.amount::numeric
+        ELSE 0
+      END), 0)::text AS "countsAgainst",
+      COALESCE(SUM(CASE
+        WHEN pcontrib.kind = 'IE_SUPPORT'
+        THEN pcontrib.amount::numeric
+        ELSE 0
+      END), 0)::text AS "ieSupport"
+    FROM "PacContribution" pcontrib
+    JOIN "PacClassification" pc ON pc."committeeId" = pcontrib."donorCommitteeId"
+    WHERE pcontrib."legislatorId" = ANY(${legislatorIds})
+    GROUP BY pcontrib."legislatorId"
+  `;
+  const receiptsAgg = await prisma.$queryRaw<Array<{ legislatorId: string; receipts: string }>>`
+    SELECT
+      "legislatorId",
+      COALESCE(SUM("totalReceipts"::numeric), 0)::text AS receipts
+    FROM "PacMoneyData"
+    WHERE "legislatorId" = ANY(${legislatorIds})
+    GROUP BY "legislatorId"
+  `;
+  const receiptsByLeg = new Map<string, number>();
+  for (const r of receiptsAgg) {
+    const v = Number(r.receipts);
+    if (Number.isFinite(v)) receiptsByLeg.set(r.legislatorId, v);
+  }
+  const out = new Map<string, number | null>();
+  for (const id of legislatorIds) out.set(id, null);
+  for (const r of contribAgg) {
+    const ca = Number(r.countsAgainst);
+    const ie = Number(r.ieSupport);
+    const receipts = receiptsByLeg.get(r.legislatorId) ?? 0;
+    const denom = receipts + (Number.isFinite(ie) ? ie : 0);
+    if (!Number.isFinite(denom) || denom <= 0) continue;
+    const ratio = ca / denom;
+    out.set(r.legislatorId, Math.max(0, Math.min(100, Math.round((1 - ratio) * 100))));
+  }
+  return out;
+}
+
+/**
+ * v1.7.1 — full money trail for ONE legislator. Used by the detail page to
+ * render counts-against, per-class breakdown, top donors, and IE-opposed.
+ */
+export async function getLegislatorMoneyTrail(legislatorId: string): Promise<PacMoneyTrail> {
+  const rows = await prisma.$queryRaw<Array<{ class: string; kind: string; amount: string }>>`
+    SELECT pc.class::text AS class, pcontrib.kind::text AS kind, SUM(pcontrib.amount::numeric)::text AS amount
+    FROM "PacContribution" pcontrib
+    JOIN "PacClassification" pc ON pc."committeeId" = pcontrib."donorCommitteeId"
+    WHERE pcontrib."legislatorId" = ${legislatorId}
+    GROUP BY pc.class, pcontrib.kind
+  `;
+  // Receipts (denominator base) — sum across all PacMoneyData cycles for this leg.
+  const receiptsRows = await prisma.$queryRaw<Array<{ receipts: string }>>`
+    SELECT COALESCE(SUM("totalReceipts"::numeric), 0)::text AS receipts
+    FROM "PacMoneyData"
+    WHERE "legislatorId" = ${legislatorId}
+  `;
+  const totalReceipts = receiptsRows.length > 0 ? Number(receiptsRows[0].receipts) || 0 : 0;
+
+  const byClass: Record<string, number> = {};
+  let countsAgainst = 0;
+  let totalInfluence = 0;
+  let ieOpposeTotal = 0;
+  let ieSupportTotal = 0;
+  let jfcPassThroughTotal = 0;
+  for (const r of rows) {
+    const amt = Number(r.amount);
+    if (!Number.isFinite(amt)) continue;
+    if (r.kind === 'IE_OPPOSE') {
+      ieOpposeTotal += amt;
+      continue;
+    }
+    if (r.kind === 'IE_SUPPORT') ieSupportTotal += amt;
+    if (r.kind === 'JFC_PASS_THROUGH') jfcPassThroughTotal += amt;
+    // Bucket DIRECT + IE_SUPPORT + JFC_PASS_THROUGH by class for the breakdown display.
+    byClass[r.class] = (byClass[r.class] ?? 0) + amt;
+    totalInfluence += amt;
+    if ((COUNTS_AGAINST_CLASSES as readonly string[]).includes(r.class)) {
+      countsAgainst += amt;
+    }
+  }
+  // Denominator matches the spike: receipts + IE_SUPPORT. JFC pass-through
+  // dollars are double-counted-free because they're already reflected in
+  // totalReceipts on the principal committee side; we only add them to the
+  // countsAgainst numerator (when the original donor was corp/dark/foreign).
+  const denominator = totalReceipts + ieSupportTotal;
+  const pacScore =
+    denominator > 0 ? Math.max(0, Math.min(100, Math.round((1 - countsAgainst / denominator) * 100))) : null;
+  return {
+    countsAgainst,
+    totalInfluence,
+    totalReceipts,
+    denominator,
+    pacScore,
+    byClass,
+    ieOpposeTotal,
+    ieSupportTotal,
+    jfcPassThroughTotal,
+  };
+}
+
+/**
+ * v1.7.1 — top donor PACs for one legislator. Returns at most `limit` rows
+ * sorted by total $ (DIRECT + IE_SUPPORT) descending. Includes the class
+ * so the UI can badge them appropriately.
+ */
+export interface TopDonor {
+  committeeId: string;
+  name: string;
+  class: string;
+  total: number; // DIRECT + IE_SUPPORT + JFC_PASS_THROUGH, summed across cycles
+  ieOppose: number; // IE_OPPOSE same donor (often 0)
+}
+
+export async function getTopDonorsForLegislator(legislatorId: string, limit = 15): Promise<TopDonor[]> {
+  const rows = await prisma.$queryRaw<
+    Array<{ committeeId: string; name: string; class: string; total: string; ieOppose: string }>
+  >`
+    SELECT
+      pc."committeeId" AS "committeeId",
+      pc.name AS name,
+      pc.class::text AS class,
+      COALESCE(SUM(CASE WHEN pcontrib.kind IN ('DIRECT', 'IE_SUPPORT', 'JFC_PASS_THROUGH')
+                        THEN pcontrib.amount::numeric ELSE 0 END), 0)::text AS total,
+      COALESCE(SUM(CASE WHEN pcontrib.kind = 'IE_OPPOSE'
+                        THEN pcontrib.amount::numeric ELSE 0 END), 0)::text AS "ieOppose"
+    FROM "PacContribution" pcontrib
+    JOIN "PacClassification" pc ON pc."committeeId" = pcontrib."donorCommitteeId"
+    WHERE pcontrib."legislatorId" = ${legislatorId}
+    GROUP BY pc."committeeId", pc.name, pc.class
+    HAVING COALESCE(SUM(CASE WHEN pcontrib.kind IN ('DIRECT', 'IE_SUPPORT', 'JFC_PASS_THROUGH')
+                             THEN pcontrib.amount::numeric ELSE 0 END), 0) > 0
+    ORDER BY total DESC
+    LIMIT ${limit}
+  `;
+  return rows.map((r) => ({
+    committeeId: r.committeeId,
+    name: r.name,
+    class: r.class,
+    total: Number(r.total),
+    ieOppose: Number(r.ieOppose),
+  }));
+}
+
+/**
+ * v1.7.1 — Super PACs that spent IE OPPOSING this legislator's campaign.
+ * Tracked separately because it's info-only (doesn't affect their score)
+ * but useful transparency ("AIPAC tried to defeat you").
+ */
+export async function getOpposedByPacs(legislatorId: string, limit = 10): Promise<TopDonor[]> {
+  const rows = await prisma.$queryRaw<Array<{ committeeId: string; name: string; class: string; ieOppose: string }>>`
+    SELECT
+      pc."committeeId" AS "committeeId",
+      pc.name AS name,
+      pc.class::text AS class,
+      SUM(pcontrib.amount::numeric)::text AS "ieOppose"
+    FROM "PacContribution" pcontrib
+    JOIN "PacClassification" pc ON pc."committeeId" = pcontrib."donorCommitteeId"
+    WHERE pcontrib."legislatorId" = ${legislatorId}
+      AND pcontrib.kind = 'IE_OPPOSE'
+    GROUP BY pc."committeeId", pc.name, pc.class
+    ORDER BY "ieOppose" DESC
+    LIMIT ${limit}
+  `;
+  return rows.map((r) => ({
+    committeeId: r.committeeId,
+    name: r.name,
+    class: r.class,
+    total: 0,
+    ieOppose: Number(r.ieOppose),
+  }));
+}
+
+// ─── v1.7.2 Leadership PAC inflows ──────────────────────────────────────────
+//
+// Many federal legislators sponsor a "leadership PAC" (cm.txt CMTE_DSGN='D'):
+// a legally separate committee that collects PAC + individual money and then
+// redistributes to other candidates. Corporate PACs prefer leadership PACs
+// because contribution limits are looser. These dollars don't count toward
+// the sponsor's PAC Score (it's not their campaign money), but they ARE an
+// influence signal worth surfacing on the detail page: "your leadership PAC
+// took $X from concentrated-wealth donors."
+//
+// Mapping: PacClassification.affiliatedLegislatorId is set by
+// scripts/map-leadership-pacs.ts. Inflows live in LeadershipPacInflow.
+
+export interface LeadershipPacInflowDonor {
+  committeeId: string;
+  name: string;
+  class: string;
+  total: number; // $ from this donor across this leg's leadership PACs (all cycles)
+}
+
+export interface LeadershipPacInflows {
+  pacCount: number;
+  totalAll: number; // sum across all donor classes
+  totalCounted: number; // CORPORATE + DARK_MONEY + FOREIGN_POLICY only
+  pacs: Array<{ committeeId: string; name: string; counted: number; all: number }>;
+  topDonors: LeadershipPacInflowDonor[];
+}
+
+export async function getLegislatorLeadershipPacInflows(legislatorId: string): Promise<LeadershipPacInflows | null> {
+  // Discover this legislator's leadership PACs.
+  const lpacs = await prisma.pacClassification.findMany({
+    where: { affiliatedLegislatorId: legislatorId },
+    select: { committeeId: true, name: true },
+  });
+  if (lpacs.length === 0) return null;
+  const lpacIds = lpacs.map((p) => p.committeeId);
+
+  // Per-PAC totals (counted = corp/dark/foreign donors only)
+  const perPac = await prisma.$queryRaw<Array<{ leadershipPacId: string; counted: string; all: string }>>`
+    SELECT
+      lpi."leadershipPacId" AS "leadershipPacId",
+      COALESCE(SUM(CASE WHEN pc.class IN ('CORPORATE','DARK_MONEY','FOREIGN_POLICY')
+                        THEN lpi.amount::numeric ELSE 0 END), 0)::text AS counted,
+      COALESCE(SUM(lpi.amount::numeric), 0)::text AS all
+    FROM "LeadershipPacInflow" lpi
+    JOIN "PacClassification" pc ON pc."committeeId" = lpi."donorCommitteeId"
+    WHERE lpi."leadershipPacId" = ANY(${lpacIds})
+    GROUP BY lpi."leadershipPacId"
+  `;
+  const perPacMap = new Map(perPac.map((r) => [r.leadershipPacId, { counted: Number(r.counted), all: Number(r.all) }]));
+
+  // Top donors across all of this leg's leadership PACs (counted classes preferred at the top).
+  const donors = await prisma.$queryRaw<Array<{ committeeId: string; name: string; class: string; total: string }>>`
+    SELECT pc."committeeId" AS "committeeId",
+           pc.name AS name,
+           pc.class::text AS class,
+           SUM(lpi.amount::numeric)::text AS total
+    FROM "LeadershipPacInflow" lpi
+    JOIN "PacClassification" pc ON pc."committeeId" = lpi."donorCommitteeId"
+    WHERE lpi."leadershipPacId" = ANY(${lpacIds})
+    GROUP BY pc."committeeId", pc.name, pc.class
+    ORDER BY total DESC
+    LIMIT 15
+  `;
+
+  let totalAll = 0;
+  let totalCounted = 0;
+  const pacs = lpacs.map((p) => {
+    const stats = perPacMap.get(p.committeeId) ?? { counted: 0, all: 0 };
+    totalAll += stats.all;
+    totalCounted += stats.counted;
+    return { committeeId: p.committeeId, name: p.name, counted: stats.counted, all: stats.all };
+  });
+
+  return {
+    pacCount: lpacs.length,
+    totalAll,
+    totalCounted,
+    pacs,
+    topDonors: donors.map((d) => ({
+      committeeId: d.committeeId,
+      name: d.name,
+      class: d.class,
+      total: Number(d.total),
+    })),
+  };
+}
+
 /**
  * v1.7.1 — Bill-level breakdown of one legislator's scoring universe.
  *
