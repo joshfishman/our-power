@@ -13,8 +13,9 @@ import {
   getLegislatorMoneyTrail,
   getTopDonorsForLegislator,
   getOpposedByPacs,
+  getLegislatorLeadershipPacInflows,
 } from '@/lib/scorecard/queries';
-import type { BillBreakdownRow, PacMoneyTrail, TopDonor } from '@/lib/scorecard/queries';
+import type { BillBreakdownRow, PacMoneyTrail, TopDonor, LeadershipPacInflows } from '@/lib/scorecard/queries';
 import { METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
 import { LegislatorAvatar } from '@/components/scorecard/LegislatorAvatar';
 
@@ -63,11 +64,14 @@ export default async function LegislatorScorecardPage(props: Props) {
   // For CA legislators we don't have PacContribution data — fall back to the
   // legacy v1.7 PAC score from PacMoneyData.
   const votingScore = computePublishedTotal(legislator.scores);
-  const [moneyTrail, topDonors, opposedBy, legacyPacScore] = await Promise.all([
+  const [moneyTrail, topDonors, opposedBy, legacyPacScore, leadershipPacInflows] = await Promise.all([
     jurisdiction === 'FEDERAL' ? getLegislatorMoneyTrail(legislator.id) : Promise.resolve(null as PacMoneyTrail | null),
     jurisdiction === 'FEDERAL' ? getTopDonorsForLegislator(legislator.id, 15) : Promise.resolve([] as TopDonor[]),
     jurisdiction === 'FEDERAL' ? getOpposedByPacs(legislator.id, 10) : Promise.resolve([] as TopDonor[]),
     getLegislatorPacScore(legislator.id),
+    jurisdiction === 'FEDERAL'
+      ? getLegislatorLeadershipPacInflows(legislator.id)
+      : Promise.resolve(null as LeadershipPacInflows | null),
   ]);
   const pacScore = moneyTrail?.pacScore ?? legacyPacScore;
   const avgScore = computeTwoScoreAverage(pacScore, votingScore);
@@ -148,6 +152,10 @@ export default async function LegislatorScorecardPage(props: Props) {
 
       {jurisdiction === 'FEDERAL' && moneyTrail && moneyTrail.totalInfluence > 0 && (
         <MoneyTrail moneyTrail={moneyTrail} topDonors={topDonors} opposedBy={opposedBy} />
+      )}
+
+      {jurisdiction === 'FEDERAL' && leadershipPacInflows && leadershipPacInflows.pacCount > 0 && (
+        <LeadershipPacInflowsSection inflows={leadershipPacInflows} />
       )}
 
       <section className="mt-8 space-y-8">
@@ -805,6 +813,96 @@ function MoneyTrail({
           </ul>
         </div>
       )}
+    </section>
+  );
+}
+
+// v1.7.2 — Leadership PAC inflows section. Shows money flowing INTO the
+// legislator's leadership PAC(s). These dollars don't count toward the
+// legislator's PAC Score (it's not their campaign money), but they ARE an
+// influence-flow signal worth surfacing — corporate PACs often prefer
+// leadership PACs because limits are looser.
+function LeadershipPacInflowsSection({ inflows }: { inflows: LeadershipPacInflows }) {
+  const { pacCount, totalAll, totalCounted, pacs, topDonors } = inflows;
+  return (
+    <section className="mt-8 rounded border border-[#8B3A3A]/60 bg-[#2C4A5E]/60 p-5">
+      <header className="flex items-baseline justify-between gap-3">
+        <h2 className="font-serif text-xl font-bold text-[#F5DEB3]">Leadership PAC inflows</h2>
+        <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/70">v1.7.2 · informational</p>
+      </header>
+      <p className="mt-1 text-sm text-[#F5DEB3]/90">
+        This legislator sponsors {pacCount === 1 ? 'a leadership PAC' : `${pacCount} leadership PACs`} — legally
+        separate committee(s) that collect PAC + individual money and redistribute to other candidates. These dollars
+        don&apos;t count toward this legislator&apos;s PAC Score (it&apos;s not their campaign money), but they show
+        influence flowing through their network.
+      </p>
+
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="rounded bg-black/30 p-3">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/60">Total inbound (4-cycle)</p>
+          <p className="mt-1 font-serif text-xl font-bold tabular-nums text-[#F5DEB3]">
+            ${totalAll >= 1_000_000 ? `${(totalAll / 1_000_000).toFixed(1)}M` : `${(totalAll / 1000).toFixed(0)}K`}
+          </p>
+        </div>
+        <div className="rounded bg-black/30 p-3">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/60">From counted classes</p>
+          <p className="mt-1 font-serif text-xl font-bold tabular-nums text-red-300">
+            $
+            {totalCounted >= 1_000_000
+              ? `${(totalCounted / 1_000_000).toFixed(1)}M`
+              : `${(totalCounted / 1000).toFixed(0)}K`}
+          </p>
+          <p className="mt-0.5 font-mono text-[10px] text-[#F5DEB3]/60">Corp + Dark + Foreign</p>
+        </div>
+        <div className="col-span-2 rounded bg-black/30 p-3 sm:col-span-1">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/60">Leadership PAC(s)</p>
+          <ul className="mt-1 space-y-0.5">
+            {pacs.map((p) => (
+              <li key={p.committeeId} className="font-mono text-[11px] text-[#F5DEB3]/90">
+                <Link href={`/scorecard/pac/${p.committeeId.toLowerCase()}`} className="hover:underline">
+                  {p.name}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      {topDonors.length > 0 && (
+        <div className="mt-5">
+          <p className="font-mono text-xs uppercase tracking-widest text-[#F5DEB3]/60">Top donors to these PACs</p>
+          <ul className="mt-2 divide-y divide-[#F5DEB3]/10 rounded border border-[#F5DEB3]/20">
+            {topDonors.slice(0, 10).map((d) => {
+              const tone = PAC_CLASS_TONE[d.class] ?? PAC_CLASS_TONE.UNKNOWN;
+              return (
+                <li key={d.committeeId} className="flex items-center gap-2 px-3 py-1.5 text-sm">
+                  <Link
+                    href={`/scorecard/pac/${d.committeeId.toLowerCase()}`}
+                    className="flex-1 truncate text-[#F5DEB3] hover:underline">
+                    {d.name}
+                  </Link>
+                  <span
+                    className={`shrink-0 rounded px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide ${tone.bg}`}>
+                    {tone.label}
+                  </span>
+                  <span
+                    className={`w-24 shrink-0 text-right font-mono text-xs tabular-nums ${
+                      tone.countsAgainst ? 'text-red-300' : 'text-[#F5DEB3]'
+                    }`}>
+                    ${d.total.toLocaleString()}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      <p className="mt-3 font-mono text-[10px] text-[#F5DEB3]/60">
+        Mapping currently covers a curated list of well-known leadership PACs plus FEC&apos;s ccl.txt linkage file
+        (~30-40 legislators). Coverage will grow as additional mappings are added to{' '}
+        <code className="text-[#F5DEB3]/80">data/leadership-pacs-manual.csv</code>.
+      </p>
     </section>
   );
 }
