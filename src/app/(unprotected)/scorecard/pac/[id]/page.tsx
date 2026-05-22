@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import prisma from '@/lib/prisma/prisma';
+import { PacOpposedTable, PacRecipientsTable } from '@/components/scorecard/PacScoreboardTables';
 
 // Slug aliases — let people use /scorecard/pac/aipac instead of the FEC id.
 const SLUG_TO_COMMITTEE: Record<string, string> = {
@@ -43,7 +44,6 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   };
 }
 
-const PARTY_LABEL: Record<string, string> = { D: 'Democrat', R: 'Republican', I: 'Independent' };
 const CLASS_TONE: Record<string, { bg: string; label: string }> = {
   CORPORATE: { bg: 'bg-red-700', label: 'Corporate' },
   DARK_MONEY: { bg: 'bg-red-800', label: 'Dark Money' },
@@ -172,19 +172,19 @@ export default async function PacScoreboardPage(props: Props) {
       </header>
 
       <section className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded border border-gray-200 bg-white p-4">
+        <div className="rounded border border-sky-200 bg-sky-100 p-4">
           <p className="font-mono text-xs uppercase tracking-widest text-gray-500">Lifetime (2018–2024)</p>
           <p className="mt-1 font-serif text-2xl font-bold tabular-nums text-gray-900">
             ${totalSupport.toLocaleString()}
           </p>
           <p className="mt-1 text-xs text-gray-500">to federal candidates we track</p>
         </div>
-        <div className="rounded border border-gray-200 bg-white p-4">
+        <div className="rounded border border-sky-200 bg-sky-100 p-4">
           <p className="font-mono text-xs uppercase tracking-widest text-gray-500">Recipients</p>
           <p className="mt-1 font-serif text-2xl font-bold tabular-nums text-gray-900">{sortedSupport.length}</p>
           <p className="mt-1 text-xs text-gray-500">legislators / candidates who received support</p>
         </div>
-        <div className="rounded border border-gray-200 bg-white p-4">
+        <div className="rounded border border-sky-200 bg-sky-100 p-4">
           <p className="font-mono text-xs uppercase tracking-widest text-gray-500">Party split</p>
           <p className="mt-1 font-mono text-sm">
             {Object.entries(partyBreakdown)
@@ -193,7 +193,7 @@ export default async function PacScoreboardPage(props: Props) {
               .join(' · ') || '—'}
           </p>
         </div>
-        <div className="rounded border border-gray-200 bg-white p-4">
+        <div className="rounded border border-sky-200 bg-sky-100 p-4">
           <p className="font-mono text-xs uppercase tracking-widest text-gray-500">By cycle</p>
           <p className="mt-1 font-mono text-sm">
             {[2018, 2020, 2022, 2024]
@@ -211,47 +211,7 @@ export default async function PacScoreboardPage(props: Props) {
             ? 'These legislators received support from this PAC. Money from this class counts against their PAC Score.'
             : 'These legislators received support from this PAC. Money from this class does not count against their PAC Score.'}
         </p>
-        <table className="mt-4 w-full border-collapse text-sm">
-          <thead>
-            <tr className="border-b-2 border-gray-900 text-left font-mono text-xs uppercase tracking-wide text-gray-600">
-              <th className="py-2 pr-3">#</th>
-              <th className="py-2 pr-3">Legislator</th>
-              <th className="py-2 pr-3">Party</th>
-              <th className="py-2 pr-3">Chamber · State</th>
-              <th className="py-2 pr-3 text-right">Direct $</th>
-              <th className="py-2 pr-3 text-right">IE support $</th>
-              <th className="py-2 pr-3 text-right">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedSupport.slice(0, 50).map((l, idx) => {
-              const slug = l.bioguideId ?? l.legislatorId;
-              return (
-                <tr key={l.legislatorId} className="border-b border-gray-100 hover:bg-[#2C4A5E]/10">
-                  <td className="py-1.5 pr-3 font-mono text-xs text-gray-500">{idx + 1}</td>
-                  <td className="py-1.5 pr-3">
-                    <Link href={`/scorecard/${encodeURIComponent(slug)}`} className="text-gray-900 hover:underline">
-                      {l.fullName}
-                    </Link>
-                  </td>
-                  <td className="py-1.5 pr-3 text-xs text-gray-600">{PARTY_LABEL[l.party] ?? l.party}</td>
-                  <td className="py-1.5 pr-3 text-xs text-gray-600">
-                    {l.chamber} · {l.state}
-                    {l.district != null && l.chamber === 'REP' ? `-${l.district}` : ''}
-                  </td>
-                  <td className="py-1.5 pr-3 text-right tabular-nums">${l.direct.toLocaleString()}</td>
-                  <td className="py-1.5 pr-3 text-right tabular-nums text-gray-600">
-                    {l.ieSupport > 0 ? `$${l.ieSupport.toLocaleString()}` : '—'}
-                  </td>
-                  <td className="py-1.5 pr-3 text-right font-semibold tabular-nums">${l.total.toLocaleString()}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-        {sortedSupport.length > 50 && (
-          <p className="mt-2 text-xs text-gray-500">+{sortedSupport.length - 50} more recipients hidden</p>
-        )}
+        <PacRecipientsTable rows={sortedSupport} />
       </section>
 
       {sortedOpposed.length > 0 && (
@@ -261,33 +221,7 @@ export default async function PacScoreboardPage(props: Props) {
             This PAC spent independent expenditures AGAINST these legislators&apos; campaigns. This money is shown for
             transparency but does NOT count against the legislator&apos;s own PAC Score (it&apos;s against them).
           </p>
-          <table className="mt-4 w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b-2 border-gray-900 text-left font-mono text-xs uppercase tracking-wide text-gray-600">
-                <th className="py-2 pr-3">Legislator</th>
-                <th className="py-2 pr-3">Party · Chamber · State</th>
-                <th className="py-2 pr-3 text-right">IE against $</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedOpposed.slice(0, 20).map((l) => {
-                const slug = l.bioguideId ?? l.legislatorId;
-                return (
-                  <tr key={l.legislatorId} className="border-b border-gray-100">
-                    <td className="py-1.5 pr-3">
-                      <Link href={`/scorecard/${encodeURIComponent(slug)}`} className="text-gray-900 hover:underline">
-                        {l.fullName}
-                      </Link>
-                    </td>
-                    <td className="py-1.5 pr-3 text-xs text-gray-600">
-                      {l.party} · {l.chamber} · {l.state}
-                    </td>
-                    <td className="py-1.5 pr-3 text-right tabular-nums text-red-700">${l.ieOppose.toLocaleString()}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <PacOpposedTable rows={sortedOpposed} />
         </section>
       )}
 
