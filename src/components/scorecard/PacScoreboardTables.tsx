@@ -23,10 +23,15 @@ export interface RecipientRow {
   direct: number;
   ieSupport: number;
   ieOppose: number;
+  // v1.7.4: IE this PAC spent against this leg's defeated opponent, credited
+  // to this leg. NOT included in `total` (which is FEC-target-attributed only).
+  // Surfaced as its own column so the difference between Total and the row sum
+  // is obvious to the reader.
+  ieBenefit: number;
   total: number;
 }
 
-type SortKey = 'name' | 'party' | 'chamber' | 'direct' | 'ieSupport' | 'total' | 'ieOppose';
+type SortKey = 'name' | 'party' | 'chamber' | 'direct' | 'ieSupport' | 'ieBenefit' | 'total' | 'ieOppose';
 type Direction = 'asc' | 'desc';
 
 function compareRecipients(a: RecipientRow, b: RecipientRow, key: SortKey, dir: Direction): number {
@@ -45,6 +50,8 @@ function compareRecipients(a: RecipientRow, b: RecipientRow, key: SortKey, dir: 
       return sign * (a.direct - b.direct);
     case 'ieSupport':
       return sign * (a.ieSupport - b.ieSupport);
+    case 'ieBenefit':
+      return sign * (a.ieBenefit - b.ieBenefit);
     case 'total':
       return sign * (a.total - b.total);
     case 'ieOppose':
@@ -119,7 +126,7 @@ export function PacRecipientsTable({ rows }: { rows: RecipientRow[] }) {
     } else {
       setSortKey(k);
       // For dollar columns default desc (biggest first); for text columns default asc.
-      const isDollarCol = k === 'direct' || k === 'ieSupport' || k === 'total' || k === 'ieOppose';
+      const isDollarCol = k === 'direct' || k === 'ieSupport' || k === 'ieBenefit' || k === 'total' || k === 'ieOppose';
       setDir(isDollarCol ? 'desc' : 'asc');
     }
   };
@@ -165,6 +172,14 @@ export function PacRecipientsTable({ rows }: { rows: RecipientRow[] }) {
               onClick={handle}
               align="right"
             />
+            <SortableTh
+              label="Indirect $"
+              sortKey="ieBenefit"
+              current={sortKey}
+              dir={dir}
+              onClick={handle}
+              align="right"
+            />
             <SortableTh label="Total" sortKey="total" current={sortKey} dir={dir} onClick={handle} align="right" />
           </tr>
         </thead>
@@ -187,6 +202,11 @@ export function PacRecipientsTable({ rows }: { rows: RecipientRow[] }) {
                 <td className="py-1.5 pr-3 text-right tabular-nums">${l.direct.toLocaleString()}</td>
                 <td className="py-1.5 pr-3 text-right tabular-nums text-gray-600">
                   {l.ieSupport > 0 ? `$${l.ieSupport.toLocaleString()}` : '—'}
+                </td>
+                <td
+                  className="py-1.5 pr-3 text-right tabular-nums text-amber-700"
+                  title="Indirect: IE this PAC spent against this legislator's defeated primary/general opponent — they materially benefited, but the FEC filing targeted the opponent, not them.">
+                  {l.ieBenefit > 0 ? `$${l.ieBenefit.toLocaleString()}` : '—'}
                 </td>
                 <td className="py-1.5 pr-3 text-right font-semibold tabular-nums">${l.total.toLocaleString()}</td>
               </tr>

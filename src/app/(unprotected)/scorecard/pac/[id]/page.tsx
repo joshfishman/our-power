@@ -115,6 +115,7 @@ export default async function PacScoreboardPage(props: Props) {
           state: true,
           district: true,
           bioguideId: true,
+          isActive: true,
         },
       },
     },
@@ -129,11 +130,15 @@ export default async function PacScoreboardPage(props: Props) {
     state: string;
     district: number | null;
     bioguideId: string | null;
-    direct: number;
-    ieSupport: number;
-    ieOppose: number;
+    isActive: boolean;
+    direct: number; // 24K direct PAC contribution to candidate's committee
+    ieSupport: number; // 24E IE supporting this candidate
+    ieOppose: number; // 24A IE opposing this candidate (info only — they lost or survived)
+    ieBenefit: number; // v1.7.4 IE_OPPOSE_BENEFICIARY — derived: IE this PAC spent
+    //                   against a defeated opponent in this leg's race, credited
+    //                   to this leg. Separate from FEC-target-attributed money.
     byCycle: Record<number, number>;
-    total: number; // direct + ieSupport (NOT ieOppose — opposing PAC doesn't help the leg)
+    total: number; // direct + ieSupport (FEC-target-attributed only, EXCLUDES beneficiary)
   }
   const byLeg = new Map<string, AggLeg>();
   for (const c of recipients) {
@@ -147,9 +152,11 @@ export default async function PacScoreboardPage(props: Props) {
         state: c.legislator.state,
         district: c.legislator.district,
         bioguideId: c.legislator.bioguideId,
+        isActive: c.legislator.isActive,
         direct: 0,
         ieSupport: 0,
         ieOppose: 0,
+        ieBenefit: 0,
         byCycle: {},
         total: 0,
       } as AggLeg);
@@ -157,18 +164,37 @@ export default async function PacScoreboardPage(props: Props) {
     if (c.kind === 'DIRECT') cur.direct += amt;
     else if (c.kind === 'IE_SUPPORT') cur.ieSupport += amt;
     else if (c.kind === 'IE_OPPOSE') cur.ieOppose += amt;
-    cur.byCycle[c.cycleYear] = (cur.byCycle[c.cycleYear] ?? 0) + (c.kind === 'IE_OPPOSE' ? 0 : amt);
-    if (c.kind !== 'IE_OPPOSE') cur.total += amt;
+    else if (c.kind === 'IE_OPPOSE_BENEFICIARY') cur.ieBenefit += amt;
+    // total = the PAC's full footprint on this legislator:
+    //   DIRECT       (24K) — direct PAC contribution to candidate committee
+    //   IE_SUPPORT   (24E) — IE filed for this candidate
+    //   IE_OPPOSE_BENEFICIARY (v1.7.4 derived) — IE filed against this leg's
+    //                  defeated primary/general opponent, credited here. The
+    //                  Indirect $ column displays this separately so readers
+    //                  can see the breakdown.
+    // Excludes IE_OPPOSE (against THIS leg — they were on the receiving end,
+    // not the beneficiary). On the legislator's own detail page the per-FEC-
+    // target PAC Score uses a stricter denominator that excludes IE_OPPOSE_
+    // BENEFICIARY — that's the official methodology input. THIS page shows
+    // the PAC's spending, where rolling in the indirect benefit is the more
+    // honest view of "what did this PAC spend on this person's behalf."
+    if (c.kind === 'DIRECT' || c.kind === 'IE_SUPPORT' || c.kind === 'IE_OPPOSE_BENEFICIARY') {
+      cur.total += amt;
+      cur.byCycle[c.cycleYear] = (cur.byCycle[c.cycleYear] ?? 0) + amt;
+    }
     byLeg.set(c.legislatorId, cur);
   }
 
   const sortedSupport = [...byLeg.values()].filter((l) => l.total > 0).sort((a, b) => b.total - a.total);
   const sortedOpposed = [...byLeg.values()].filter((l) => l.ieOppose > 0).sort((a, b) => b.ieOppose - a.ieOppose);
 
-  // Cycle totals
+  // Cycle totals — same inclusion rule as cur.total above:
+  // DIRECT + IE_SUPPORT + IE_OPPOSE_BENEFICIARY. Excludes IE_OPPOSE (against
+  // this leg, not for them). Keeps the Lifetime tile and the By cycle tile
+  // consistent with the table's Total column.
   const cycleTotals: Record<number, number> = {};
   for (const c of recipients) {
-    if (c.kind === 'IE_OPPOSE') continue;
+    if (c.kind !== 'DIRECT' && c.kind !== 'IE_SUPPORT' && c.kind !== 'IE_OPPOSE_BENEFICIARY') continue;
     cycleTotals[c.cycleYear] = (cycleTotals[c.cycleYear] ?? 0) + Number(c.amount);
   }
   const totalSupport = Object.values(cycleTotals).reduce((s, v) => s + v, 0);
@@ -179,8 +205,27 @@ export default async function PacScoreboardPage(props: Props) {
     partyBreakdown[l.party] = (partyBreakdown[l.party] ?? 0) + l.total;
   }
 
+  // Sitting-legislator denominators for the Recipients tile.
+  // "Sitting" = isActive=true in our Legislator table. This is the population
+  // we can meaningfully say "X out of Y current members accepted money."
+  // Defeated challengers (isActive=false) are tracked separately so readers
+  // can see them but don't get counted in the "of 538" denominator.
+  const totalActiveFederal = await prisma.legislator.count({
+    where: { isActive: true, jurisdiction: 'FEDERAL' },
+  });
+  const activeRecipients = sortedSupport.filter((l) => l.isActive);
+  const sittingPct = totalActiveFederal > 0 ? Math.round((activeRecipients.length / totalActiveFederal) * 100) : 0;
+
   const tone = CLASS_TONE[pac.class] ?? CLASS_TONE.UNKNOWN;
   const countsAgainst = COUNTS_AGAINST_CLASSES.has(pac.class);
+
+  // Compute party pie slices for the Party split tile (D/R/I).
+  // Use the lifetime total per party so the chart matches the dollar text.
+  const partyTotal = Object.values(partyBreakdown).reduce((s, v) => s + v, 0);
+  const partyPct = (p: string) => (partyTotal > 0 ? ((partyBreakdown[p] ?? 0) / partyTotal) * 100 : 0);
+  const dPct = partyPct('D');
+  const rPct = partyPct('R');
+  const iPct = partyPct('I');
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
@@ -225,40 +270,93 @@ export default async function PacScoreboardPage(props: Props) {
       </header>
 
       <section className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Lifetime — full dollar amount, dark text */}
         <div className="rounded border border-sky-200 bg-sky-100 p-4">
-          <p className="font-mono text-xs uppercase tracking-widest text-gray-500">
-            Lifetime (2018–2024) <span className="text-[10px] normal-case text-gray-400">— matched only</span>
-          </p>
-          <p className="mt-1 font-serif text-2xl font-bold tabular-nums text-gray-900">
+          <p className="font-mono text-xs uppercase tracking-widest text-slate-600">Lifetime (2018–2024)</p>
+          <p className="mt-1 font-serif text-2xl font-bold tabular-nums text-slate-900">
             ${totalSupport.toLocaleString()}
           </p>
-          <p className="mt-1 text-xs text-gray-500">
-            To sitting federal legislators. Excludes IE for/against losing primary challengers (e.g. defeated incumbents
-            like Bowman, Bush, Levin, Edwards) — see footer.
+          <p className="mt-1 text-xs text-slate-600">
+            To recipients in our database. Includes IE for sitting members AND IE for/against now-defeated challengers
+            (Bowman, Bush, Levin, etc.).
           </p>
         </div>
+
+        {/* Recipients — X / 538 + % of sitting Congress */}
         <div className="rounded border border-sky-200 bg-sky-100 p-4">
-          <p className="font-mono text-xs uppercase tracking-widest text-gray-500">Recipients</p>
-          <p className="mt-1 font-serif text-2xl font-bold tabular-nums text-gray-900">{sortedSupport.length}</p>
-          <p className="mt-1 text-xs text-gray-500">legislators / candidates who received support</p>
-        </div>
-        <div className="rounded border border-sky-200 bg-sky-100 p-4">
-          <p className="font-mono text-xs uppercase tracking-widest text-gray-500">Party split</p>
-          <p className="mt-1 font-mono text-sm">
-            {Object.entries(partyBreakdown)
-              .sort((a, b) => b[1] - a[1])
-              .map(([p, v]) => `${p}: $${Math.round(v / 1000)}K`)
-              .join(' · ') || '—'}
+          <p className="font-mono text-xs uppercase tracking-widest text-slate-600">Recipients</p>
+          <p className="mt-1 font-serif text-2xl font-bold tabular-nums text-slate-900">
+            {activeRecipients.length.toLocaleString()}{' '}
+            <span className="text-base font-normal text-slate-600">/ {totalActiveFederal}</span>
+          </p>
+          <p className="mt-1 text-xs text-slate-700">
+            <span className="font-semibold tabular-nums">{sittingPct}%</span> of sitting federal legislators have
+            accepted this PAC&apos;s money.
+            {sortedSupport.length > activeRecipients.length && (
+              <>
+                {' '}
+                <span className="text-slate-500">
+                  +{sortedSupport.length - activeRecipients.length} now-defeated candidates also received.
+                </span>
+              </>
+            )}
           </p>
         </div>
+
+        {/* Party split — pie chart + per-party full numbers */}
         <div className="rounded border border-sky-200 bg-sky-100 p-4">
-          <p className="font-mono text-xs uppercase tracking-widest text-gray-500">By cycle</p>
-          <p className="mt-1 font-mono text-sm">
-            {[2018, 2020, 2022, 2024]
-              .filter((c) => cycleTotals[c])
-              .map((c) => `${c}: $${Math.round(cycleTotals[c] / 1000)}K`)
-              .join(' · ') || '—'}
-          </p>
+          <p className="font-mono text-xs uppercase tracking-widest text-slate-600">Party split</p>
+          <div className="mt-2 flex items-center gap-3">
+            {partyTotal > 0 ? (
+              <div
+                className="h-16 w-16 shrink-0 rounded-full border border-slate-200 shadow-sm"
+                style={{
+                  backgroundImage: `conic-gradient(
+                    #1d4ed8 0% ${dPct}%,
+                    #b91c1c ${dPct}% ${dPct + rPct}%,
+                    #6b7280 ${dPct + rPct}% ${dPct + rPct + iPct}%
+                  )`,
+                }}
+                title={`D ${dPct.toFixed(0)}% · R ${rPct.toFixed(0)}% · I ${iPct.toFixed(0)}%`}
+              />
+            ) : null}
+            <ul className="flex-1 space-y-0.5 font-mono text-xs">
+              {(['D', 'R', 'I'] as const).map((p) => {
+                const v = partyBreakdown[p] ?? 0;
+                if (v <= 0) return null;
+                const swatch = p === 'D' ? 'bg-[#1d4ed8]' : p === 'R' ? 'bg-[#b91c1c]' : 'bg-[#6b7280]';
+                return (
+                  <li key={p} className="flex items-center gap-2">
+                    <span className={`h-2 w-2 shrink-0 rounded-sm ${swatch}`} />
+                    <span className="w-3 font-semibold text-slate-700">{p}</span>
+                    <span className="flex-1 text-right tabular-nums text-slate-900">${v.toLocaleString()}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </div>
+
+        {/* By cycle — stacked rows, full numbers, dark text */}
+        <div className="rounded border border-sky-200 bg-sky-100 p-4">
+          <p className="font-mono text-xs uppercase tracking-widest text-slate-600">By cycle</p>
+          <ul className="mt-2 space-y-0.5 font-mono text-xs">
+            {[2018, 2020, 2022, 2024].map((c) => {
+              const v = cycleTotals[c] ?? 0;
+              if (v <= 0) return null;
+              const widthPct = totalSupport > 0 ? (v / totalSupport) * 100 : 0;
+              return (
+                <li key={c} className="flex items-center gap-2">
+                  <span className="w-10 shrink-0 font-semibold text-slate-700">{c}</span>
+                  <span className="h-1.5 w-12 shrink-0 overflow-hidden rounded-full bg-white/70">
+                    <span className="block h-full bg-slate-700" style={{ width: `${widthPct}%` }} />
+                  </span>
+                  <span className="flex-1 text-right tabular-nums text-slate-900">${v.toLocaleString()}</span>
+                </li>
+              );
+            })}
+            {Object.keys(cycleTotals).length === 0 && <li className="text-slate-500">—</li>}
+          </ul>
         </div>
       </section>
 
