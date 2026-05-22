@@ -165,12 +165,20 @@ export default async function PacScoreboardPage(props: Props) {
     else if (c.kind === 'IE_SUPPORT') cur.ieSupport += amt;
     else if (c.kind === 'IE_OPPOSE') cur.ieOppose += amt;
     else if (c.kind === 'IE_OPPOSE_BENEFICIARY') cur.ieBenefit += amt;
-    // total = FEC-target-attributed money TO this leg (direct + IE supporting them).
-    // Excludes IE_OPPOSE (against them), IE_OPPOSE_BENEFICIARY (against their
-    // defeated opponent), and JFC_PASS_THROUGH (handled separately as it's
-    // already in the principal-committee receipts denominator). Per-cycle
-    // bucket follows the same rule.
-    if (c.kind === 'DIRECT' || c.kind === 'IE_SUPPORT') {
+    // total = the PAC's full footprint on this legislator:
+    //   DIRECT       (24K) — direct PAC contribution to candidate committee
+    //   IE_SUPPORT   (24E) — IE filed for this candidate
+    //   IE_OPPOSE_BENEFICIARY (v1.7.4 derived) — IE filed against this leg's
+    //                  defeated primary/general opponent, credited here. The
+    //                  Indirect $ column displays this separately so readers
+    //                  can see the breakdown.
+    // Excludes IE_OPPOSE (against THIS leg — they were on the receiving end,
+    // not the beneficiary). On the legislator's own detail page the per-FEC-
+    // target PAC Score uses a stricter denominator that excludes IE_OPPOSE_
+    // BENEFICIARY — that's the official methodology input. THIS page shows
+    // the PAC's spending, where rolling in the indirect benefit is the more
+    // honest view of "what did this PAC spend on this person's behalf."
+    if (c.kind === 'DIRECT' || c.kind === 'IE_SUPPORT' || c.kind === 'IE_OPPOSE_BENEFICIARY') {
       cur.total += amt;
       cur.byCycle[c.cycleYear] = (cur.byCycle[c.cycleYear] ?? 0) + amt;
     }
@@ -180,10 +188,13 @@ export default async function PacScoreboardPage(props: Props) {
   const sortedSupport = [...byLeg.values()].filter((l) => l.total > 0).sort((a, b) => b.total - a.total);
   const sortedOpposed = [...byLeg.values()].filter((l) => l.ieOppose > 0).sort((a, b) => b.ieOppose - a.ieOppose);
 
-  // Cycle totals
+  // Cycle totals — same inclusion rule as cur.total above:
+  // DIRECT + IE_SUPPORT + IE_OPPOSE_BENEFICIARY. Excludes IE_OPPOSE (against
+  // this leg, not for them). Keeps the Lifetime tile and the By cycle tile
+  // consistent with the table's Total column.
   const cycleTotals: Record<number, number> = {};
   for (const c of recipients) {
-    if (c.kind === 'IE_OPPOSE') continue;
+    if (c.kind !== 'DIRECT' && c.kind !== 'IE_SUPPORT' && c.kind !== 'IE_OPPOSE_BENEFICIARY') continue;
     cycleTotals[c.cycleYear] = (cycleTotals[c.cycleYear] ?? 0) + Number(c.amount);
   }
   const totalSupport = Object.values(cycleTotals).reduce((s, v) => s + v, 0);
