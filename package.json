@@ -37,6 +37,7 @@
     "scorecard:ingest-fec": "npx tsx ./scripts/ingest-fec.ts",
     "scorecard:ingest-fec-receipts-multicycle": "npx tsx ./scripts/ingest-fec-receipts-multicycle.ts",
     "scorecard:map-leadership-pacs": "npx tsx ./scripts/map-leadership-pacs.ts",
+    "scorecard:classify-unknown-stubs": "npx tsx ./scripts/classify-unknown-stubs.ts",
     "scorecard:ingest-fec-classifications": "npx tsx ./scripts/ingest-fec-classifications.ts",
     "scorecard:ingest-fec-bulk-ie": "npx tsx ./scripts/ingest-fec-bulk-ie.ts",
     "scorecard:ingest-ca-classifications": "npx tsx ./scripts/ingest-ca-classifications.ts",
