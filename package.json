@@ -61,6 +61,7 @@
     "scorecard:seed-pac-classification": "npx tsx ./scripts/seed-pac-classification.ts",
     "scorecard:ingest-fec-classified": "npx tsx ./scripts/ingest-fec-classified.ts",
     "scorecard:ingest-fec-jfc-passthrough": "npx tsx ./scripts/ingest-fec-jfc-passthrough.ts",
+    "scorecard:ingest-defeated-challengers": "npx tsx ./scripts/ingest-defeated-challengers.ts",
     "prisma:mock": "npx prisma migrate reset && npx tsx ./scripts/createMockUsers.ts",
     "congress:update": "npx tsx scripts/update-congress-data.ts",
     "ca-legislators:update": "npx tsx scripts/update-ca-legislators.ts",
