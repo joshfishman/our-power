@@ -6,10 +6,18 @@ import prisma from '@/lib/prisma/prisma';
 import { PacOpposedTable, PacRecipientsTable } from '@/components/scorecard/PacScoreboardTables';
 
 // Slug aliases — let people use /scorecard/pac/aipac instead of the FEC id.
-const SLUG_TO_COMMITTEE: Record<string, string> = {
-  aipac: 'C00797670',
+// Value can be a single committee_id (one FEC committee) or an array of
+// committee_ids (aggregate multiple related committees onto one scoreboard).
+// AIPAC for example operates TWO federal vehicles: the traditional AIPAC PAC
+// (C00797670, direct contributions only) and United Democracy Project
+// (C00799031, the Super PAC arm doing IE spending against AIPAC's targets).
+// Showing them separately understates the real AIPAC footprint by ~80%.
+const SLUG_TO_COMMITTEE: Record<string, string | string[]> = {
+  aipac: ['C00797670', 'C00799031'], // AIPAC PAC + United Democracy Project (Super PAC arm)
+  udp: 'C00799031', // direct link to UDP alone if anyone wants it
   'j-street': 'C00441949',
   jstreet: 'C00441949',
+  'pro-israel-america': ['C00699470', 'C00740936', 'C90019431'],
   nra: 'C00053553',
   'gun-owners': 'C00817122',
   everytown: 'C00688655',
@@ -28,19 +36,33 @@ const SLUG_TO_COMMITTEE: Record<string, string> = {
   'save-america': 'C00762591',
 };
 
+function resolveSlug(input: string): string[] {
+  const slug = input.toLowerCase();
+  const hit = SLUG_TO_COMMITTEE[slug];
+  if (Array.isArray(hit)) return hit;
+  if (typeof hit === 'string') return [hit];
+  // Not a slug — fall through to raw FEC id.
+  return [input.toUpperCase()];
+}
+
 interface Props {
   params: Promise<{ id: string }>;
 }
 
 export async function generateMetadata(props: Props): Promise<Metadata> {
   const params = await props.params;
-  const id = params.id.toUpperCase();
-  const committeeId = SLUG_TO_COMMITTEE[params.id.toLowerCase()] ?? id;
-  const pac = await prisma.pacClassification.findUnique({ where: { committeeId } });
-  if (!pac) return { title: 'PAC not found | Scorecard' };
+  const ids = resolveSlug(params.id);
+  const pacs = await prisma.pacClassification.findMany({ where: { committeeId: { in: ids } } });
+  if (pacs.length === 0) return { title: 'PAC not found | Scorecard' };
+  const displayName =
+    pacs.length === 1
+      ? pacs[0].name
+      : params.id.toLowerCase() === 'aipac'
+      ? 'AIPAC + United Democracy Project'
+      : `${pacs.length} committees`;
   return {
-    title: `${pac.name} | PAC Scoreboard | We the People`,
-    description: `Per-cycle giving and top recipients from ${pac.name} (${pac.class}).`,
+    title: `${displayName} | PAC Scoreboard | We the People`,
+    description: `Per-cycle giving and top recipients from ${displayName}.`,
   };
 }
 
@@ -60,13 +82,29 @@ const COUNTS_AGAINST_CLASSES = new Set(['CORPORATE', 'DARK_MONEY', 'FOREIGN_POLI
 
 export default async function PacScoreboardPage(props: Props) {
   const params = await props.params;
-  const committeeId = SLUG_TO_COMMITTEE[params.id.toLowerCase()] ?? params.id.toUpperCase();
-  const pac = await prisma.pacClassification.findUnique({ where: { committeeId } });
-  if (!pac) notFound();
+  const committeeIds = resolveSlug(params.id);
+  // Pull all classifications matching the resolved committee ids (1 or more).
+  // First row is the "primary" used for the header label / class badge; for
+  // group slugs (aipac → AIPAC PAC + UDP) the primary is just the first
+  // listed committee — we still show the secondary committee names in the
+  // header so readers can see the aggregation.
+  const pacs = await prisma.pacClassification.findMany({
+    where: { committeeId: { in: committeeIds } },
+    orderBy: { committeeId: 'asc' },
+  });
+  if (pacs.length === 0) notFound();
+  // Use the ORDER from the slug map (not alphabetical), so the user's
+  // intended primary committee shows first.
+  const orderedPacs = committeeIds
+    .map((id) => pacs.find((p) => p.committeeId === id))
+    .filter((p): p is (typeof pacs)[number] => !!p);
+  const pac = orderedPacs[0];
+  const isGroup = orderedPacs.length > 1;
+  const groupName = params.id.toLowerCase() === 'aipac' ? 'AIPAC + United Democracy Project' : pac.name;
 
-  // Top recipients across all cycles
+  // Top recipients across all cycles (across all committees in the group)
   const recipients = await prisma.pacContribution.findMany({
-    where: { donorCommitteeId: committeeId },
+    where: { donorCommitteeId: { in: committeeIds } },
     include: {
       legislator: {
         select: {
@@ -151,7 +189,7 @@ export default async function PacScoreboardPage(props: Props) {
       </Link>
 
       <header className="mt-4 border-b-2 border-gray-900 pb-6">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <span
             className={`rounded ${tone.bg} px-2 py-1 font-mono text-xs uppercase tracking-wide text-white`}
             title={
@@ -162,22 +200,42 @@ export default async function PacScoreboardPage(props: Props) {
             {tone.label}
             {countsAgainst ? ' · counts against' : ''}
           </span>
-          <span className="font-mono text-xs text-gray-500">FEC {pac.committeeId}</span>
+          {isGroup ? (
+            <span className="font-mono text-xs text-gray-500">{orderedPacs.length} FEC committees aggregated</span>
+          ) : (
+            <span className="font-mono text-xs text-gray-500">FEC {pac.committeeId}</span>
+          )}
         </div>
-        <h1 className="mt-2 font-serif text-3xl font-bold text-gray-900">{pac.name}</h1>
-        {pac.connectedOrg && pac.connectedOrg !== 'NONE' && (
+        <h1 className="mt-2 font-serif text-3xl font-bold text-gray-900">{isGroup ? groupName : pac.name}</h1>
+        {isGroup && (
+          <ul className="mt-3 space-y-0.5 font-mono text-xs text-gray-600">
+            {orderedPacs.map((p) => (
+              <li key={p.committeeId}>
+                <span className="text-gray-400">{p.committeeId}</span> · {p.name}
+              </li>
+            ))}
+          </ul>
+        )}
+        {!isGroup && pac.connectedOrg && pac.connectedOrg !== 'NONE' && (
           <p className="mt-1 text-sm text-gray-700">Connected organization: {pac.connectedOrg}</p>
         )}
-        {pac.reason && <p className="mt-2 text-sm italic text-gray-600">Classification reason: {pac.reason}</p>}
+        {!isGroup && pac.reason && (
+          <p className="mt-2 text-sm italic text-gray-600">Classification reason: {pac.reason}</p>
+        )}
       </header>
 
       <section className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded border border-sky-200 bg-sky-100 p-4">
-          <p className="font-mono text-xs uppercase tracking-widest text-gray-500">Lifetime (2018–2024)</p>
+          <p className="font-mono text-xs uppercase tracking-widest text-gray-500">
+            Lifetime (2018–2024) <span className="text-[10px] normal-case text-gray-400">— matched only</span>
+          </p>
           <p className="mt-1 font-serif text-2xl font-bold tabular-nums text-gray-900">
             ${totalSupport.toLocaleString()}
           </p>
-          <p className="mt-1 text-xs text-gray-500">to federal candidates we track</p>
+          <p className="mt-1 text-xs text-gray-500">
+            To sitting federal legislators. Excludes IE for/against losing primary challengers (e.g. defeated incumbents
+            like Bowman, Bush, Levin, Edwards) — see footer.
+          </p>
         </div>
         <div className="rounded border border-sky-200 bg-sky-100 p-4">
           <p className="font-mono text-xs uppercase tracking-widest text-gray-500">Recipients</p>
@@ -231,6 +289,15 @@ export default async function PacScoreboardPage(props: Props) {
             What does &quot;{tone.label}&quot; mean? →
           </Link>{' '}
           Same classification applied to every federal PAC, regardless of party.
+        </p>
+        <p className="mt-2">
+          <strong className="text-gray-700">Known coverage gap:</strong> totals reflect contributions and IE filings
+          where the recipient (or target) is a <em>sitting</em> federal legislator in our Legislator table. Super PACs
+          that spend heavily AGAINST primary challengers who then lose (e.g. AIPAC&apos;s United Democracy Project
+          spending against Bowman in 2024 or Levin / Donna Edwards in 2022) drop their losing-target dollars from our
+          totals, because the loser never enters our active-legislator roster. The real spending for high-IE PACs is
+          typically 30-60% larger than what&apos;s shown here. Closing the gap requires ingesting defeated challengers
+          as a separate roster.
         </p>
         <p className="mt-1">
           Source: FEC bulk files for 2018, 2020, 2022, 2024 cycles. Auto-classified + human-reviewed.
