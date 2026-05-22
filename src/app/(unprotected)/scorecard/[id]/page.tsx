@@ -638,7 +638,16 @@ function MoneyTrail({
   topDonors: TopDonor[];
   opposedBy: TopDonor[];
 }) {
-  const { countsAgainst, totalInfluence, denominator, totalReceipts, pacScore, byClass, ieOpposeTotal } = moneyTrail;
+  const {
+    countsAgainst,
+    totalInfluence,
+    denominator,
+    totalReceipts,
+    pacScore,
+    byClass,
+    ieOpposeTotal,
+    jfcPassThroughTotal,
+  } = moneyTrail;
   // Sort classes by dollar amount desc for the breakdown bars
   const classRows = Object.entries(byClass).sort((a, b) => b[1] - a[1]);
   // The PAC Score uses receipts+IE_SUPPORT as denominator (matches the v1.7.1
@@ -726,6 +735,13 @@ function MoneyTrail({
             );
           })}
         </ul>
+        {jfcPassThroughTotal > 0 && (
+          <p className="mt-2 font-mono text-[11px] text-[#F5DEB3]/70">
+            <span className="font-semibold text-[#F5DEB3]">via JFC:</span> $
+            {Math.round(jfcPassThroughTotal).toLocaleString()} attributed to corporate PACs routed through Joint
+            Fundraising Committees (apportioned by JFC outbound share).
+          </p>
+        )}
       </div>
 
       {/* Top donor PACs */}
