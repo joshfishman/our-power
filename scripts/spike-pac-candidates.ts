@@ -1102,4 +1102,13 @@ function main(): void {
   console.log(`\nNext: open data/pac-candidates.csv, edit finalClass for any wrong/UNKNOWN rows.`);
 }
 
-main();
+// Export the classifier so other scripts can reuse it without triggering main().
+export { autoClassify, COMMITTEE_OVERRIDES };
+export type { PacRow };
+
+// Guard: only run main() when invoked directly (e.g. `npx tsx
+// scripts/spike-pac-candidates.ts`). Importing this file from another
+// script should not kick off the full webk-summary regeneration.
+if (require.main === module) {
+  main();
+}
