@@ -655,6 +655,8 @@ function MoneyTrail({
     byClass,
     ieOpposeTotal,
     jfcPassThroughTotal,
+    beneficiaryCountsAgainst,
+    beneficiaryPacScore,
   } = moneyTrail;
   // Sort classes by dollar amount desc for the breakdown bars
   const classRows = Object.entries(byClass).sort((a, b) => b[1] - a[1]);
@@ -711,6 +713,39 @@ function MoneyTrail({
           <p className="mt-0.5 font-mono text-[10px] text-[#F5DEB3]/60">opposed this leg</p>
         </div>
       </div>
+
+      {/* Beneficiary PAC Score — alt view crediting IE against defeated opponents */}
+      {beneficiaryCountsAgainst > 0 && (
+        <div className="mt-4 rounded border border-[#F5DEB3]/30 bg-black/30 p-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/60">
+                Beneficiary PAC Score <span className="text-[10px] normal-case text-[#F5DEB3]/40">— alt view</span>
+              </p>
+              <p className="mt-1 font-serif text-2xl font-bold tabular-nums text-[#F5DEB3]">
+                {beneficiaryPacScore !== null ? `${beneficiaryPacScore}%` : '—'}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/60">
+                + Indirect (IE against opponent)
+              </p>
+              <p className="mt-1 font-serif text-lg font-bold tabular-nums text-red-300">
+                +$
+                {beneficiaryCountsAgainst >= 1_000_000
+                  ? `${(beneficiaryCountsAgainst / 1_000_000).toFixed(1)}M`
+                  : `${(beneficiaryCountsAgainst / 1000).toFixed(0)}K`}
+              </p>
+            </div>
+          </div>
+          <p className="mt-2 text-xs text-[#F5DEB3]/80">
+            Includes IE money corporate / dark-money / foreign-policy PACs spent against this legislator&apos;s defeated
+            primary or general-election opponents. View B from the methodology: the legislator materially benefited from
+            that spending even though it wasn&apos;t filed directly for them. The PAC Score above remains the official
+            per-FEC-target measure.
+          </p>
+        </div>
+      )}
 
       {/* Per-class breakdown */}
       <div className="mt-5">

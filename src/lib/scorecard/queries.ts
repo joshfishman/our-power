@@ -238,6 +238,12 @@ export interface PacMoneyTrail {
   ieOpposeTotal: number; // info only — Super PAC IE against this leg
   ieSupportTotal: number; // IE_SUPPORT subtotal (helpful for the page UI)
   jfcPassThroughTotal: number; // $ apportioned via JFCs (any class) — for the "via JFC" subline
+  // v1.7.4 beneficiary attribution: IE against a defeated opponent counts
+  // here. counts_against_beneficiary = counts_against + benefiaryCountsAgainst
+  // (only counted classes). beneficiaryPacScore is the alternative scoring
+  // view computed with that augmented numerator.
+  beneficiaryCountsAgainst: number; // $ from IE_OPPOSE_BENEFICIARY (counted classes only)
+  beneficiaryPacScore: number | null; // (1 − (counts_against + benefiary)) / denominator) × 100
 }
 
 /**
@@ -322,11 +328,20 @@ export async function getLegislatorMoneyTrail(legislatorId: string): Promise<Pac
   let ieOpposeTotal = 0;
   let ieSupportTotal = 0;
   let jfcPassThroughTotal = 0;
+  let beneficiaryCountsAgainst = 0;
   for (const r of rows) {
     const amt = Number(r.amount);
     if (!Number.isFinite(amt)) continue;
     if (r.kind === 'IE_OPPOSE') {
       ieOpposeTotal += amt;
+      continue;
+    }
+    if (r.kind === 'IE_OPPOSE_BENEFICIARY') {
+      // Derived attribution — only included in the alt "Beneficiary PAC Score"
+      // view. Doesn't go into the per-target byClass / totalInfluence buckets.
+      if ((COUNTS_AGAINST_CLASSES as readonly string[]).includes(r.class)) {
+        beneficiaryCountsAgainst += amt;
+      }
       continue;
     }
     if (r.kind === 'IE_SUPPORT') ieSupportTotal += amt;
@@ -345,6 +360,17 @@ export async function getLegislatorMoneyTrail(legislatorId: string): Promise<Pac
   const denominator = totalReceipts + ieSupportTotal;
   const pacScore =
     denominator > 0 ? Math.max(0, Math.min(100, Math.round((1 - countsAgainst / denominator) * 100))) : null;
+  // Beneficiary view: also count IE_OPPOSE-against-defeated-opponent as
+  // counts-against. Denominator includes IE_OPPOSE_BENEFICIARY too so it
+  // doesn't artificially inflate the ratio.
+  const beneficiaryDenominator = denominator + beneficiaryCountsAgainst;
+  const beneficiaryPacScore =
+    beneficiaryDenominator > 0
+      ? Math.max(
+          0,
+          Math.min(100, Math.round((1 - (countsAgainst + beneficiaryCountsAgainst) / beneficiaryDenominator) * 100)),
+        )
+      : null;
   return {
     countsAgainst,
     totalInfluence,
@@ -355,6 +381,8 @@ export async function getLegislatorMoneyTrail(legislatorId: string): Promise<Pac
     ieOpposeTotal,
     ieSupportTotal,
     jfcPassThroughTotal,
+    beneficiaryCountsAgainst,
+    beneficiaryPacScore,
   };
 }
 
