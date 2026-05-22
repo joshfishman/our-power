@@ -303,13 +303,13 @@ export default async function PacScoreboardPage(props: Props) {
           </p>
         </div>
 
-        {/* Party split — pie chart + per-party full numbers */}
+        {/* Party split — pie chart above, legend below */}
         <div className="rounded border border-sky-200 bg-sky-100 p-4">
           <p className="font-mono text-xs uppercase tracking-widest text-slate-600">Party split</p>
-          <div className="mt-2 flex items-center gap-3">
+          <div className="mt-2 flex flex-col items-center gap-3">
             {partyTotal > 0 ? (
               <div
-                className="h-16 w-16 shrink-0 rounded-full border border-slate-200 shadow-sm"
+                className="h-20 w-20 shrink-0 rounded-full border border-slate-200 shadow-sm"
                 style={{
                   backgroundImage: `conic-gradient(
                     #1d4ed8 0% ${dPct}%,
@@ -320,7 +320,7 @@ export default async function PacScoreboardPage(props: Props) {
                 title={`D ${dPct.toFixed(0)}% · R ${rPct.toFixed(0)}% · I ${iPct.toFixed(0)}%`}
               />
             ) : null}
-            <ul className="flex-1 space-y-0.5 font-mono text-xs">
+            <ul className="w-full space-y-0.5 font-mono text-xs">
               {(['D', 'R', 'I'] as const).map((p) => {
                 const v = partyBreakdown[p] ?? 0;
                 if (v <= 0) return null;
@@ -337,20 +337,16 @@ export default async function PacScoreboardPage(props: Props) {
           </div>
         </div>
 
-        {/* By cycle — stacked rows, full numbers, dark text */}
+        {/* By cycle — stacked rows, full numbers, dark text (no progress bar) */}
         <div className="rounded border border-sky-200 bg-sky-100 p-4">
           <p className="font-mono text-xs uppercase tracking-widest text-slate-600">By cycle</p>
           <ul className="mt-2 space-y-0.5 font-mono text-xs">
             {[2018, 2020, 2022, 2024].map((c) => {
               const v = cycleTotals[c] ?? 0;
               if (v <= 0) return null;
-              const widthPct = totalSupport > 0 ? (v / totalSupport) * 100 : 0;
               return (
                 <li key={c} className="flex items-center gap-2">
                   <span className="w-10 shrink-0 font-semibold text-slate-700">{c}</span>
-                  <span className="h-1.5 w-12 shrink-0 overflow-hidden rounded-full bg-white/70">
-                    <span className="block h-full bg-slate-700" style={{ width: `${widthPct}%` }} />
-                  </span>
                   <span className="flex-1 text-right tabular-nums text-slate-900">${v.toLocaleString()}</span>
                 </li>
               );
