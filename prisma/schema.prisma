@@ -997,6 +997,7 @@ enum ContributionKind {
   JFC_PASS_THROUGH // 22Y attributed to legislator — corp PAC → JFC → candidate principal, proportionally apportioned to the JFC's outbound recipients
   IE_SUPPORT // 24E — Super PAC IE supporting THIS candidate
   IE_OPPOSE // 24A — Super PAC IE OPPOSING this candidate (info only)
+  IE_OPPOSE_BENEFICIARY // v1.7.4: derived attribution — IE_OPPOSE against a defeated opponent, credited to the eventual winner. Used only by the "Beneficiary PAC Score" view; does NOT affect the per-target PAC Score.
 }
 
 model PacContribution {
