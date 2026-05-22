@@ -131,11 +131,14 @@ export default async function PacScoreboardPage(props: Props) {
     district: number | null;
     bioguideId: string | null;
     isActive: boolean;
-    direct: number;
-    ieSupport: number;
-    ieOppose: number;
+    direct: number; // 24K direct PAC contribution to candidate's committee
+    ieSupport: number; // 24E IE supporting this candidate
+    ieOppose: number; // 24A IE opposing this candidate (info only — they lost or survived)
+    ieBenefit: number; // v1.7.4 IE_OPPOSE_BENEFICIARY — derived: IE this PAC spent
+    //                   against a defeated opponent in this leg's race, credited
+    //                   to this leg. Separate from FEC-target-attributed money.
     byCycle: Record<number, number>;
-    total: number; // direct + ieSupport (NOT ieOppose — opposing PAC doesn't help the leg)
+    total: number; // direct + ieSupport (FEC-target-attributed only, EXCLUDES beneficiary)
   }
   const byLeg = new Map<string, AggLeg>();
   for (const c of recipients) {
@@ -153,6 +156,7 @@ export default async function PacScoreboardPage(props: Props) {
         direct: 0,
         ieSupport: 0,
         ieOppose: 0,
+        ieBenefit: 0,
         byCycle: {},
         total: 0,
       } as AggLeg);
@@ -160,8 +164,16 @@ export default async function PacScoreboardPage(props: Props) {
     if (c.kind === 'DIRECT') cur.direct += amt;
     else if (c.kind === 'IE_SUPPORT') cur.ieSupport += amt;
     else if (c.kind === 'IE_OPPOSE') cur.ieOppose += amt;
-    cur.byCycle[c.cycleYear] = (cur.byCycle[c.cycleYear] ?? 0) + (c.kind === 'IE_OPPOSE' ? 0 : amt);
-    if (c.kind !== 'IE_OPPOSE') cur.total += amt;
+    else if (c.kind === 'IE_OPPOSE_BENEFICIARY') cur.ieBenefit += amt;
+    // total = FEC-target-attributed money TO this leg (direct + IE supporting them).
+    // Excludes IE_OPPOSE (against them), IE_OPPOSE_BENEFICIARY (against their
+    // defeated opponent), and JFC_PASS_THROUGH (handled separately as it's
+    // already in the principal-committee receipts denominator). Per-cycle
+    // bucket follows the same rule.
+    if (c.kind === 'DIRECT' || c.kind === 'IE_SUPPORT') {
+      cur.total += amt;
+      cur.byCycle[c.cycleYear] = (cur.byCycle[c.cycleYear] ?? 0) + amt;
+    }
     byLeg.set(c.legislatorId, cur);
   }
 
