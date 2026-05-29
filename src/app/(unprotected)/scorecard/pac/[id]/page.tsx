@@ -200,23 +200,11 @@ export default async function PacScoreboardPage(props: Props) {
   }
   const totalSupport = Object.values(cycleTotals).reduce((s, v) => s + v, 0);
 
-  // Party breakdown.
-  // For the PIE CHART we use DIRECT contributions only. Rationale: when a
-  // PAC also operates a Super PAC arm doing IE (e.g. AIPAC + UDP), the IE
-  // spend is overwhelmingly intra-party (UDP spends in Democratic primaries
-  // by design) and structurally flows to one party's winners. Rolling that
-  // into the pie hides the PAC's actual donor decisions — AIPAC's direct
-  // PAC is roughly bipartisan ($3.6M D / $4.9M R / 296 vs 451 recipients),
-  // but the total looks 90% D once UDP's IE + beneficiary attribution is
-  // added. The Indirect $ column in the table preserves the full picture;
-  // the pie shows the donor's actual party allocation choice.
-  const partyBreakdownDirect: Record<string, number> = {};
-  for (const c of recipients) {
-    if (c.kind !== 'DIRECT') continue;
-    const { party } = c.legislator;
-    partyBreakdownDirect[party] = (partyBreakdownDirect[party] ?? 0) + Number(c.amount);
-  }
-  // Keep the "total" breakdown for any downstream consumer.
+  // Party breakdown uses the FULL footprint per party (direct + IE_SUPPORT +
+  // IE_OPPOSE_BENEFICIARY) — i.e. l.total. "Show me all the cash": the pie
+  // reflects every dollar this PAC moved to/for each party's winners. For
+  // AIPAC this reads ~90% D, which is accurate — UDP's IE all flows to
+  // Democratic primary winners.
   const partyBreakdown: Record<string, number> = {};
   for (const l of sortedSupport) {
     partyBreakdown[l.party] = (partyBreakdown[l.party] ?? 0) + l.total;
@@ -236,17 +224,12 @@ export default async function PacScoreboardPage(props: Props) {
   const tone = CLASS_TONE[pac.class] ?? CLASS_TONE.UNKNOWN;
   const countsAgainst = COUNTS_AGAINST_CLASSES.has(pac.class);
 
-  // Compute party pie slices from DIRECT contributions only (see comment
-  // on partyBreakdownDirect above). The slice percentages reflect HOW THE
-  // PAC ALLOCATED ITS DIRECT GIVING, not where IE money landed.
-  const partyTotal = Object.values(partyBreakdownDirect).reduce((s, v) => s + v, 0);
-  const partyPct = (p: string) => (partyTotal > 0 ? ((partyBreakdownDirect[p] ?? 0) / partyTotal) * 100 : 0);
+  // Pie slices from the FULL per-party total (all cash this PAC moved).
+  const partyTotal = Object.values(partyBreakdown).reduce((s, v) => s + v, 0);
+  const partyPct = (p: string) => (partyTotal > 0 ? ((partyBreakdown[p] ?? 0) / partyTotal) * 100 : 0);
   const dPct = partyPct('D');
   const rPct = partyPct('R');
   const iPct = partyPct('I');
-  // For the legend / footnote: lifetime IE figures to point readers to the
-  // Indirect $ column when the gap matters.
-  const totalIeAndBeneficiary = Object.values(partyBreakdown).reduce((s, v) => s + v, 0) - partyTotal;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
@@ -324,11 +307,10 @@ export default async function PacScoreboardPage(props: Props) {
           </p>
         </div>
 
-        {/* Party split — DIRECT contributions only (excludes IE / beneficiary).
-            See partyBreakdownDirect comment for why. */}
+        {/* Party split — full footprint (direct + IE_SUPPORT + indirect). */}
         <div className="rounded border border-sky-200 bg-sky-100 p-4">
           <p className="font-mono text-xs uppercase tracking-widest text-slate-600">
-            Party split <span className="text-[10px] normal-case text-slate-500">— direct $ only</span>
+            Party split <span className="text-[10px] normal-case text-slate-500">— all money</span>
           </p>
           <div className="mt-2 flex flex-col items-center gap-3">
             {partyTotal > 0 ? (
@@ -346,7 +328,7 @@ export default async function PacScoreboardPage(props: Props) {
             ) : null}
             <ul className="w-full space-y-0.5 font-mono text-xs">
               {(['D', 'R', 'I'] as const).map((p) => {
-                const v = partyBreakdownDirect[p] ?? 0;
+                const v = partyBreakdown[p] ?? 0;
                 if (v <= 0) return null;
                 const swatch = p === 'D' ? 'bg-[#1d4ed8]' : p === 'R' ? 'bg-[#b91c1c]' : 'bg-[#6b7280]';
                 const pct = partyPct(p);
@@ -360,14 +342,8 @@ export default async function PacScoreboardPage(props: Props) {
                   </li>
                 );
               })}
-              {partyTotal === 0 && <li className="text-slate-500">no direct contributions</li>}
+              {partyTotal === 0 && <li className="text-slate-500">no recipients</li>}
             </ul>
-            {totalIeAndBeneficiary > 0 && (
-              <p className="text-[10px] text-slate-600">
-                + ${Math.round(totalIeAndBeneficiary).toLocaleString()} of IE / indirect not in pie. IE money is usually
-                intra-primary; see Indirect $ column.
-              </p>
-            )}
           </div>
         </div>
 
