@@ -137,6 +137,16 @@ const CLASSES: ClassDef[] = [
       "Excluded entirely. Routing individual donations through a conduit doesn't change who the donor is — counting it would double-count individual contributions.",
   },
   {
+    key: 'PARTY',
+    name: 'Party Committee',
+    countsAgainst: false,
+    description:
+      'The party apparatus itself — DCCC, NRCC, DSCC, NRSC, RNC, DNC, and state party committees (FEC committee type Y). They raise from many sources and spend heavily on IE for/against candidates.',
+    examples: ['DCCC', 'NRCC', 'DSCC', 'NRSC', 'Republican National Committee'],
+    rationale:
+      "Party support of its own candidates isn't concentrated-wealth corporate influence — it's the party being the party. Doesn't count against, but tracked: the party committees are the single largest source of IE attack spending in the data (DCCC + NRCC + DSCC + NRSC together exceed $1B).",
+  },
+  {
     key: 'UNKNOWN',
     name: 'Unknown',
     countsAgainst: false,

@@ -926,6 +926,7 @@ enum PacClass {
   LEADERSHIP
   IDEOLOGICAL
   CONDUIT
+  PARTY // DCCC/NRCC/DSCC/NRSC/RNC/DNC + state parties (FEC CMTE_TP='Y'). Party apparatus supporting its own candidates — does NOT count against (not concentrated-wealth corporate influence). Tracked for transparency.
   UNKNOWN
 }
 

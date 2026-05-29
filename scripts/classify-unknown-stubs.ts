@@ -34,12 +34,14 @@ const FEC_BULK_BASE = path.join(process.cwd(), 'data');
 
 interface CliFlags {
   dryRun: boolean;
+  all: boolean;
 }
 
 function parseFlags(argv: string[]): CliFlags {
-  const flags: CliFlags = { dryRun: false };
+  const flags: CliFlags = { dryRun: false, all: false };
   for (const arg of argv.slice(2)) {
     if (arg === '--dry-run') flags.dryRun = true;
+    else if (arg === '--all') flags.all = true;
   }
   return flags;
 }
@@ -94,20 +96,34 @@ async function main(): Promise<void> {
   const flags = parseFlags(process.argv);
   console.log(`[classify-unknown-stubs] flags: ${JSON.stringify(flags)}`);
 
-  // 1. Fetch UNKNOWN stubs that were backfilled (reason starts with 'auto:').
-  // Filter by reason so we don't touch real human-reviewed UNKNOWN entries.
-  const stubs = await prisma.pacClassification.findMany({
-    where: {
-      class: 'UNKNOWN',
-      OR: [
-        { reason: { startsWith: 'auto:leadership-' } },
-        { reason: { startsWith: 'auto:fec-classified-' } },
-        { reason: { startsWith: 'auto:jfc-' } },
-      ],
-    },
-    select: { committeeId: true, name: true, reason: true },
-  });
-  console.log(`[classify-unknown-stubs] ${stubs.length} candidate stubs`);
+  // 1. Fetch UNKNOWN committees to reclassify.
+  //   default: only auto-backfilled stubs (reason starts with 'auto:*-backfill').
+  //   --all:   every class=UNKNOWN row EXCEPT human-locked ones (source !=
+  //            'inline'/'override'/'llm'). This lets us sweep the ~4K UNKNOWN
+  //            donor committees that came in via FEC ingest but were never in
+  //            the top-20K classified set. We still protect human-reviewed
+  //            rows: anything with source in (inline, override, llm) is left
+  //            alone even under --all.
+  const stubs = flags.all
+    ? await prisma.pacClassification.findMany({
+        where: {
+          class: 'UNKNOWN',
+          source: { notIn: ['inline', 'override', 'llm'] },
+        },
+        select: { committeeId: true, name: true, reason: true },
+      })
+    : await prisma.pacClassification.findMany({
+        where: {
+          class: 'UNKNOWN',
+          OR: [
+            { reason: { startsWith: 'auto:leadership-' } },
+            { reason: { startsWith: 'auto:fec-classified-' } },
+            { reason: { startsWith: 'auto:jfc-' } },
+          ],
+        },
+        select: { committeeId: true, name: true, reason: true },
+      });
+  console.log(`[classify-unknown-stubs] ${stubs.length} candidate stubs (all=${flags.all})`);
   if (stubs.length === 0) {
     await prisma.$disconnect();
     return;
@@ -171,6 +187,22 @@ async function main(): Promise<void> {
       continue;
     }
 
+    // SPECIAL CASE: CMTE_TP='Y' is a party committee (DCCC/NRCC/DSCC/NRSC/
+    // RNC/DNC + state parties). High-confidence FEC signal. Classify PARTY.
+    if (cmRow.committeeType === 'Y') {
+      results.push({
+        committeeId: stub.committeeId,
+        name: cmRow.name,
+        proposed: 'PARTY',
+        reason: `cm-type=Y (party committee)`,
+        committeeType: cmRow.committeeType,
+        orgType: cmRow.orgType,
+        connectedOrg: cmRow.connectedOrg,
+        foundInCm: true,
+      });
+      continue;
+    }
+
     const pacRow: PacRow = {
       committee_id: stub.committeeId,
       name: cmRow.name,
@@ -182,7 +214,27 @@ async function main(): Promise<void> {
       org_type: cmRow.orgType,
       connected_org: cmRow.connectedOrg,
     };
-    const { proposed, reason } = autoClassify(pacRow);
+    let { proposed, reason } = autoClassify(pacRow);
+    // CONFIDENCE GATE (--all mode only): a blind sweep of thousands of small
+    // committees can't trust the loose name-pattern fallbacks — e.g. the bare
+    // /\bINC\b/, /\bLLC\b/, /\bENERGY\b/, /\bDEFENSE\b/ corporate patterns
+    // mislabel activist orgs like "KNOCK FOR DEMOCRACY, INC." or "VOTING
+    // RIGHTS DEFENSE FUND". In --all mode we ONLY accept high-confidence
+    // signals: explicit overrides, FEC org_type, and a curated set of strong
+    // named patterns. Everything weaker stays UNKNOWN (honest > wrong).
+    if (flags.all && proposed !== 'UNKNOWN') {
+      const strong =
+        reason.startsWith('override:') ||
+        reason.startsWith('org_type=') ||
+        // Strong, unambiguous named orgs (foreign-policy, major labor, conduits).
+        /AIPAC|AMERICAN ISRAEL|J ?STREET|TURKISH AMERICAN|HELLENIC|AFL-?CIO|TEAMSTER|\bSEIU\b|AFSCME|\bUAW\b|UFCW|\bNEA\b|ACTBLUE|WINRED|CLUB FOR GROWTH|SENATE LEADERSHIP FUND|CONGRESSIONAL LEADERSHIP FUND|HOUSE MAJORITY PAC|SENATE MAJORITY PAC|EMILY'?S LIST|EVERYTOWN|GIFFORDS|SIERRA CLUB|PLANNED PARENTHOOD/i.test(
+          `${cmRow.name} ${cmRow.connectedOrg}`,
+        );
+      if (!strong) {
+        proposed = 'UNKNOWN';
+        reason = `--all gate: weak signal (${reason}) left UNKNOWN`;
+      }
+    }
     results.push({
       committeeId: stub.committeeId,
       name: cmRow.name,
@@ -235,6 +287,7 @@ async function main(): Promise<void> {
             | 'LEADERSHIP'
             | 'IDEOLOGICAL'
             | 'CONDUIT'
+            | 'PARTY'
             | 'UNKNOWN',
           name: r.name.slice(0, 200),
           committeeType: r.committeeType || null,

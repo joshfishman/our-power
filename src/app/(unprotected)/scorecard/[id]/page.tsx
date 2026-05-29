@@ -634,6 +634,7 @@ const PAC_CLASS_TONE: Record<string, { bg: string; label: string; countsAgainst:
   LEADERSHIP: { bg: 'bg-yellow-700 text-white', label: 'Leadership PAC', countsAgainst: false },
   IDEOLOGICAL: { bg: 'bg-purple-700 text-white', label: 'Ideological', countsAgainst: false },
   CONDUIT: { bg: 'bg-gray-600 text-white', label: 'Conduit', countsAgainst: false },
+  PARTY: { bg: 'bg-indigo-700 text-white', label: 'Party Committee', countsAgainst: false },
   UNKNOWN: { bg: 'bg-gray-500 text-white', label: 'Unknown', countsAgainst: false },
 };
 
