@@ -200,20 +200,11 @@ export default async function PacScoreboardPage(props: Props) {
   }
   const totalSupport = Object.values(cycleTotals).reduce((s, v) => s + v, 0);
 
-  // Party breakdown.
-  // For the PIE CHART we use DIRECT contributions only. Rationale: when a
-  // PAC also operates a Super PAC arm doing IE (e.g. AIPAC + UDP), the IE
-  // spend is overwhelmingly intra-party (UDP spends in Democratic primaries
-  // by design) and structurally flows to one party's winners. Rolling that
-  // into the pie hides the PAC's actual donor decisions — AIPAC's direct
-  // PAC is roughly bipartisan ($3.6M D / $4.9M R / 296 vs 451 recipients),
-  // but the total looks 90% D once UDP's IE + beneficiary attribution is
-  // added. The Indirect $ column in the table preserves the full picture;
-  // the pie shows the donor's actual party allocation choice.
   // Party breakdown uses the FULL footprint per party (direct + IE_SUPPORT +
   // IE_OPPOSE_BENEFICIARY) — i.e. l.total. "Show me all the cash": the pie
-  // reflects every dollar this PAC moved to/for each party's winners, not
-  // just direct contributions.
+  // reflects every dollar this PAC moved to/for each party's winners. For
+  // AIPAC this reads ~90% D, which is accurate — UDP's IE all flows to
+  // Democratic primary winners.
   const partyBreakdown: Record<string, number> = {};
   for (const l of sortedSupport) {
     partyBreakdown[l.party] = (partyBreakdown[l.party] ?? 0) + l.total;
