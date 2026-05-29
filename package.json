@@ -63,6 +63,7 @@
     "scorecard:ingest-fec-classified": "npx tsx ./scripts/ingest-fec-classified.ts",
     "scorecard:ingest-fec-jfc-passthrough": "npx tsx ./scripts/ingest-fec-jfc-passthrough.ts",
     "scorecard:ingest-defeated-challengers": "npx tsx ./scripts/ingest-defeated-challengers.ts",
+    "scorecard:ingest-current-candidates": "npx tsx ./scripts/ingest-current-candidates.ts",
     "scorecard:attribute-ie-beneficiary": "npx tsx ./scripts/attribute-ie-beneficiary.ts",
     "scorecard:ingest-dime": "npx tsx ./scripts/ingest-dime-recipients.ts",
     "prisma:mock": "npx prisma migrate reset && npx tsx ./scripts/createMockUsers.ts",

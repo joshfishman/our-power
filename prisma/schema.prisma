@@ -807,6 +807,12 @@ model Legislator {
   govtrackId       Int?
   photoUrl         String?
   isActive         Boolean      @default(true)
+  // v1.8 — Election cycle this legislator is currently CANDIDATE for (e.g.
+  // 2026 for someone who's filed for the 2026 ballot). Null = not currently
+  // running. Sitting incumbents seeking re-election get this set alongside
+  // isActive=true. Defeated-prior-cycle challengers stay isActive=false with
+  // this null unless they file again. Populated by scripts/ingest-current-candidates.ts.
+  currentCandidateCycle Int?
 
   scores             RepresentativeScore[]
   achievements       MarkerAchievement[]
