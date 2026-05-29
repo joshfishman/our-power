@@ -817,6 +817,7 @@ model Legislator {
   rollCallPositions  RollCallPosition[]
   billCosponsorships BillCosponsor[]
   pacContributions   PacContribution[]
+  individualMoney    LegislatorIndividualMoney[]
   // Leadership PACs sponsored by this legislator (set by map-leadership-pacs.ts).
   leadershipPacs     PacClassification[] @relation("LegislatorLeadershipPacs")
 
@@ -988,10 +989,32 @@ model LeadershipPacInflow {
   @@index([donorCommitteeId])
 }
 
-/// v1.7.1 per-(legislator, donor PAC, cycle, kind) contribution aggregate.
-/// Sourced from FEC bulk itpas2.txt across 2018/2020/2022/2024 cycles.
-/// kind distinguishes direct PAC-to-candidate contribs from JFC pass-throughs
-/// and Super PAC IE spending so the score / display can attribute by path.
+/// v1.7.5 — per-(legislator, cycle) itemized INDIVIDUAL contribution summary.
+/// Sourced from FEC bulk indiv{YY}.txt (itemized individual contributions
+/// ≥$200 to the candidate's principal committee). This is the ~$4.7B / 53%
+/// of all political money that the PAC tables don't capture — most of a
+/// campaign's funding comes from individuals, not PACs.
+///
+/// topEmployers holds the top-N employers by aggregate $ as JSON
+/// [{ employer, total, count }] — surfaces "who actually bankrolls this
+/// legislator" (e.g. the finance / law-firm / industry concentration that
+/// the PAC Score is blind to). Employer strings are raw FEC values
+/// (uppercased+trimmed); industry normalization is a future pass.
+model LegislatorIndividualMoney {
+  id                String     @id @default(cuid())
+  legislator        Legislator @relation(fields: [legislatorId], references: [id], onDelete: Cascade)
+  legislatorId      String
+  cycleYear         Int
+  totalItemized     Decimal    @db.Decimal(16, 2) // Σ itemized individual contributions ≥$200
+  contributionCount Int // number of itemized individual contributions
+  topEmployers      Json // [{ employer: string, total: number, count: number }] top 25 by $
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  @@unique([legislatorId, cycleYear])
+  @@index([legislatorId])
+}
+
 enum ContributionKind {
   DIRECT // 24K — direct PAC contribution to candidate principal committee
   JFC_FEED // 22Y — PAC-to-PAC transfer feeding the candidate's JFC (reserved, unused)

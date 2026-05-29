@@ -546,6 +546,58 @@ export async function getLegislatorLeadershipPacInflows(legislatorId: string): P
   };
 }
 
+// ─── v1.7.5 Individual contributions ────────────────────────────────────────
+//
+// The ~53%-of-all-money layer the PAC Score is blind to. Itemized individual
+// contributions (≥$200) to the legislator's principal committee, aggregated
+// per cycle with the top employers by dollar. Sourced from FEC indiv{YY}.txt.
+
+export interface IndividualMoneyEmployer {
+  employer: string;
+  total: number;
+  count: number;
+}
+
+export interface IndividualMoney {
+  totalItemized: number; // summed across all ingested cycles
+  contributionCount: number;
+  cyclesAvailable: number[]; // which cycles we have data for
+  topEmployers: IndividualMoneyEmployer[]; // merged + re-ranked across cycles
+}
+
+export async function getLegislatorIndividualMoney(legislatorId: string): Promise<IndividualMoney | null> {
+  const rows = await prisma.legislatorIndividualMoney.findMany({
+    where: { legislatorId },
+    select: { cycleYear: true, totalItemized: true, contributionCount: true, topEmployers: true },
+    orderBy: { cycleYear: 'desc' },
+  });
+  if (rows.length === 0) return null;
+
+  let totalItemized = 0;
+  let contributionCount = 0;
+  const cyclesAvailable: number[] = [];
+  // Merge per-cycle top-employer lists by summing the same employer across cycles.
+  const merged = new Map<string, { total: number; count: number }>();
+  for (const r of rows) {
+    totalItemized += Number(r.totalItemized);
+    contributionCount += r.contributionCount;
+    cyclesAvailable.push(r.cycleYear);
+    const emps = (r.topEmployers as Array<{ employer: string; total: number; count: number }>) ?? [];
+    for (const e of emps) {
+      const cur = merged.get(e.employer) ?? { total: 0, count: 0 };
+      cur.total += e.total;
+      cur.count += e.count;
+      merged.set(e.employer, cur);
+    }
+  }
+  const topEmployers = [...merged.entries()]
+    .map(([employer, v]) => ({ employer, total: v.total, count: v.count }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 20);
+
+  return { totalItemized, contributionCount, cyclesAvailable, topEmployers };
+}
+
 /**
  * v1.7.1 — Bill-level breakdown of one legislator's scoring universe.
  *

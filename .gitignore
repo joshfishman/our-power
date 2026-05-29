@@ -62,6 +62,8 @@ next-env.d.ts
 # FEC bulk data files (large, downloadable from fec.gov)
 /data/fec-bulk-*/*.txt
 /data/fec-bulk-*/*.zip
+/data/indiv*.zip
+/data/fec-bulk-ccl/*.txt
 
 # Inline classification batches (intermediate; final state is in pac-candidates.csv)
 /data/inline-classifications-batch*.json
