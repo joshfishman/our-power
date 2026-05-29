@@ -975,10 +975,13 @@ function LeadershipPacInflowsSection({ inflows }: { inflows: LeadershipPacInflow
 // industry / firm concentration in the donor base (e.g. Goldman Sachs,
 // Blackstone, big law) that PAC totals can't see.
 function IndividualMoneySection({ money, pacTotalInfluence }: { money: IndividualMoney; pacTotalInfluence: number }) {
-  const { totalItemized, contributionCount, cyclesAvailable, topEmployers } = money;
+  const { totalItemized, contributionCount, cyclesAvailable, topEmployers, industryMix, industryClassifiedTotal } =
+    money;
   const grandTotal = totalItemized + pacTotalInfluence;
   const indivPct = grandTotal > 0 ? Math.round((totalItemized / grandTotal) * 100) : 0;
   const maxEmployer = topEmployers.length > 0 ? topEmployers[0].total : 0;
+  const topIndustries = industryMix.slice(0, 8);
+  const maxIndustry = topIndustries.length > 0 ? topIndustries[0].total : 0;
 
   return (
     <section className="mt-8 rounded border border-[#2C4A5E] bg-[#2C4A5E]/60 p-5">
@@ -1016,6 +1019,52 @@ function IndividualMoneySection({ money, pacTotalInfluence }: { money: Individua
           <p className="mt-0.5 font-mono text-[10px] text-[#F5DEB3]/60">of (individual + PAC) money</p>
         </div>
       </div>
+
+      {/* v1.7.6 Industry rollup — sectors of the top reported employers.
+          Honest framing: "of donor money we can assign to an industry, the
+          mix is X." Per-firm $ is noise (~2.5% of base); per-industry is
+          where the Wall-Street / Big Law / Big Pharma story lives. */}
+      {topIndustries.length > 0 && (
+        <div className="mt-5">
+          <p className="font-mono text-xs uppercase tracking-widest text-[#F5DEB3]/60">
+            Top donor industries
+            <span className="ml-2 text-[10px] normal-case text-[#F5DEB3]/50">
+              — of ${Math.round(industryClassifiedTotal).toLocaleString()} classified
+            </span>
+          </p>
+          <ul className="mt-2 space-y-1">
+            {topIndustries.map((r) => {
+              const widthPct = maxIndustry > 0 ? (r.total / maxIndustry) * 100 : 0;
+              const isFinance = r.sector === 'FINANCE';
+              return (
+                <li key={r.sector} className="flex items-center gap-3 text-sm">
+                  <span className="w-44 shrink-0 truncate text-[#F5DEB3]" title={r.label}>
+                    {r.label}
+                  </span>
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-black/30">
+                    <div
+                      className={`h-full ${isFinance ? 'bg-amber-400/80' : 'bg-[#F5DEB3]/60'}`}
+                      style={{ width: `${Math.max(2, widthPct)}%` }}
+                    />
+                  </div>
+                  <span className="w-24 shrink-0 text-right font-mono text-xs tabular-nums text-[#F5DEB3]">
+                    ${Math.round(r.total).toLocaleString()}
+                  </span>
+                  <span className="w-12 shrink-0 text-right font-mono text-[10px] tabular-nums text-[#F5DEB3]/60">
+                    {r.pctOfClassified.toFixed(0)}%
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="mt-2 font-mono text-[10px] text-[#F5DEB3]/50">
+            Rules-based employer→industry classifier (no external crosswalk). Percentages are of money we could assign
+            to a sector; the rest (FEC catch-alls + tens of thousands of small local employers) is unclassified by
+            design. Per-firm $ alone is weak signal (~2-3% of base); per-industry concentration is where the funding-
+            source story lives.
+          </p>
+        </div>
+      )}
 
       {topEmployers.length > 0 && (
         <div className="mt-5">
