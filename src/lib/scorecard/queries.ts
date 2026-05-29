@@ -598,6 +598,67 @@ export async function getLegislatorIndividualMoney(legislatorId: string): Promis
   return { totalItemized, contributionCount, cyclesAvailable, topEmployers };
 }
 
+// ─── v1.7.6 DIME donor-ideology + small-dollar profile ──────────────────────
+//
+// Whole-base funding-character metrics from Adam Bonica's DIME, sidestepping
+// the "single employer = 2.5% of base" noise. Uses the most-recent cycle for
+// ideology (a point-in-time estimate) and sums money across cycles for the
+// small-dollar ratio.
+
+export interface DimeProfile {
+  cycleYear: number; // most recent cycle we have a profile for
+  contributorCfscore: number | null; // donor-base ideology (−left/+right)
+  recipientCfscore: number | null; // candidate's own ideology
+  smallDollarPct: number | null; // unitemized / (unitemized + itemized individual) × 100
+  totalIndivContribs: number; // itemized individual (summed across cycles)
+  totalUnitemized: number; // small-dollar <$200 (summed)
+  totalPacContribs: number; // (summed)
+  totalReceipts: number; // (summed)
+  cyclesAvailable: number[];
+}
+
+export async function getLegislatorDimeProfile(legislatorId: string): Promise<DimeProfile | null> {
+  const rows = await prisma.legislatorDimeProfile.findMany({
+    where: { legislatorId },
+    orderBy: { cycleYear: 'desc' },
+  });
+  if (rows.length === 0) return null;
+
+  // Ideology: take the most-recent cycle that actually has a contributor score.
+  const mostRecent = rows[0];
+  const ideologyRow = rows.find((r) => r.contributorCfscore !== null) ?? mostRecent;
+
+  let indiv = 0;
+  let unitemized = 0;
+  let pac = 0;
+  let receipts = 0;
+  const cyclesAvailable: number[] = [];
+  for (const r of rows) {
+    indiv += Number(r.totalIndivContribs);
+    unitemized += Number(r.totalUnitemized);
+    pac += Number(r.totalPacContribs);
+    receipts += Number(r.totalReceipts);
+    cyclesAvailable.push(r.cycleYear);
+  }
+  // small-dollar % = unitemized / (unitemized + itemized individual). DIME's
+  // total.indiv.contribs is itemized-only, so the denominator is the sum
+  // (avoids the >100% artifact from dividing by itemized alone).
+  const indivTotal = unitemized + indiv;
+  const smallDollarPct = indivTotal > 0 ? (unitemized / indivTotal) * 100 : null;
+
+  return {
+    cycleYear: mostRecent.cycleYear,
+    contributorCfscore: ideologyRow.contributorCfscore,
+    recipientCfscore: ideologyRow.recipientCfscore,
+    smallDollarPct,
+    totalIndivContribs: indiv,
+    totalUnitemized: unitemized,
+    totalPacContribs: pac,
+    totalReceipts: receipts,
+    cyclesAvailable,
+  };
+}
+
 /**
  * v1.7.1 — Bill-level breakdown of one legislator's scoring universe.
  *

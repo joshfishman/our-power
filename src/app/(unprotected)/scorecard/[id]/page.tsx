@@ -15,6 +15,7 @@ import {
   getOpposedByPacs,
   getLegislatorLeadershipPacInflows,
   getLegislatorIndividualMoney,
+  getLegislatorDimeProfile,
 } from '@/lib/scorecard/queries';
 import type {
   BillBreakdownRow,
@@ -22,6 +23,7 @@ import type {
   TopDonor,
   LeadershipPacInflows,
   IndividualMoney,
+  DimeProfile,
 } from '@/lib/scorecard/queries';
 import { METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
 import { LegislatorAvatar } from '@/components/scorecard/LegislatorAvatar';
@@ -71,18 +73,24 @@ export default async function LegislatorScorecardPage(props: Props) {
   // For CA legislators we don't have PacContribution data — fall back to the
   // legacy v1.7 PAC score from PacMoneyData.
   const votingScore = computePublishedTotal(legislator.scores);
-  const [moneyTrail, topDonors, opposedBy, legacyPacScore, leadershipPacInflows, individualMoney] = await Promise.all([
-    jurisdiction === 'FEDERAL' ? getLegislatorMoneyTrail(legislator.id) : Promise.resolve(null as PacMoneyTrail | null),
-    jurisdiction === 'FEDERAL' ? getTopDonorsForLegislator(legislator.id, 15) : Promise.resolve([] as TopDonor[]),
-    jurisdiction === 'FEDERAL' ? getOpposedByPacs(legislator.id, 10) : Promise.resolve([] as TopDonor[]),
-    getLegislatorPacScore(legislator.id),
-    jurisdiction === 'FEDERAL'
-      ? getLegislatorLeadershipPacInflows(legislator.id)
-      : Promise.resolve(null as LeadershipPacInflows | null),
-    jurisdiction === 'FEDERAL'
-      ? getLegislatorIndividualMoney(legislator.id)
-      : Promise.resolve(null as IndividualMoney | null),
-  ]);
+  const [moneyTrail, topDonors, opposedBy, legacyPacScore, leadershipPacInflows, individualMoney, dimeProfile] =
+    await Promise.all([
+      jurisdiction === 'FEDERAL'
+        ? getLegislatorMoneyTrail(legislator.id)
+        : Promise.resolve(null as PacMoneyTrail | null),
+      jurisdiction === 'FEDERAL' ? getTopDonorsForLegislator(legislator.id, 15) : Promise.resolve([] as TopDonor[]),
+      jurisdiction === 'FEDERAL' ? getOpposedByPacs(legislator.id, 10) : Promise.resolve([] as TopDonor[]),
+      getLegislatorPacScore(legislator.id),
+      jurisdiction === 'FEDERAL'
+        ? getLegislatorLeadershipPacInflows(legislator.id)
+        : Promise.resolve(null as LeadershipPacInflows | null),
+      jurisdiction === 'FEDERAL'
+        ? getLegislatorIndividualMoney(legislator.id)
+        : Promise.resolve(null as IndividualMoney | null),
+      jurisdiction === 'FEDERAL'
+        ? getLegislatorDimeProfile(legislator.id)
+        : Promise.resolve(null as DimeProfile | null),
+    ]);
   const pacScore = moneyTrail?.pacScore ?? legacyPacScore;
   const avgScore = computeTwoScoreAverage(pacScore, votingScore);
   const chamberLabel =
@@ -166,6 +174,10 @@ export default async function LegislatorScorecardPage(props: Props) {
 
       {jurisdiction === 'FEDERAL' && leadershipPacInflows && leadershipPacInflows.pacCount > 0 && (
         <LeadershipPacInflowsSection inflows={leadershipPacInflows} />
+      )}
+
+      {jurisdiction === 'FEDERAL' && dimeProfile && (
+        <DonorProfileSection profile={dimeProfile} party={legislator.party} />
       )}
 
       {jurisdiction === 'FEDERAL' && individualMoney && individualMoney.totalItemized > 0 && (
@@ -1035,6 +1047,92 @@ function IndividualMoneySection({ money, pacTotalInfluence }: { money: Individua
           </p>
         </div>
       )}
+    </section>
+  );
+}
+
+// v1.7.6 — Donor profile (DIME). Whole-base funding-character metrics that
+// sidestep the per-employer noise: donor-base ideology (Bonica cfscore) and
+// small-dollar % (grassroots vs big-check). Joined by FEC candidate id.
+function DonorProfileSection({ profile, party }: { profile: DimeProfile; party: string }) {
+  const { contributorCfscore, smallDollarPct, totalUnitemized, totalIndivContribs, cyclesAvailable } = profile;
+
+  // Map a cfscore (roughly −2…+2) to a 0-100 left↔right position for the bar.
+  const cf = contributorCfscore;
+  const cfPos = cf === null ? 50 : Math.max(0, Math.min(100, ((cf + 2) / 4) * 100));
+  const cfLabel =
+    cf === null
+      ? 'no score'
+      : cf <= -0.75
+      ? 'strongly progressive donor base'
+      : cf < -0.25
+      ? 'lean-progressive donor base'
+      : cf <= 0.25
+      ? 'centrist / mixed donor base'
+      : cf < 0.75
+      ? 'lean-conservative donor base'
+      : 'strongly conservative donor base';
+
+  return (
+    <section className="mt-8 rounded border border-[#2C4A5E] bg-[#2C4A5E]/60 p-5">
+      <header className="flex items-baseline justify-between gap-3">
+        <h2 className="font-serif text-xl font-bold text-[#F5DEB3]">Donor base</h2>
+        <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/70">
+          DIME · cycles {cyclesAvailable.sort((a, b) => a - b).join(', ')}
+        </p>
+      </header>
+      <p className="mt-1 text-sm text-[#F5DEB3]/90">
+        Whole-base funding character from Stanford&apos;s DIME (Bonica). Unlike a single employer (which is rarely more
+        than ~2% of the base), these summarize <em>who</em> funds this legislator across every donor.
+      </p>
+
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {/* Donor ideology */}
+        <div className="rounded bg-black/30 p-4">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/60">Donor-base ideology</p>
+          <p className="mt-1 font-serif text-2xl font-bold tabular-nums text-[#F5DEB3]">
+            {cf === null ? '—' : cf.toFixed(2)}
+          </p>
+          <p className="mt-0.5 text-xs text-[#F5DEB3]/80">{cfLabel}</p>
+          {cf !== null && (
+            <div className="mt-2">
+              <div className="relative h-2 w-full rounded-full bg-gradient-to-r from-[#1d4ed8] via-[#9ca3af] to-[#b91c1c]">
+                <span
+                  className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-black/70"
+                  style={{ left: `${cfPos}%` }}
+                />
+              </div>
+              <div className="mt-1 flex justify-between font-mono text-[9px] uppercase tracking-wide text-[#F5DEB3]/50">
+                <span>progressive</span>
+                <span>conservative</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Small-dollar % */}
+        <div className="rounded bg-black/30 p-4">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/60">Small-dollar share</p>
+          <p className="mt-1 font-serif text-2xl font-bold tabular-nums text-[#F5DEB3]">
+            {smallDollarPct === null ? '—' : `${smallDollarPct.toFixed(0)}%`}
+          </p>
+          <p className="mt-0.5 text-xs text-[#F5DEB3]/80">
+            of individual money is small-dollar (&lt;$200) — grassroots vs big-check signal.
+          </p>
+          {smallDollarPct !== null && (
+            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-black/40">
+              <div className="h-full bg-[#F5DEB3]/70" style={{ width: `${Math.min(100, smallDollarPct)}%` }} />
+            </div>
+          )}
+          <p className="mt-2 font-mono text-[10px] text-[#F5DEB3]/50">
+            ${(totalUnitemized / 1000).toFixed(0)}K small-dollar · ${(totalIndivContribs / 1000).toFixed(0)}K itemized
+          </p>
+        </div>
+      </div>
+      <p className="mt-3 font-mono text-[10px] text-[#F5DEB3]/50">
+        Ideology = Bonica CFscore of the donor base (−2 progressive … +2 conservative). Party shown: {party}. Source:
+        Database on Ideology, Money &amp; Politics, Stanford.
+      </p>
     </section>
   );
 }
