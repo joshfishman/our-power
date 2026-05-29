@@ -75,6 +75,7 @@ const CLASS_TONE: Record<string, { bg: string; label: string }> = {
   LEADERSHIP: { bg: 'bg-yellow-700', label: 'Leadership PAC' },
   IDEOLOGICAL: { bg: 'bg-purple-700', label: 'Ideological' },
   CONDUIT: { bg: 'bg-gray-600', label: 'Conduit' },
+  PARTY: { bg: 'bg-indigo-700', label: 'Party Committee' },
   UNKNOWN: { bg: 'bg-gray-500', label: 'Unknown' },
 };
 
