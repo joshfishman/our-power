@@ -240,11 +240,11 @@ export default async function PacClassesMethodologyPage() {
         })}
       </section>
 
-      <section className="mt-12 rounded border-2 border-[#8B3A3A] bg-[#2C4A5E]/60 p-5">
-        <h2 className="font-mono text-xs uppercase tracking-widest text-[#F5DEB3]">Audit & accountability</h2>
-        <p className="mt-2 text-sm text-[#F5DEB3]">
+      <section className="mt-12 rounded border border-2 border-[#8B3A3A] border-gray-200 bg-white p-5 shadow-sm">
+        <h2 className="font-mono text-xs uppercase tracking-widest text-[#2C4A5E]">Audit & accountability</h2>
+        <p className="mt-2 text-sm text-[#2C4A5E]">
           The full classification list is in our public repository at{' '}
-          <code className="rounded bg-black/30 px-1 font-mono text-xs">data/pac-candidates.csv</code> — every committee
+          <code className="rounded bg-gray-50 px-1 font-mono text-xs">data/pac-candidates.csv</code> — every committee
           ID, name, class assignment, and reason. If you disagree with a classification, open an issue or send us a note
           and we&apos;ll review.
         </p>

@@ -493,7 +493,7 @@ function SponsorBadge({ tier }: { tier: string | null | undefined }) {
       title={`${label} — credit traces to sponsorship`}
       className={
         isLead
-          ? 'ml-2 rounded bg-[#8B3A3A] px-1.5 py-0.5 font-mono text-xs uppercase tracking-wide text-[#F5DEB3]'
+          ? 'ml-2 rounded bg-[#8B3A3A] px-1.5 py-0.5 font-mono text-xs uppercase tracking-wide text-[#2C4A5E]'
           : 'ml-2 rounded border border-[#2C4A5E] bg-[#F5DEB3] px-1.5 py-0.5 font-mono text-xs uppercase tracking-wide text-[#2C4A5E]'
       }>
       {label}
@@ -541,24 +541,24 @@ function NoRecordOpportunities({
   }
   if (gaps.length === 0) return null;
   return (
-    <section className="mt-12 rounded border border-[#2C4A5E] bg-[#2C4A5E]/60 p-5">
-      <h2 className="font-mono text-xs uppercase tracking-widest text-[#F5DEB3]">Not weighed in on</h2>
-      <p className="mt-2 text-sm text-[#F5DEB3]/90">
+    <section className="mt-12 rounded border border-[#2C4A5E] border-gray-200 bg-white p-5 shadow-sm">
+      <h2 className="font-mono text-xs uppercase tracking-widest text-[#2C4A5E]">Not weighed in on</h2>
+      <p className="mt-2 text-sm text-[#2C4A5E]">
         Markers with bills currently in committee or pending — {legislatorName} has not cosponsored or voted on any of
         them yet. Each one is an opportunity to take a public position.
       </p>
       <ul className="mt-4 space-y-3">
         {gaps.slice(0, 12).map(({ plankNumber, plankName, marker }) => (
           <li key={marker.id} className="text-sm">
-            <p className="font-medium text-[#F5DEB3]">{marker.name}</p>
-            <p className="text-xs text-[#F5DEB3]/70">
+            <p className="font-medium text-[#2C4A5E]">{marker.name}</p>
+            <p className="text-xs text-[#2C4A5E]/80">
               Plank {plankNumber}. {plankName} ·{' '}
               {marker.bills.map((b, i) => (
                 <span key={b.id}>
                   {i > 0 && ', '}
                   <Link
                     href={`/scorecard/bills/${encodeURIComponent(b.publicSlug ?? b.billNumber)}`}
-                    className="underline hover:text-[#F5DEB3]">
+                    className="underline hover:text-[#2C4A5E]">
                     {b.billNumber}
                   </Link>
                 </span>
@@ -567,7 +567,7 @@ function NoRecordOpportunities({
           </li>
         ))}
         {gaps.length > 12 && (
-          <li className="font-mono text-xs text-[#F5DEB3]/60">
+          <li className="font-mono text-xs text-[#2C4A5E]/70">
             +{gaps.length - 12} more · scroll the plank sections above for the full list
           </li>
         )}
@@ -692,12 +692,12 @@ function MoneyTrail({
   // intake is — is a separate "PAC mix" stat, shown as well.
 
   return (
-    <section className="mt-8 rounded border-2 border-[#8B3A3A] bg-[#2C4A5E]/60 p-5">
+    <section className="mt-8 rounded border border-2 border-[#8B3A3A] border-gray-200 bg-white p-5 shadow-sm">
       <header className="flex items-baseline justify-between gap-3">
-        <h2 className="font-serif text-2xl font-bold text-[#F5DEB3]">Money trail</h2>
-        <p className="font-mono text-xs uppercase tracking-widest text-[#F5DEB3]/70">v1.7.1 · 4-cycle aggregate</p>
+        <h2 className="font-serif text-2xl font-bold text-[#2C4A5E]">Money trail</h2>
+        <p className="font-mono text-xs uppercase tracking-widest text-[#2C4A5E]/80">v1.7.1 · 4-cycle aggregate</p>
       </header>
-      <p className="mt-1 text-sm text-[#F5DEB3]/90">
+      <p className="mt-1 text-sm text-[#2C4A5E]">
         Where this legislator&apos;s PAC + Super PAC IE money came from across 2018–2024.{' '}
         <Link href="/scorecard/methodology/pac-classes" className="underline hover:text-white">
           How classes work →
@@ -706,55 +706,55 @@ function MoneyTrail({
 
       {/* Top stats row */}
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded bg-black/30 p-3">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/60">Counts against</p>
+        <div className="rounded bg-gray-50 p-3">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/70">Counts against</p>
           <p className="mt-1 font-serif text-2xl font-bold tabular-nums text-red-300">
             ${(countsAgainst / 1000).toFixed(0)}K
           </p>
-          <p className="mt-0.5 font-mono text-[10px] text-[#F5DEB3]/60">Corp + Dark + Foreign</p>
+          <p className="mt-0.5 font-mono text-[10px] text-[#2C4A5E]/70">Corp + Dark + Foreign</p>
         </div>
-        <div className="rounded bg-black/30 p-3">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/60">Total raised</p>
-          <p className="mt-1 font-serif text-2xl font-bold tabular-nums text-[#F5DEB3]">
+        <div className="rounded bg-gray-50 p-3">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/70">Total raised</p>
+          <p className="mt-1 font-serif text-2xl font-bold tabular-nums text-[#2C4A5E]">
             $
             {denominator >= 1_000_000
               ? `${(denominator / 1_000_000).toFixed(1)}M`
               : `${(denominator / 1000).toFixed(0)}K`}
           </p>
-          <p className="mt-0.5 font-mono text-[10px] text-[#F5DEB3]/60">
+          <p className="mt-0.5 font-mono text-[10px] text-[#2C4A5E]/70">
             Receipts ${(totalReceipts / 1000).toFixed(0)}K + IE support
           </p>
         </div>
-        <div className="rounded bg-black/30 p-3">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/60">PAC Score</p>
-          <p className="mt-1 font-serif text-2xl font-bold tabular-nums text-[#F5DEB3]">
+        <div className="rounded bg-gray-50 p-3">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/70">PAC Score</p>
+          <p className="mt-1 font-serif text-2xl font-bold tabular-nums text-[#2C4A5E]">
             {pacScore !== null ? `${pacScore}%` : '—'}
           </p>
-          <p className="mt-0.5 font-mono text-[10px] text-[#F5DEB3]/60">1 − counts-against ÷ total raised</p>
+          <p className="mt-0.5 font-mono text-[10px] text-[#2C4A5E]/70">1 − counts-against ÷ total raised</p>
         </div>
-        <div className="rounded bg-black/30 p-3">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/60">IE against</p>
-          <p className="mt-1 font-serif text-2xl font-bold tabular-nums text-[#F5DEB3]/70">
+        <div className="rounded bg-gray-50 p-3">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/70">IE against</p>
+          <p className="mt-1 font-serif text-2xl font-bold tabular-nums text-[#2C4A5E]/80">
             ${(ieOpposeTotal / 1000).toFixed(0)}K
           </p>
-          <p className="mt-0.5 font-mono text-[10px] text-[#F5DEB3]/60">opposed this leg</p>
+          <p className="mt-0.5 font-mono text-[10px] text-[#2C4A5E]/70">opposed this leg</p>
         </div>
       </div>
 
       {/* Beneficiary PAC Score — alt view crediting IE against defeated opponents */}
       {beneficiaryCountsAgainst > 0 && (
-        <div className="mt-4 rounded border border-[#F5DEB3]/30 bg-black/30 p-4">
+        <div className="mt-4 rounded border border-gray-300 bg-gray-50 p-4">
           <div className="flex flex-wrap items-baseline justify-between gap-3">
             <div>
-              <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/60">
-                Beneficiary PAC Score <span className="text-[10px] normal-case text-[#F5DEB3]/40">— alt view</span>
+              <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/70">
+                Beneficiary PAC Score <span className="text-[10px] normal-case text-[#2C4A5E]/50">— alt view</span>
               </p>
-              <p className="mt-1 font-serif text-2xl font-bold tabular-nums text-[#F5DEB3]">
+              <p className="mt-1 font-serif text-2xl font-bold tabular-nums text-[#2C4A5E]">
                 {beneficiaryPacScore !== null ? `${beneficiaryPacScore}%` : '—'}
               </p>
             </div>
             <div className="text-right">
-              <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/60">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/70">
                 + Indirect (IE against opponent)
               </p>
               <p className="mt-1 font-serif text-lg font-bold tabular-nums text-red-300">
@@ -765,7 +765,7 @@ function MoneyTrail({
               </p>
             </div>
           </div>
-          <p className="mt-2 text-xs text-[#F5DEB3]/80">
+          <p className="mt-2 text-xs text-[#2C4A5E]/90">
             Includes IE money corporate / dark-money / foreign-policy PACs spent against this legislator&apos;s defeated
             primary or general-election opponents. View B from the methodology: the legislator materially benefited from
             that spending even though it wasn&apos;t filed directly for them. The PAC Score above remains the official
@@ -776,7 +776,7 @@ function MoneyTrail({
 
       {/* Per-class breakdown */}
       <div className="mt-5">
-        <p className="font-mono text-xs uppercase tracking-widest text-[#F5DEB3]/60">Breakdown by class</p>
+        <p className="font-mono text-xs uppercase tracking-widest text-[#2C4A5E]/70">Breakdown by class</p>
         <ul className="mt-2 space-y-1.5">
           {classRows.map(([cls, amt]) => {
             const tone = PAC_CLASS_TONE[cls] ?? PAC_CLASS_TONE.UNKNOWN;
@@ -788,17 +788,17 @@ function MoneyTrail({
                   {tone.label}
                 </span>
                 <div className="flex-1">
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-black/30">
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-gray-50">
                     <div
                       className={`h-full ${tone.countsAgainst ? 'bg-red-500' : 'bg-[#F5DEB3]'}`}
                       style={{ width: `${Math.min(100, pct)}%` }}
                     />
                   </div>
                 </div>
-                <span className="w-24 text-right font-mono text-xs tabular-nums text-[#F5DEB3]">
+                <span className="w-24 text-right font-mono text-xs tabular-nums text-[#2C4A5E]">
                   ${amt.toLocaleString()}
                 </span>
-                <span className="w-12 text-right font-mono text-xs tabular-nums text-[#F5DEB3]/70">
+                <span className="w-12 text-right font-mono text-xs tabular-nums text-[#2C4A5E]/80">
                   {pct.toFixed(0)}%
                 </span>
               </li>
@@ -806,8 +806,8 @@ function MoneyTrail({
           })}
         </ul>
         {jfcPassThroughTotal > 0 && (
-          <p className="mt-2 font-mono text-[11px] text-[#F5DEB3]/70">
-            <span className="font-semibold text-[#F5DEB3]">via JFC:</span> $
+          <p className="mt-2 font-mono text-[11px] text-[#2C4A5E]/80">
+            <span className="font-semibold text-[#2C4A5E]">via JFC:</span> $
             {Math.round(jfcPassThroughTotal).toLocaleString()} attributed to corporate PACs routed through Joint
             Fundraising Committees (apportioned by JFC outbound share).
           </p>
@@ -817,22 +817,22 @@ function MoneyTrail({
       {/* Top donor PACs */}
       {topDonors.length > 0 && (
         <div className="mt-6">
-          <p className="font-mono text-xs uppercase tracking-widest text-[#F5DEB3]/60">Top donor PACs</p>
-          <ul className="mt-2 divide-y divide-[#F5DEB3]/10 rounded border border-[#F5DEB3]/20">
+          <p className="font-mono text-xs uppercase tracking-widest text-[#2C4A5E]/70">Top donor PACs</p>
+          <ul className="mt-2 divide-y divide-[#F5DEB3]/10 rounded border border-gray-200">
             {topDonors.slice(0, 10).map((d) => {
               const tone = PAC_CLASS_TONE[d.class] ?? PAC_CLASS_TONE.UNKNOWN;
               return (
                 <li key={d.committeeId} className="flex items-center gap-2 px-3 py-1.5 text-sm">
                   <Link
                     href={`/scorecard/pac/${d.committeeId.toLowerCase()}`}
-                    className="flex-1 truncate text-[#F5DEB3] hover:underline">
+                    className="flex-1 truncate text-[#2C4A5E] hover:underline">
                     {d.name}
                   </Link>
                   <span
                     className={`shrink-0 rounded px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide ${tone.bg}`}>
                     {tone.label}
                   </span>
-                  <span className="w-24 shrink-0 text-right font-mono text-xs tabular-nums text-[#F5DEB3]">
+                  <span className="w-24 shrink-0 text-right font-mono text-xs tabular-nums text-[#2C4A5E]">
                     ${d.total.toLocaleString()}
                   </span>
                 </li>
@@ -845,21 +845,21 @@ function MoneyTrail({
       {/* IE-opposed PACs (info only) */}
       {opposedBy.length > 0 && (
         <div className="mt-6">
-          <p className="font-mono text-xs uppercase tracking-widest text-[#F5DEB3]/60">
+          <p className="font-mono text-xs uppercase tracking-widest text-[#2C4A5E]/70">
             Super PACs that spent against this legislator
           </p>
-          <p className="mt-1 text-xs text-[#F5DEB3]/70">
+          <p className="mt-1 text-xs text-[#2C4A5E]/80">
             Independent expenditures opposing the legislator&apos;s campaign. Shown for transparency — does NOT affect
             the PAC Score (this is money against them).
           </p>
-          <ul className="mt-2 divide-y divide-[#F5DEB3]/10 rounded border border-[#F5DEB3]/20">
+          <ul className="mt-2 divide-y divide-[#F5DEB3]/10 rounded border border-gray-200">
             {opposedBy.slice(0, 5).map((d) => {
               const tone = PAC_CLASS_TONE[d.class] ?? PAC_CLASS_TONE.UNKNOWN;
               return (
                 <li key={d.committeeId} className="flex items-center gap-2 px-3 py-1.5 text-sm">
                   <Link
                     href={`/scorecard/pac/${d.committeeId.toLowerCase()}`}
-                    className="flex-1 truncate text-[#F5DEB3] hover:underline">
+                    className="flex-1 truncate text-[#2C4A5E] hover:underline">
                     {d.name}
                   </Link>
                   <span
@@ -887,12 +887,12 @@ function MoneyTrail({
 function LeadershipPacInflowsSection({ inflows }: { inflows: LeadershipPacInflows }) {
   const { pacCount, totalAll, totalCounted, pacs, topDonors } = inflows;
   return (
-    <section className="mt-8 rounded border border-[#8B3A3A]/60 bg-[#2C4A5E]/60 p-5">
+    <section className="mt-8 rounded border border-[#8B3A3A]/60 border-gray-200 bg-white p-5 shadow-sm">
       <header className="flex items-baseline justify-between gap-3">
-        <h2 className="font-serif text-xl font-bold text-[#F5DEB3]">Leadership PAC inflows</h2>
-        <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/70">v1.7.2 · informational</p>
+        <h2 className="font-serif text-xl font-bold text-[#2C4A5E]">Leadership PAC inflows</h2>
+        <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/80">v1.7.2 · informational</p>
       </header>
-      <p className="mt-1 text-sm text-[#F5DEB3]/90">
+      <p className="mt-1 text-sm text-[#2C4A5E]">
         This legislator sponsors {pacCount === 1 ? 'a leadership PAC' : `${pacCount} leadership PACs`} — legally
         separate committee(s) that collect PAC + individual money and redistribute to other candidates. These dollars
         don&apos;t count toward this legislator&apos;s PAC Score (it&apos;s not their campaign money), but they show
@@ -900,27 +900,27 @@ function LeadershipPacInflowsSection({ inflows }: { inflows: LeadershipPacInflow
       </p>
 
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <div className="rounded bg-black/30 p-3">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/60">Total inbound (4-cycle)</p>
-          <p className="mt-1 font-serif text-xl font-bold tabular-nums text-[#F5DEB3]">
+        <div className="rounded bg-gray-50 p-3">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/70">Total inbound (4-cycle)</p>
+          <p className="mt-1 font-serif text-xl font-bold tabular-nums text-[#2C4A5E]">
             ${totalAll >= 1_000_000 ? `${(totalAll / 1_000_000).toFixed(1)}M` : `${(totalAll / 1000).toFixed(0)}K`}
           </p>
         </div>
-        <div className="rounded bg-black/30 p-3">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/60">From counted classes</p>
+        <div className="rounded bg-gray-50 p-3">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/70">From counted classes</p>
           <p className="mt-1 font-serif text-xl font-bold tabular-nums text-red-300">
             $
             {totalCounted >= 1_000_000
               ? `${(totalCounted / 1_000_000).toFixed(1)}M`
               : `${(totalCounted / 1000).toFixed(0)}K`}
           </p>
-          <p className="mt-0.5 font-mono text-[10px] text-[#F5DEB3]/60">Corp + Dark + Foreign</p>
+          <p className="mt-0.5 font-mono text-[10px] text-[#2C4A5E]/70">Corp + Dark + Foreign</p>
         </div>
-        <div className="col-span-2 rounded bg-black/30 p-3 sm:col-span-1">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/60">Leadership PAC(s)</p>
+        <div className="col-span-2 rounded bg-gray-50 p-3 sm:col-span-1">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/70">Leadership PAC(s)</p>
           <ul className="mt-1 space-y-0.5">
             {pacs.map((p) => (
-              <li key={p.committeeId} className="font-mono text-[11px] text-[#F5DEB3]/90">
+              <li key={p.committeeId} className="font-mono text-[11px] text-[#2C4A5E]">
                 <Link href={`/scorecard/pac/${p.committeeId.toLowerCase()}`} className="hover:underline">
                   {p.name}
                 </Link>
@@ -932,15 +932,15 @@ function LeadershipPacInflowsSection({ inflows }: { inflows: LeadershipPacInflow
 
       {topDonors.length > 0 && (
         <div className="mt-5">
-          <p className="font-mono text-xs uppercase tracking-widest text-[#F5DEB3]/60">Top donors to these PACs</p>
-          <ul className="mt-2 divide-y divide-[#F5DEB3]/10 rounded border border-[#F5DEB3]/20">
+          <p className="font-mono text-xs uppercase tracking-widest text-[#2C4A5E]/70">Top donors to these PACs</p>
+          <ul className="mt-2 divide-y divide-[#F5DEB3]/10 rounded border border-gray-200">
             {topDonors.slice(0, 10).map((d) => {
               const tone = PAC_CLASS_TONE[d.class] ?? PAC_CLASS_TONE.UNKNOWN;
               return (
                 <li key={d.committeeId} className="flex items-center gap-2 px-3 py-1.5 text-sm">
                   <Link
                     href={`/scorecard/pac/${d.committeeId.toLowerCase()}`}
-                    className="flex-1 truncate text-[#F5DEB3] hover:underline">
+                    className="flex-1 truncate text-[#2C4A5E] hover:underline">
                     {d.name}
                   </Link>
                   <span
@@ -949,7 +949,7 @@ function LeadershipPacInflowsSection({ inflows }: { inflows: LeadershipPacInflow
                   </span>
                   <span
                     className={`w-24 shrink-0 text-right font-mono text-xs tabular-nums ${
-                      tone.countsAgainst ? 'text-red-300' : 'text-[#F5DEB3]'
+                      tone.countsAgainst ? 'text-red-300' : 'text-[#2C4A5E]'
                     }`}>
                     ${d.total.toLocaleString()}
                   </span>
@@ -960,10 +960,10 @@ function LeadershipPacInflowsSection({ inflows }: { inflows: LeadershipPacInflow
         </div>
       )}
 
-      <p className="mt-3 font-mono text-[10px] text-[#F5DEB3]/60">
+      <p className="mt-3 font-mono text-[10px] text-[#2C4A5E]/70">
         Mapping currently covers a curated list of well-known leadership PACs plus FEC&apos;s ccl.txt linkage file
         (~30-40 legislators). Coverage will grow as additional mappings are added to{' '}
-        <code className="text-[#F5DEB3]/80">data/leadership-pacs-manual.csv</code>.
+        <code className="text-[#2C4A5E]/90">data/leadership-pacs-manual.csv</code>.
       </p>
     </section>
   );
@@ -984,39 +984,39 @@ function IndividualMoneySection({ money, pacTotalInfluence }: { money: Individua
   const maxIndustry = topIndustries.length > 0 ? topIndustries[0].total : 0;
 
   return (
-    <section className="mt-8 rounded border border-[#2C4A5E] bg-[#2C4A5E]/60 p-5">
+    <section className="mt-8 rounded border border-[#2C4A5E] border-gray-200 bg-white p-5 shadow-sm">
       <header className="flex items-baseline justify-between gap-3">
-        <h2 className="font-serif text-xl font-bold text-[#F5DEB3]">Individual donors</h2>
-        <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/70">
+        <h2 className="font-serif text-xl font-bold text-[#2C4A5E]">Individual donors</h2>
+        <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/80">
           v1.7.5 · cycles {cyclesAvailable.sort((a, b) => a - b).join(', ')}
         </p>
       </header>
-      <p className="mt-1 text-sm text-[#F5DEB3]/90">
+      <p className="mt-1 text-sm text-[#2C4A5E]">
         Itemized individual contributions (≥$200) to this legislator&apos;s campaign — the donor base the PAC Score
         doesn&apos;t measure. Employers are self-reported on FEC filings; retirees / self-employed are excluded from the
         list below so real organizations surface.
       </p>
 
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <div className="rounded bg-black/30 p-3">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/60">Itemized individual $</p>
-          <p className="mt-1 font-serif text-2xl font-bold tabular-nums text-[#F5DEB3]">
+        <div className="rounded bg-gray-50 p-3">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/70">Itemized individual $</p>
+          <p className="mt-1 font-serif text-2xl font-bold tabular-nums text-[#2C4A5E]">
             $
             {totalItemized >= 1_000_000
               ? `${(totalItemized / 1_000_000).toFixed(1)}M`
               : `${(totalItemized / 1000).toFixed(0)}K`}
           </p>
         </div>
-        <div className="rounded bg-black/30 p-3">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/60"># of contributions</p>
-          <p className="mt-1 font-serif text-2xl font-bold tabular-nums text-[#F5DEB3]">
+        <div className="rounded bg-gray-50 p-3">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/70"># of contributions</p>
+          <p className="mt-1 font-serif text-2xl font-bold tabular-nums text-[#2C4A5E]">
             {contributionCount.toLocaleString()}
           </p>
         </div>
-        <div className="col-span-2 rounded bg-black/30 p-3 sm:col-span-1">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/60">Individual vs PAC</p>
-          <p className="mt-1 font-serif text-2xl font-bold tabular-nums text-[#F5DEB3]">{indivPct}%</p>
-          <p className="mt-0.5 font-mono text-[10px] text-[#F5DEB3]/60">of (individual + PAC) money</p>
+        <div className="col-span-2 rounded bg-gray-50 p-3 sm:col-span-1">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/70">Individual vs PAC</p>
+          <p className="mt-1 font-serif text-2xl font-bold tabular-nums text-[#2C4A5E]">{indivPct}%</p>
+          <p className="mt-0.5 font-mono text-[10px] text-[#2C4A5E]/70">of (individual + PAC) money</p>
         </div>
       </div>
 
@@ -1026,9 +1026,9 @@ function IndividualMoneySection({ money, pacTotalInfluence }: { money: Individua
           where the Wall-Street / Big Law / Big Pharma story lives. */}
       {topIndustries.length > 0 && (
         <div className="mt-5">
-          <p className="font-mono text-xs uppercase tracking-widest text-[#F5DEB3]/60">
+          <p className="font-mono text-xs uppercase tracking-widest text-[#2C4A5E]/70">
             Top donor industries
-            <span className="ml-2 text-[10px] normal-case text-[#F5DEB3]/50">
+            <span className="ml-2 text-[10px] normal-case text-[#2C4A5E]/60">
               — of ${Math.round(industryClassifiedTotal).toLocaleString()} classified
             </span>
           </p>
@@ -1038,26 +1038,26 @@ function IndividualMoneySection({ money, pacTotalInfluence }: { money: Individua
               const isFinance = r.sector === 'FINANCE';
               return (
                 <li key={r.sector} className="flex items-center gap-3 text-sm">
-                  <span className="w-44 shrink-0 truncate text-[#F5DEB3]" title={r.label}>
+                  <span className="w-44 shrink-0 truncate text-[#2C4A5E]" title={r.label}>
                     {r.label}
                   </span>
-                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-black/30">
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-50">
                     <div
                       className={`h-full ${isFinance ? 'bg-amber-400/80' : 'bg-[#F5DEB3]/60'}`}
                       style={{ width: `${Math.max(2, widthPct)}%` }}
                     />
                   </div>
-                  <span className="w-24 shrink-0 text-right font-mono text-xs tabular-nums text-[#F5DEB3]">
+                  <span className="w-24 shrink-0 text-right font-mono text-xs tabular-nums text-[#2C4A5E]">
                     ${Math.round(r.total).toLocaleString()}
                   </span>
-                  <span className="w-12 shrink-0 text-right font-mono text-[10px] tabular-nums text-[#F5DEB3]/60">
+                  <span className="w-12 shrink-0 text-right font-mono text-[10px] tabular-nums text-[#2C4A5E]/70">
                     {r.pctOfClassified.toFixed(0)}%
                   </span>
                 </li>
               );
             })}
           </ul>
-          <p className="mt-2 font-mono text-[10px] text-[#F5DEB3]/50">
+          <p className="mt-2 font-mono text-[10px] text-[#2C4A5E]/60">
             Rules-based employer→industry classifier (no external crosswalk). Percentages are of money we could assign
             to a sector; the rest (FEC catch-alls + tens of thousands of small local employers) is unclassified by
             design. Per-firm $ alone is weak signal (~2-3% of base); per-industry concentration is where the funding-
@@ -1068,29 +1068,29 @@ function IndividualMoneySection({ money, pacTotalInfluence }: { money: Individua
 
       {topEmployers.length > 0 && (
         <div className="mt-5">
-          <p className="font-mono text-xs uppercase tracking-widest text-[#F5DEB3]/60">Top donor employers</p>
+          <p className="font-mono text-xs uppercase tracking-widest text-[#2C4A5E]/70">Top donor employers</p>
           <ul className="mt-2 space-y-1">
             {topEmployers.map((e) => {
               const widthPct = maxEmployer > 0 ? (e.total / maxEmployer) * 100 : 0;
               return (
                 <li key={e.employer} className="flex items-center gap-3 text-sm">
-                  <span className="w-52 shrink-0 truncate text-[#F5DEB3]" title={e.employer}>
+                  <span className="w-52 shrink-0 truncate text-[#2C4A5E]" title={e.employer}>
                     {e.employer}
                   </span>
-                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-black/30">
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-50">
                     <div className="h-full bg-[#F5DEB3]/70" style={{ width: `${Math.max(2, widthPct)}%` }} />
                   </div>
-                  <span className="w-24 shrink-0 text-right font-mono text-xs tabular-nums text-[#F5DEB3]">
+                  <span className="w-24 shrink-0 text-right font-mono text-xs tabular-nums text-[#2C4A5E]">
                     ${e.total.toLocaleString()}
                   </span>
-                  <span className="w-12 shrink-0 text-right font-mono text-[10px] tabular-nums text-[#F5DEB3]/60">
+                  <span className="w-12 shrink-0 text-right font-mono text-[10px] tabular-nums text-[#2C4A5E]/70">
                     {e.count.toLocaleString()}
                   </span>
                 </li>
               );
             })}
           </ul>
-          <p className="mt-2 font-mono text-[10px] text-[#F5DEB3]/50">
+          <p className="mt-2 font-mono text-[10px] text-[#2C4A5E]/60">
             Employer = sum of contributions from individuals reporting that employer. Not a corporate PAC contribution —
             it&apos;s the firm&apos;s employees giving personally. Industry-level rollup is a future pass.
           </p>
@@ -1123,26 +1123,26 @@ function DonorProfileSection({ profile, party }: { profile: DimeProfile; party: 
       : 'strongly conservative donor base';
 
   return (
-    <section className="mt-8 rounded border border-[#2C4A5E] bg-[#2C4A5E]/60 p-5">
+    <section className="mt-8 rounded border border-[#2C4A5E] border-gray-200 bg-white p-5 shadow-sm">
       <header className="flex items-baseline justify-between gap-3">
-        <h2 className="font-serif text-xl font-bold text-[#F5DEB3]">Donor base</h2>
-        <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/70">
+        <h2 className="font-serif text-xl font-bold text-[#2C4A5E]">Donor base</h2>
+        <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/80">
           DIME · cycles {cyclesAvailable.sort((a, b) => a - b).join(', ')}
         </p>
       </header>
-      <p className="mt-1 text-sm text-[#F5DEB3]/90">
+      <p className="mt-1 text-sm text-[#2C4A5E]">
         Whole-base funding character from Stanford&apos;s DIME (Bonica). Unlike a single employer (which is rarely more
         than ~2% of the base), these summarize <em>who</em> funds this legislator across every donor.
       </p>
 
       <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
         {/* Donor ideology */}
-        <div className="rounded bg-black/30 p-4">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/60">Donor-base ideology</p>
-          <p className="mt-1 font-serif text-2xl font-bold tabular-nums text-[#F5DEB3]">
+        <div className="rounded bg-gray-50 p-4">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/70">Donor-base ideology</p>
+          <p className="mt-1 font-serif text-2xl font-bold tabular-nums text-[#2C4A5E]">
             {cf === null ? '—' : cf.toFixed(2)}
           </p>
-          <p className="mt-0.5 text-xs text-[#F5DEB3]/80">{cfLabel}</p>
+          <p className="mt-0.5 text-xs text-[#2C4A5E]/90">{cfLabel}</p>
           {cf !== null && (
             <div className="mt-2">
               <div className="relative h-2 w-full rounded-full bg-gradient-to-r from-[#1d4ed8] via-[#9ca3af] to-[#b91c1c]">
@@ -1151,7 +1151,7 @@ function DonorProfileSection({ profile, party }: { profile: DimeProfile; party: 
                   style={{ left: `${cfPos}%` }}
                 />
               </div>
-              <div className="mt-1 flex justify-between font-mono text-[9px] uppercase tracking-wide text-[#F5DEB3]/50">
+              <div className="mt-1 flex justify-between font-mono text-[9px] uppercase tracking-wide text-[#2C4A5E]/60">
                 <span>progressive</span>
                 <span>conservative</span>
               </div>
@@ -1160,12 +1160,12 @@ function DonorProfileSection({ profile, party }: { profile: DimeProfile; party: 
         </div>
 
         {/* Small-dollar % */}
-        <div className="rounded bg-black/30 p-4">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/60">Small-dollar share</p>
-          <p className="mt-1 font-serif text-2xl font-bold tabular-nums text-[#F5DEB3]">
+        <div className="rounded bg-gray-50 p-4">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/70">Small-dollar share</p>
+          <p className="mt-1 font-serif text-2xl font-bold tabular-nums text-[#2C4A5E]">
             {smallDollarPct === null ? '—' : `${smallDollarPct.toFixed(0)}%`}
           </p>
-          <p className="mt-0.5 text-xs text-[#F5DEB3]/80">
+          <p className="mt-0.5 text-xs text-[#2C4A5E]/90">
             of individual money is small-dollar (&lt;$200) — grassroots vs big-check signal.
           </p>
           {smallDollarPct !== null && (
@@ -1173,12 +1173,12 @@ function DonorProfileSection({ profile, party }: { profile: DimeProfile; party: 
               <div className="h-full bg-[#F5DEB3]/70" style={{ width: `${Math.min(100, smallDollarPct)}%` }} />
             </div>
           )}
-          <p className="mt-2 font-mono text-[10px] text-[#F5DEB3]/50">
+          <p className="mt-2 font-mono text-[10px] text-[#2C4A5E]/60">
             ${(totalUnitemized / 1000).toFixed(0)}K small-dollar · ${(totalIndivContribs / 1000).toFixed(0)}K itemized
           </p>
         </div>
       </div>
-      <p className="mt-3 font-mono text-[10px] text-[#F5DEB3]/50">
+      <p className="mt-3 font-mono text-[10px] text-[#2C4A5E]/60">
         Ideology = Bonica CFscore of the donor base (−2 progressive … +2 conservative). Party shown: {party}. Source:
         Database on Ideology, Money &amp; Politics, Stanford.
       </p>

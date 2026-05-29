@@ -187,7 +187,7 @@ export function PacRecipientsTable({ rows }: { rows: RecipientRow[] }) {
           {sorted.map((l, idx) => {
             const slug = l.bioguideId ?? l.legislatorId;
             return (
-              <tr key={l.legislatorId} className="border-b border-gray-100 hover:bg-[#2C4A5E]/10">
+              <tr key={l.legislatorId} className="border-b border-gray-100 hover:bg-gray-50">
                 <td className="py-1.5 pr-3 font-mono text-xs text-gray-500">{idx + 1}</td>
                 <td className="py-1.5 pr-3">
                   <Link href={`/scorecard/${encodeURIComponent(slug)}`} className="text-gray-900 hover:underline">

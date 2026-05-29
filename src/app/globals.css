@@ -84,9 +84,6 @@
   }
 }
 
-/* Beige override for the default Tailwind gray-900 text class.
- * Source order beats Tailwind's utilities layer so this wins without !important.
- * Adjust the hex below if you want a warmer or cooler beige. */
-.text-gray-900 {
-  color: #c8b98a;
-}
+/* No global text-gray-900 override. The parchment-beige override was killing
+ * readability on white pages; v1.8.1 switched the scorecard to a clean
+ * light theme — bg-white, text-[#2C4A5E] navy, brick-red accents. */

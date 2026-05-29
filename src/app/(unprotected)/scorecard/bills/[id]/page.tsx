@@ -86,18 +86,18 @@ export default async function BillIssuePage(props: Props) {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
-      <Link href="/scorecard" className="text-sm text-[#F5DEB3]/80 hover:text-[#F5DEB3]">
+      <Link href="/scorecard" className="text-sm text-[#2C4A5E]/90 hover:text-[#2C4A5E]">
         ← Back to scorecard
       </Link>
 
       <header className="mt-4 border-b-2 border-[#2C4A5E] pb-6">
-        <p className="font-mono text-xs uppercase tracking-widest text-[#F5DEB3]/70">
+        <p className="font-mono text-xs uppercase tracking-widest text-[#2C4A5E]/80">
           Plank {bill.marker.plank.number}. {bill.marker.plank.name} · {sessionLabel}
         </p>
-        <h1 className="mt-1 font-serif text-4xl font-bold text-[#F5DEB3]">{bill.billTitle}</h1>
-        <p className="mt-2 font-mono text-sm text-[#F5DEB3]/80">{bill.billNumber}</p>
+        <h1 className="mt-1 font-serif text-4xl font-bold text-[#2C4A5E]">{bill.billTitle}</h1>
+        <p className="mt-2 font-mono text-sm text-[#2C4A5E]/90">{bill.billNumber}</p>
         {bill.statusNote && (
-          <p className="mt-3 inline-block rounded border border-[#2C4A5E] bg-[#2C4A5E]/60 px-3 py-1 text-sm text-[#F5DEB3]">
+          <p className="mt-3 inline-block rounded border border-[#2C4A5E] border-gray-200 bg-white px-3 py-1 text-sm text-[#2C4A5E] shadow-sm">
             {bill.statusNote}
           </p>
         )}
@@ -105,27 +105,27 @@ export default async function BillIssuePage(props: Props) {
 
       {bill.publicDescription && (
         <section className="mt-6">
-          <h2 className="font-mono text-xs uppercase tracking-widest text-[#F5DEB3]/70">About this bill</h2>
-          <p className="mt-2 whitespace-pre-line text-base leading-relaxed text-[#F5DEB3]">{bill.publicDescription}</p>
+          <h2 className="font-mono text-xs uppercase tracking-widest text-[#2C4A5E]/80">About this bill</h2>
+          <p className="mt-2 whitespace-pre-line text-base leading-relaxed text-[#2C4A5E]">{bill.publicDescription}</p>
         </section>
       )}
 
       {bill.callToAction && (
-        <section className="mt-8 rounded-lg border-2 border-[#8B3A3A] bg-[#2C4A5E]/60 p-6">
-          <h2 className="font-serif text-2xl font-bold text-[#F5DEB3]">Call your representatives</h2>
-          <p className="mt-2 text-sm text-[#F5DEB3]">
+        <section className="mt-8 rounded-lg border border-2 border-[#8B3A3A] border-gray-200 bg-white p-6 shadow-sm">
+          <h2 className="font-serif text-2xl font-bold text-[#2C4A5E]">Call your representatives</h2>
+          <p className="mt-2 text-sm text-[#2C4A5E]">
             {jurisdiction === 'CA'
               ? 'Find your Assembly Member and State Senator and ask them to support this bill.'
               : 'Find your members of Congress and ask them to support this bill.'}
           </p>
           <Link
             href="/civic/representatives"
-            className="mt-3 inline-block rounded bg-[#8B3A3A] px-4 py-2 font-semibold text-[#F5DEB3] hover:bg-[#6B2A2A]">
+            className="mt-3 inline-block rounded bg-[#8B3A3A] px-4 py-2 font-semibold text-[#2C4A5E] hover:bg-[#6B2A2A]">
             Look up my representatives →
           </Link>
           <div className="mt-4 rounded border border-[#2C4A5E] bg-[#2C4A5E]/80 p-4">
-            <p className="font-mono text-xs uppercase tracking-widest text-[#F5DEB3]/70">Suggested script</p>
-            <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-[#F5DEB3]">{bill.callToAction}</p>
+            <p className="font-mono text-xs uppercase tracking-widest text-[#2C4A5E]/80">Suggested script</p>
+            <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-[#2C4A5E]">{bill.callToAction}</p>
           </div>
         </section>
       )}
@@ -135,9 +135,9 @@ export default async function BillIssuePage(props: Props) {
       <SponsorSections bill={bill} />
 
       <section className="mt-10">
-        <h2 className="font-serif text-2xl font-bold text-[#F5DEB3]">The vote roll</h2>
+        <h2 className="font-serif text-2xl font-bold text-[#2C4A5E]">The vote roll</h2>
         {noVoteRoll && !hasPromotedSiblingVotes && (
-          <div className="mt-3 rounded border border-[#2C4A5E] bg-[#2C4A5E]/60 p-4 text-sm text-[#F5DEB3]">
+          <div className="mt-3 rounded border border-[#2C4A5E] border-gray-200 bg-white p-4 text-sm text-[#2C4A5E] shadow-sm">
             <p className="font-semibold">No recorded floor vote yet.</p>
             <p className="mt-1">
               {bill.statusNote ??
@@ -147,7 +147,7 @@ export default async function BillIssuePage(props: Props) {
         )}
         {hasPromotedSiblingVotes && (
           <div className="mt-3">
-            <div className="rounded border border-[#2C4A5E] bg-[#2C4A5E]/60 p-4 text-sm text-[#F5DEB3]">
+            <div className="rounded border border-[#2C4A5E] border-gray-200 bg-white p-4 text-sm text-[#2C4A5E] shadow-sm">
               <p className="font-semibold">{bill.billNumber} hasn&rsquo;t had a recorded vote yet.</p>
               <p className="mt-1">
                 These are the recorded committee positions on {siblingsWithVotes.map((s) => s.billNumber).join(', ')}{' '}
@@ -176,11 +176,11 @@ export default async function BillIssuePage(props: Props) {
               const sibPresent = sibVotes.filter((v) => v.position === 'PRESENT');
               return (
                 <div key={sib.id} className="mt-6">
-                  <p className="font-mono text-xs uppercase tracking-widest text-[#F5DEB3]/70">
+                  <p className="font-mono text-xs uppercase tracking-widest text-[#2C4A5E]/80">
                     From {sib.billNumber} ({sibSessionLabel})
                   </p>
                   {(firstContext || dateLabel) && (
-                    <p className="mt-0.5 text-sm text-[#F5DEB3]/80">
+                    <p className="mt-0.5 text-sm text-[#2C4A5E]/90">
                       {firstContext ?? ''}
                       {firstContext && dateLabel ? ' · ' : ''}
                       {dateLabel ?? ''}
@@ -194,7 +194,7 @@ export default async function BillIssuePage(props: Props) {
                     positionKey="ABSTAINED"
                     accent="text-purple-300"
                   />
-                  <VoteSection label="Excused" votes={sibExcused} positionKey="EXCUSED" accent="text-[#F5DEB3]/80" />
+                  <VoteSection label="Excused" votes={sibExcused} positionKey="EXCUSED" accent="text-[#2C4A5E]/90" />
                   <VoteSection label="Voted Present" votes={sibPresent} positionKey="PRESENT" accent="text-blue-300" />
                 </div>
               );
@@ -203,7 +203,7 @@ export default async function BillIssuePage(props: Props) {
         )}
         {!noVoteRoll && (
           <>
-            <p className="mt-1 text-sm text-[#F5DEB3]/80">
+            <p className="mt-1 text-sm text-[#2C4A5E]/90">
               {totalVotes} legislators on record. Members who didn&rsquo;t vote in committee are shown in this section
               too — for procedural purposes, not voting denies the bill the majority it needs, so they count alongside
               the explicit No votes.
@@ -216,7 +216,7 @@ export default async function BillIssuePage(props: Props) {
               label="Excused"
               votes={votesByPosition.EXCUSED}
               positionKey="EXCUSED"
-              accent="text-[#F5DEB3]/80"
+              accent="text-[#2C4A5E]/90"
             />
             <VoteSection
               label="Voted Present"
@@ -236,8 +236,8 @@ export default async function BillIssuePage(props: Props) {
 
       {siblingBills.length > 0 && (
         <section className="mt-12 space-y-10 border-t-2 border-[#2C4A5E] pt-8">
-          <h2 className="font-serif text-2xl font-bold text-[#F5DEB3]">Related bills under this marker</h2>
-          <p className="text-sm text-[#F5DEB3]/80">
+          <h2 className="font-serif text-2xl font-bold text-[#2C4A5E]">Related bills under this marker</h2>
+          <p className="text-sm text-[#2C4A5E]/90">
             Other bills tracked for the same policy marker. Historical predecessors and parallel vehicles are shown
             together so the full position record across sessions is visible.
           </p>
@@ -250,12 +250,12 @@ export default async function BillIssuePage(props: Props) {
                 ? `${sib.congressNumber.toString().slice(0, 4)}-${sib.congressNumber.toString().slice(4)} CA Session`
                 : `${sib.congressNumber}th Congress`;
             return (
-              <article key={sib.id} className="rounded border border-[#2C4A5E] bg-[#2C4A5E]/40 p-5">
-                <p className="font-mono text-xs uppercase tracking-widest text-[#F5DEB3]/70">{sibSessionLabel}</p>
-                <h3 className="mt-1 font-serif text-xl font-bold text-[#F5DEB3]">{sib.billTitle}</h3>
-                <p className="mt-1 font-mono text-sm text-[#F5DEB3]/80">{sib.billNumber}</p>
+              <article key={sib.id} className="rounded border border-[#2C4A5E] bg-gray-50 p-5">
+                <p className="font-mono text-xs uppercase tracking-widest text-[#2C4A5E]/80">{sibSessionLabel}</p>
+                <h3 className="mt-1 font-serif text-xl font-bold text-[#2C4A5E]">{sib.billTitle}</h3>
+                <p className="mt-1 font-mono text-sm text-[#2C4A5E]/90">{sib.billNumber}</p>
                 {sib.statusNote && (
-                  <p className="mt-2 inline-block rounded border border-[#2C4A5E] bg-[#2C4A5E]/60 px-2 py-1 text-xs text-[#F5DEB3]">
+                  <p className="mt-2 inline-block rounded border border-[#2C4A5E] border-gray-200 bg-white px-2 py-1 text-xs text-[#2C4A5E] shadow-sm">
                     {sib.statusNote}
                   </p>
                 )}
@@ -288,13 +288,13 @@ export default async function BillIssuePage(props: Props) {
         </section>
       )}
 
-      <footer className="mt-12 border-t-2 border-[#2C4A5E] pt-4 text-xs text-[#F5DEB3]/70">
+      <footer className="mt-12 border-t-2 border-[#2C4A5E] pt-4 text-xs text-[#2C4A5E]/80">
         <p>
-          <Link href="/scorecard/methodology" className="underline hover:text-[#F5DEB3]">
+          <Link href="/scorecard/methodology" className="underline hover:text-[#2C4A5E]">
             Methodology {METHODOLOGY_VERSION} →
           </Link>{' '}
           {bill.isProvisional ? 'Bill number is provisional pending verification against the official source.' : ''}{' '}
-          <Link href="/scorecard" className="underline hover:text-[#F5DEB3]">
+          <Link href="/scorecard" className="underline hover:text-[#2C4A5E]">
             See the full scorecard
           </Link>
           .
@@ -337,9 +337,9 @@ function KilledItSection({ noVoters, notVoting }: { noVoters: VoteRowVote[]; not
   return (
     <div className="mt-6">
       <h3 className="font-serif text-lg font-bold text-red-300">
-        Voted No or Did Not Vote <span className="text-[#F5DEB3]/60">({total})</span>
+        Voted No or Did Not Vote <span className="text-[#2C4A5E]/70">({total})</span>
       </h3>
-      <p className="mt-1 text-xs text-[#F5DEB3]/70">
+      <p className="mt-1 text-xs text-[#2C4A5E]/80">
         {noVoters.length} explicit no · {notVoting.length} declined to vote (tagged NV)
       </p>
       <ul className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -423,11 +423,11 @@ function SponsorSections({ bill }: { bill: { sponsorships?: SponsorshipRow[] } }
     <section className="mt-10 space-y-8">
       {authors.length > 0 && (
         <div>
-          <h2 className="font-serif text-2xl font-bold text-[#F5DEB3]">
+          <h2 className="font-serif text-2xl font-bold text-[#2C4A5E]">
             Author{authors.length > 1 ? 's' : ''}{' '}
-            <span className="font-mono text-sm text-[#F5DEB3]/60">({authors.length})</span>
+            <span className="font-mono text-sm text-[#2C4A5E]/70">({authors.length})</span>
           </h2>
-          <p className="mt-1 text-sm text-[#F5DEB3]/80">
+          <p className="mt-1 text-sm text-[#2C4A5E]/90">
             These legislators carried the bill — wrote it, fought for it, attached their name to it as principal
             sponsors.
           </p>
@@ -449,8 +449,8 @@ function SponsorSections({ bill }: { bill: { sponsorships?: SponsorshipRow[] } }
                     className="flex min-w-0 flex-1 items-center gap-3 hover:underline">
                     <LegislatorAvatar fullName={s.legislator.fullName} photoUrl={s.legislator.photoUrl} size={48} />
                     <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-[#F5DEB3]">{s.legislator.fullName}</p>
-                      <p className="text-xs text-[#F5DEB3]/80">
+                      <p className="font-semibold text-[#2C4A5E]">{s.legislator.fullName}</p>
+                      <p className="text-xs text-[#2C4A5E]/90">
                         {PARTY_LABEL[s.legislator.party] ?? s.legislator.party} · {s.legislator.state}
                         {s.legislator.district != null && s.legislator.chamber === 'REP'
                           ? ` ${s.legislator.district}`
@@ -458,7 +458,7 @@ function SponsorSections({ bill }: { bill: { sponsorships?: SponsorshipRow[] } }
                       </p>
                     </div>
                   </Link>
-                  <span className="rounded bg-[#8B3A3A] px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-[#F5DEB3]">
+                  <span className="rounded bg-[#8B3A3A] px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-[#2C4A5E]">
                     {tierLabel}
                   </span>
                 </li>
@@ -470,10 +470,10 @@ function SponsorSections({ bill }: { bill: { sponsorships?: SponsorshipRow[] } }
 
       {cosponsors.length > 0 && (
         <div>
-          <h2 className="font-serif text-2xl font-bold text-[#F5DEB3]">
-            Cosponsors <span className="font-mono text-sm text-[#F5DEB3]/60">({cosponsors.length})</span>
+          <h2 className="font-serif text-2xl font-bold text-[#2C4A5E]">
+            Cosponsors <span className="font-mono text-sm text-[#2C4A5E]/70">({cosponsors.length})</span>
           </h2>
-          <p className="mt-1 text-sm text-[#F5DEB3]/80">
+          <p className="mt-1 text-sm text-[#2C4A5E]/90">
             Legislators who signed on to the bill as cosponsors. Their names are on the record.
           </p>
           <ul className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -482,14 +482,14 @@ function SponsorSections({ bill }: { bill: { sponsorships?: SponsorshipRow[] } }
               return (
                 <li
                   key={s.id}
-                  className="flex items-center gap-2 rounded border border-[#2C4A5E] bg-[#2C4A5E]/60 px-2 py-2">
+                  className="flex items-center gap-2 rounded border border-[#2C4A5E] border-gray-200 bg-white px-2 py-2 shadow-sm">
                   <Link
                     href={`/scorecard/${encodeURIComponent(idForUrl)}`}
                     className="flex min-w-0 flex-1 items-center gap-2 hover:underline">
                     <LegislatorAvatar fullName={s.legislator.fullName} photoUrl={s.legislator.photoUrl} size={28} />
                     <div className="min-w-0 flex-1 text-sm">
-                      <p className="truncate font-medium text-[#F5DEB3]">{s.legislator.fullName}</p>
-                      <p className="text-[10px] text-[#F5DEB3]/70">
+                      <p className="truncate font-medium text-[#2C4A5E]">{s.legislator.fullName}</p>
+                      <p className="text-[10px] text-[#2C4A5E]/80">
                         {PARTY_LABEL[s.legislator.party] ?? s.legislator.party} · {s.legislator.state}
                         {s.legislator.district != null && s.legislator.chamber === 'REP'
                           ? ` ${s.legislator.district}`
@@ -522,7 +522,7 @@ function VoteSection({
   return (
     <div className="mt-6">
       <h3 className={`font-serif text-lg font-bold ${accent}`}>
-        {label} <span className="text-[#F5DEB3]/60">({votes.length})</span>
+        {label} <span className="text-[#2C4A5E]/70">({votes.length})</span>
       </h3>
       <ul className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
         {votes.map((vote) => {
@@ -612,8 +612,8 @@ function ProcedureTimeline({ history }: { history: unknown }) {
   const entries = history as ProcedureEntry[];
   return (
     <section className="mt-10">
-      <h2 className="font-serif text-2xl font-bold text-[#F5DEB3]">The bill&rsquo;s journey</h2>
-      <p className="mt-1 text-sm text-[#F5DEB3]/80">
+      <h2 className="font-serif text-2xl font-bold text-[#2C4A5E]">The bill&rsquo;s journey</h2>
+      <p className="mt-1 text-sm text-[#2C4A5E]/90">
         Every official action on this bill, in order. Sourced from the legislature&rsquo;s own record via LegiScan.
         &ldquo;Held under submission&rdquo; means the committee chair held the bill on the suspense file and never
         released it for a vote — the procedural way bills die without a public record of opposition.
@@ -635,15 +635,15 @@ function ProcedureTimeline({ history }: { history: unknown }) {
               : tone === 'win'
               ? 'text-green-200 font-semibold'
               : tone === 'milestone'
-              ? 'text-[#F5DEB3]'
-              : 'text-[#F5DEB3]/80';
+              ? 'text-[#2C4A5E]'
+              : 'text-[#2C4A5E]/90';
           return (
             <li key={`${e.date}-${i}`} className="relative">
               <span
                 className={`absolute -left-[27px] top-1.5 inline-block h-3 w-3 rounded-full border-2 ${dotClass}`}
                 aria-hidden="true"
               />
-              <p className="font-mono text-xs text-[#F5DEB3]/70">
+              <p className="font-mono text-xs text-[#2C4A5E]/80">
                 {e.date} {e.chamber === 'A' ? '· Assembly' : e.chamber === 'S' ? '· Senate' : ''}
               </p>
               <p className={`text-sm leading-relaxed ${textClass}`}>{e.action}</p>
