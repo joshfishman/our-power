@@ -121,13 +121,13 @@ export default async function RaceScorecardPage(props: Props) {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <Link href="/scorecard" className="text-sm text-gray-600 hover:text-gray-900">
+      <Link href="/scorecard" className="text-sm text-gray-600 hover:text-[#2C4A5E]">
         ← Back to scorecard
       </Link>
 
       <header className="mt-4 border-b-2 border-gray-900 pb-6">
         <p className="font-mono text-xs uppercase tracking-widest text-gray-500">2026 race</p>
-        <h1 className="mt-1 font-serif text-3xl font-bold text-gray-900">{seatLabel(seat)}</h1>
+        <h1 className="mt-1 font-serif text-3xl font-bold text-[#2C4A5E]">{seatLabel(seat)}</h1>
         <p className="mt-2 text-sm text-gray-700">
           {candidates.length} filed candidate{candidates.length === 1 ? '' : 's'} —{' '}
           {partyOrder
@@ -163,7 +163,7 @@ export default async function RaceScorecardPage(props: Props) {
                       <div>
                         <Link
                           href={`/scorecard/${encodeURIComponent(slug)}`}
-                          className="font-serif text-lg font-bold text-gray-900 hover:underline">
+                          className="font-serif text-lg font-bold text-[#2C4A5E] hover:underline">
                           {c.fullName}
                         </Link>
                         {c.isActive ? (
@@ -241,10 +241,10 @@ export default async function RaceScorecardPage(props: Props) {
 
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="rounded bg-white/70 p-2">
-      <p className="font-mono text-[10px] uppercase tracking-widest text-gray-500">{label}</p>
-      <p className="mt-0.5 font-serif text-base font-bold tabular-nums text-gray-900">{value}</p>
-      {hint ? <p className="mt-0.5 font-mono text-[10px] text-gray-500">{hint}</p> : null}
+    <div className="rounded bg-white p-2">
+      <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/70">{label}</p>
+      <p className="mt-0.5 font-serif text-base font-bold tabular-nums text-[#2C4A5E]">{value}</p>
+      {hint ? <p className="mt-0.5 font-mono text-[10px] text-[#2C4A5E]/60">{hint}</p> : null}
     </div>
   );
 }
