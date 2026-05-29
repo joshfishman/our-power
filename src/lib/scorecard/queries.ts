@@ -3,6 +3,7 @@
 
 import prisma from '@/lib/prisma/prisma';
 import { METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
+import { classifyEmployer, SECTOR_LABEL } from '@/lib/scorecard/employer-industry';
 
 export type ScorecardJurisdiction = 'FEDERAL' | 'CA';
 
@@ -558,11 +559,24 @@ export interface IndividualMoneyEmployer {
   count: number;
 }
 
+export interface IndustryMixRow {
+  sector: string; // IndustrySector key
+  label: string; // human label
+  total: number;
+  pctOfClassified: number; // share of the CLASSIFIED total (excludes unclassified)
+}
+
 export interface IndividualMoney {
   totalItemized: number; // summed across all ingested cycles
   contributionCount: number;
   cyclesAvailable: number[]; // which cycles we have data for
   topEmployers: IndividualMoneyEmployer[]; // merged + re-ranked across cycles
+  // v1.7.6 industry rollup — sectors of the top reported employers. Computed
+  // from the stored top-employers (catch-alls already filtered at ingest), so
+  // this is "industry mix of your largest employer-affiliated donor blocs."
+  industryMix: IndustryMixRow[]; // ranked, classified sectors only
+  industryClassifiedTotal: number; // $ we could assign to a sector
+  industryUnclassifiedTotal: number; // $ from employers with no industry signal
 }
 
 export async function getLegislatorIndividualMoney(legislatorId: string): Promise<IndividualMoney | null> {
@@ -595,7 +609,98 @@ export async function getLegislatorIndividualMoney(legislatorId: string): Promis
     .sort((a, b) => b.total - a.total)
     .slice(0, 20);
 
-  return { totalItemized, contributionCount, cyclesAvailable, topEmployers };
+  // Industry rollup: classify every merged employer, sum by sector.
+  const bySector = new Map<string, number>();
+  let industryClassifiedTotal = 0;
+  let industryUnclassifiedTotal = 0;
+  for (const [employer, v] of merged) {
+    const sector = classifyEmployer(employer);
+    if (sector === 'UNCLASSIFIED') {
+      industryUnclassifiedTotal += v.total;
+      continue;
+    }
+    bySector.set(sector, (bySector.get(sector) ?? 0) + v.total);
+    industryClassifiedTotal += v.total;
+  }
+  const industryMix: IndustryMixRow[] = [...bySector.entries()]
+    .map(([sector, total]) => ({
+      sector,
+      label: SECTOR_LABEL[sector as keyof typeof SECTOR_LABEL] ?? sector,
+      total,
+      pctOfClassified: industryClassifiedTotal > 0 ? (total / industryClassifiedTotal) * 100 : 0,
+    }))
+    .sort((a, b) => b.total - a.total);
+
+  return {
+    totalItemized,
+    contributionCount,
+    cyclesAvailable,
+    topEmployers,
+    industryMix,
+    industryClassifiedTotal,
+    industryUnclassifiedTotal,
+  };
+}
+
+// ─── v1.7.6 DIME donor-ideology + small-dollar profile ──────────────────────
+//
+// Whole-base funding-character metrics from Adam Bonica's DIME, sidestepping
+// the "single employer = 2.5% of base" noise. Uses the most-recent cycle for
+// ideology (a point-in-time estimate) and sums money across cycles for the
+// small-dollar ratio.
+
+export interface DimeProfile {
+  cycleYear: number; // most recent cycle we have a profile for
+  contributorCfscore: number | null; // donor-base ideology (−left/+right)
+  recipientCfscore: number | null; // candidate's own ideology
+  smallDollarPct: number | null; // unitemized / (unitemized + itemized individual) × 100
+  totalIndivContribs: number; // itemized individual (summed across cycles)
+  totalUnitemized: number; // small-dollar <$200 (summed)
+  totalPacContribs: number; // (summed)
+  totalReceipts: number; // (summed)
+  cyclesAvailable: number[];
+}
+
+export async function getLegislatorDimeProfile(legislatorId: string): Promise<DimeProfile | null> {
+  const rows = await prisma.legislatorDimeProfile.findMany({
+    where: { legislatorId },
+    orderBy: { cycleYear: 'desc' },
+  });
+  if (rows.length === 0) return null;
+
+  // Ideology: take the most-recent cycle that actually has a contributor score.
+  const mostRecent = rows[0];
+  const ideologyRow = rows.find((r) => r.contributorCfscore !== null) ?? mostRecent;
+
+  let indiv = 0;
+  let unitemized = 0;
+  let pac = 0;
+  let receipts = 0;
+  const cyclesAvailable: number[] = [];
+  for (const r of rows) {
+    indiv += Number(r.totalIndivContribs);
+    unitemized += Number(r.totalUnitemized);
+    pac += Number(r.totalPacContribs);
+    receipts += Number(r.totalReceipts);
+    cyclesAvailable.push(r.cycleYear);
+  }
+  // small-dollar % = unitemized / (unitemized + itemized individual). DIME's
+  // total.indiv.contribs is itemized-only, so the denominator is the sum
+  // (avoids the >100% artifact from dividing by itemized alone).
+  const indivTotal = unitemized + indiv;
+  const smallDollarPct = indivTotal > 0 ? (unitemized / indivTotal) * 100 : null;
+
+  return {
+    cycleYear: mostRecent.cycleYear,
+    contributorCfscore: ideologyRow.contributorCfscore,
+    recipientCfscore: ideologyRow.recipientCfscore,
+    smallDollarPct,
+    totalIndivContribs: indiv,
+    totalUnitemized: unitemized,
+    totalPacContribs: pac,
+    totalReceipts: receipts,
+    cyclesAvailable,
+  };
 }
 
 // ─── v1.7.6 DIME donor-ideology + small-dollar profile ──────────────────────
