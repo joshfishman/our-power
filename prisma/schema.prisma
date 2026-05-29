@@ -818,6 +818,7 @@ model Legislator {
   billCosponsorships BillCosponsor[]
   pacContributions   PacContribution[]
   individualMoney    LegislatorIndividualMoney[]
+  dimeProfiles       LegislatorDimeProfile[]
   // Leadership PACs sponsored by this legislator (set by map-leadership-pacs.ts).
   leadershipPacs     PacClassification[] @relation("LegislatorLeadershipPacs")
 
@@ -1010,6 +1011,36 @@ model LegislatorIndividualMoney {
   topEmployers      Json // [{ employer: string, total: number, count: number }] top 25 by $
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
+
+  @@unique([legislatorId, cycleYear])
+  @@index([legislatorId])
+}
+
+/// v1.7.6 — per-(legislator, cycle) DIME profile from Adam Bonica's Database
+/// on Ideology, Money & Politics (dime_recipients_all_1979_2024.csv). Joined
+/// by FEC candidate id. Gives whole-base funding-character metrics that
+/// sidestep the "single employer is only 2.5% of the base" noise problem:
+///   - contributorCfscore: ideology of the donor base (−left / +right).
+///     Bonica's signature metric — a single number summarizing who funds them.
+///   - recipientCfscore: the candidate's own ideology from their fundraising.
+///   - small-dollar % = totalUnitemized / totalIndivContribs (grassroots vs
+///     big-check), computed in the query layer.
+/// Money fields are DIME's own totals (may differ slightly from FEC bulk due
+/// to DIME's de-duplication / scaling); we store them verbatim for ratios.
+model LegislatorDimeProfile {
+  id                 String     @id @default(cuid())
+  legislator         Legislator @relation(fields: [legislatorId], references: [id], onDelete: Cascade)
+  legislatorId       String
+  cycleYear          Int
+  recipientCfscore   Float? // candidate ideology (−left/+right); null if DIME couldn't score
+  contributorCfscore Float? // donor-base ideology
+  totalReceipts      Decimal    @db.Decimal(16, 2)
+  totalIndivContribs Decimal    @db.Decimal(16, 2)
+  totalUnitemized    Decimal    @db.Decimal(16, 2) // small-dollar (<$200) — grassroots signal
+  totalPacContribs   Decimal    @db.Decimal(16, 2)
+  totalPartyContribs Decimal    @db.Decimal(16, 2)
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
 
   @@unique([legislatorId, cycleYear])
   @@index([legislatorId])
