@@ -185,7 +185,7 @@ function JurisdictionToggle({ active, searchParams }: { active: string | undefin
             className={
               isActive
                 ? 'rounded bg-[#8B3A3A] px-4 py-1.5 font-mono text-xs uppercase tracking-wide text-white'
-                : 'rounded px-4 py-1.5 font-mono text-xs uppercase tracking-wide text-[#2C4A5E] hover:bg-[#2C4A5E]/60'
+                : 'rounded border border-gray-200 px-4 py-1.5 font-mono text-xs uppercase tracking-wide text-[#2C4A5E] shadow-sm hover:bg-white'
             }>
             {opt.label}
           </Link>
@@ -222,9 +222,9 @@ function FilterChips({ searchParams }: { searchParams: SearchParams }) {
 function EmptyState({ jurisdiction }: { jurisdiction?: string }) {
   if (jurisdiction === 'CA') {
     return (
-      <div className="mt-8 rounded border-2 border-dashed border-[#2C4A5E] bg-[#2C4A5E]/60 px-6 py-12">
-        <p className="text-center font-serif text-2xl font-bold text-[#F5DEB3]">No California PAC data ingested yet</p>
-        <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-[#F5DEB3]">
+      <div className="mt-8 rounded border border-2 border-dashed border-[#2C4A5E] border-gray-200 bg-white px-6 py-12 shadow-sm">
+        <p className="text-center font-serif text-2xl font-bold text-[#2C4A5E]">No California PAC data ingested yet</p>
+        <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-[#2C4A5E]">
           California campaign finance lives in <strong>Cal-Access</strong>. Two paths to populate: a curated CSV
           (fastest, transparent) or the{' '}
           <a
@@ -273,7 +273,7 @@ npm run scorecard:ingest-ca-pac -- \\
           </div>
         </div>
 
-        <p className="mt-6 text-center text-xs text-[#F5DEB3]/80">
+        <p className="mt-6 text-center text-xs text-[#2C4A5E]/90">
           Or switch to{' '}
           <Link href="/scorecard/pac?jurisdiction=FEDERAL" className="underline">
             Federal
@@ -284,9 +284,9 @@ npm run scorecard:ingest-ca-pac -- \\
     );
   }
   return (
-    <div className="mt-8 rounded border-2 border-dashed border-[#2C4A5E] bg-[#2C4A5E]/60 px-6 py-12">
-      <p className="text-center font-serif text-2xl font-bold text-[#F5DEB3]">No PAC data ingested yet</p>
-      <p className="mt-2 text-center text-sm text-[#F5DEB3]">
+    <div className="mt-8 rounded border border-2 border-dashed border-[#2C4A5E] border-gray-200 bg-white px-6 py-12 shadow-sm">
+      <p className="text-center font-serif text-2xl font-bold text-[#2C4A5E]">No PAC data ingested yet</p>
+      <p className="mt-2 text-center text-sm text-[#2C4A5E]">
         This page is wired up but <code className="rounded bg-white px-1 py-0.5 font-mono text-xs">PacMoneyData</code>{' '}
         is empty. PAC data lives in a different system from legislation — your LegiScan API key does not cover it. Three
         paths to populate it, in order of recommended fastest-to-real-data:
