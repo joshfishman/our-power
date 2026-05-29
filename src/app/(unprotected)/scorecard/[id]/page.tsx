@@ -14,8 +14,15 @@ import {
   getTopDonorsForLegislator,
   getOpposedByPacs,
   getLegislatorLeadershipPacInflows,
+  getLegislatorIndividualMoney,
 } from '@/lib/scorecard/queries';
-import type { BillBreakdownRow, PacMoneyTrail, TopDonor, LeadershipPacInflows } from '@/lib/scorecard/queries';
+import type {
+  BillBreakdownRow,
+  PacMoneyTrail,
+  TopDonor,
+  LeadershipPacInflows,
+  IndividualMoney,
+} from '@/lib/scorecard/queries';
 import { METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
 import { LegislatorAvatar } from '@/components/scorecard/LegislatorAvatar';
 
@@ -64,7 +71,7 @@ export default async function LegislatorScorecardPage(props: Props) {
   // For CA legislators we don't have PacContribution data — fall back to the
   // legacy v1.7 PAC score from PacMoneyData.
   const votingScore = computePublishedTotal(legislator.scores);
-  const [moneyTrail, topDonors, opposedBy, legacyPacScore, leadershipPacInflows] = await Promise.all([
+  const [moneyTrail, topDonors, opposedBy, legacyPacScore, leadershipPacInflows, individualMoney] = await Promise.all([
     jurisdiction === 'FEDERAL' ? getLegislatorMoneyTrail(legislator.id) : Promise.resolve(null as PacMoneyTrail | null),
     jurisdiction === 'FEDERAL' ? getTopDonorsForLegislator(legislator.id, 15) : Promise.resolve([] as TopDonor[]),
     jurisdiction === 'FEDERAL' ? getOpposedByPacs(legislator.id, 10) : Promise.resolve([] as TopDonor[]),
@@ -72,6 +79,9 @@ export default async function LegislatorScorecardPage(props: Props) {
     jurisdiction === 'FEDERAL'
       ? getLegislatorLeadershipPacInflows(legislator.id)
       : Promise.resolve(null as LeadershipPacInflows | null),
+    jurisdiction === 'FEDERAL'
+      ? getLegislatorIndividualMoney(legislator.id)
+      : Promise.resolve(null as IndividualMoney | null),
   ]);
   const pacScore = moneyTrail?.pacScore ?? legacyPacScore;
   const avgScore = computeTwoScoreAverage(pacScore, votingScore);
@@ -156,6 +166,10 @@ export default async function LegislatorScorecardPage(props: Props) {
 
       {jurisdiction === 'FEDERAL' && leadershipPacInflows && leadershipPacInflows.pacCount > 0 && (
         <LeadershipPacInflowsSection inflows={leadershipPacInflows} />
+      )}
+
+      {jurisdiction === 'FEDERAL' && individualMoney && individualMoney.totalItemized > 0 && (
+        <IndividualMoneySection money={individualMoney} pacTotalInfluence={moneyTrail?.totalInfluence ?? 0} />
       )}
 
       <section className="mt-8 space-y-8">
@@ -939,6 +953,88 @@ function LeadershipPacInflowsSection({ inflows }: { inflows: LeadershipPacInflow
         (~30-40 legislators). Coverage will grow as additional mappings are added to{' '}
         <code className="text-[#F5DEB3]/80">data/leadership-pacs-manual.csv</code>.
       </p>
+    </section>
+  );
+}
+
+// v1.7.5 — Individual contributions section. The ~53%-of-all-money layer the
+// PAC Score is blind to: itemized individual donations (≥$200) to the
+// legislator's campaign, with the top employers by dollar. Surfaces the
+// industry / firm concentration in the donor base (e.g. Goldman Sachs,
+// Blackstone, big law) that PAC totals can't see.
+function IndividualMoneySection({ money, pacTotalInfluence }: { money: IndividualMoney; pacTotalInfluence: number }) {
+  const { totalItemized, contributionCount, cyclesAvailable, topEmployers } = money;
+  const grandTotal = totalItemized + pacTotalInfluence;
+  const indivPct = grandTotal > 0 ? Math.round((totalItemized / grandTotal) * 100) : 0;
+  const maxEmployer = topEmployers.length > 0 ? topEmployers[0].total : 0;
+
+  return (
+    <section className="mt-8 rounded border border-[#2C4A5E] bg-[#2C4A5E]/60 p-5">
+      <header className="flex items-baseline justify-between gap-3">
+        <h2 className="font-serif text-xl font-bold text-[#F5DEB3]">Individual donors</h2>
+        <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/70">
+          v1.7.5 · cycles {cyclesAvailable.sort((a, b) => a - b).join(', ')}
+        </p>
+      </header>
+      <p className="mt-1 text-sm text-[#F5DEB3]/90">
+        Itemized individual contributions (≥$200) to this legislator&apos;s campaign — the donor base the PAC Score
+        doesn&apos;t measure. Employers are self-reported on FEC filings; retirees / self-employed are excluded from the
+        list below so real organizations surface.
+      </p>
+
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="rounded bg-black/30 p-3">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/60">Itemized individual $</p>
+          <p className="mt-1 font-serif text-2xl font-bold tabular-nums text-[#F5DEB3]">
+            $
+            {totalItemized >= 1_000_000
+              ? `${(totalItemized / 1_000_000).toFixed(1)}M`
+              : `${(totalItemized / 1000).toFixed(0)}K`}
+          </p>
+        </div>
+        <div className="rounded bg-black/30 p-3">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/60"># of contributions</p>
+          <p className="mt-1 font-serif text-2xl font-bold tabular-nums text-[#F5DEB3]">
+            {contributionCount.toLocaleString()}
+          </p>
+        </div>
+        <div className="col-span-2 rounded bg-black/30 p-3 sm:col-span-1">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/60">Individual vs PAC</p>
+          <p className="mt-1 font-serif text-2xl font-bold tabular-nums text-[#F5DEB3]">{indivPct}%</p>
+          <p className="mt-0.5 font-mono text-[10px] text-[#F5DEB3]/60">of (individual + PAC) money</p>
+        </div>
+      </div>
+
+      {topEmployers.length > 0 && (
+        <div className="mt-5">
+          <p className="font-mono text-xs uppercase tracking-widest text-[#F5DEB3]/60">Top donor employers</p>
+          <ul className="mt-2 space-y-1">
+            {topEmployers.map((e) => {
+              const widthPct = maxEmployer > 0 ? (e.total / maxEmployer) * 100 : 0;
+              return (
+                <li key={e.employer} className="flex items-center gap-3 text-sm">
+                  <span className="w-52 shrink-0 truncate text-[#F5DEB3]" title={e.employer}>
+                    {e.employer}
+                  </span>
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-black/30">
+                    <div className="h-full bg-[#F5DEB3]/70" style={{ width: `${Math.max(2, widthPct)}%` }} />
+                  </div>
+                  <span className="w-24 shrink-0 text-right font-mono text-xs tabular-nums text-[#F5DEB3]">
+                    ${e.total.toLocaleString()}
+                  </span>
+                  <span className="w-12 shrink-0 text-right font-mono text-[10px] tabular-nums text-[#F5DEB3]/60">
+                    {e.count.toLocaleString()}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="mt-2 font-mono text-[10px] text-[#F5DEB3]/50">
+            Employer = sum of contributions from individuals reporting that employer. Not a corporate PAC contribution —
+            it&apos;s the firm&apos;s employees giving personally. Industry-level rollup is a future pass.
+          </p>
+        </div>
+      )}
     </section>
   );
 }
