@@ -85,13 +85,13 @@ export default async function CandidatesIndexPage(props: { searchParams: Promise
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
-      <Link href="/scorecard" className="text-sm text-gray-600 hover:text-gray-900">
+      <Link href="/scorecard" className="text-sm text-gray-600 hover:text-[#2C4A5E]">
         ← Back to scorecard
       </Link>
 
       <header className="mt-4 border-b-2 border-gray-900 pb-6">
         <p className="font-mono text-xs uppercase tracking-widest text-gray-500">2026 election</p>
-        <h1 className="mt-1 font-serif text-3xl font-bold text-gray-900">All federal candidates</h1>
+        <h1 className="mt-1 font-serif text-3xl font-bold text-[#2C4A5E]">All federal candidates</h1>
         <p className="mt-2 text-sm text-gray-700">
           {totalCands.toLocaleString()} candidates filed across {totalSeats} seats — {byParty.D ?? 0} D ·{' '}
           {byParty.R ?? 0} R ·{' '}
@@ -130,7 +130,7 @@ export default async function CandidatesIndexPage(props: { searchParams: Promise
             <Link
               href={`/scorecard/race/${s.slug}`}
               className="flex items-baseline justify-between gap-3 hover:text-[#8B3A3A]">
-              <span className="font-mono text-sm font-semibold text-gray-900">
+              <span className="font-mono text-sm font-semibold text-[#2C4A5E]">
                 {s.chamber === 'SEN' ? `${s.state} — U.S. Senate` : `${s.state}-${s.district} (House)`}
                 {s.cands.some((c) => c.isActive) ? (
                   <span className="ml-2 rounded bg-gray-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-white">
