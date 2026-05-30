@@ -19,10 +19,27 @@
 //   federal legislators × ~5 cycles ≈ 2700 rows, this is roughly 35–40 API
 //   calls total (vs. 2160+ if we asked per-candidate-per-cycle).
 //
+// v1.7.7 (2026-05-29) — per-candidate fallback for legislators the bulk
+//   endpoint skipped. The bulk /candidates/totals/ endpoint silently drops
+//   senators who weren't on the ballot in a queried cycle (Markey, Booker,
+//   Sanders re-elect every 6 years; their PCC files continuously but the
+//   election-cycle index only attributes the filings to ONE cycle), and
+//   first-time candidates (McCormick) whose FEC IDs only appear under a
+//   single cycle. Result: senators wound up with 0–1 rows in PacMoneyData,
+//   collapsing their 4-cycle denominator to almost nothing.
+//
+//   Fix: after the bulk pass, any legislator whose row count is below
+//   MIN_EXPECTED_ROWS gets a per-candidate fallback that calls
+//   /candidate/{id}/totals/ (no cycle filter — returns ALL cycles the
+//   committee has filings for) and merges any cycles in our requested
+//   window. Adds at most ~50–100 extra API calls per run (well under FEC's
+//   1000/hr ceiling).
+//
 // Usage:
 //   npm run scorecard:ingest-fec-receipts-multicycle
 //   npm run scorecard:ingest-fec-receipts-multicycle -- --dry-run
 //   npm run scorecard:ingest-fec-receipts-multicycle -- --cycles=2018,2020,2022,2024
+//   npm run scorecard:ingest-fec-receipts-multicycle -- --skip-fallback
 //
 // Default cycles: 2018, 2020, 2022, 2024 (the 4-cycle aggregate the spike used).
 // 2026 rows are left to the canonical ingest-fec.ts (which also computes the
@@ -42,12 +59,14 @@ const RATE_LIMIT_PAUSE_MS = 100;
 interface CliFlags {
   dryRun: boolean;
   cycles: number[];
+  skipFallback: boolean;
 }
 
 function parseFlags(argv: string[]): CliFlags {
-  const flags: CliFlags = { dryRun: false, cycles: [2018, 2020, 2022, 2024] };
+  const flags: CliFlags = { dryRun: false, cycles: [2018, 2020, 2022, 2024], skipFallback: false };
   for (const arg of argv.slice(2)) {
     if (arg === '--dry-run') flags.dryRun = true;
+    else if (arg === '--skip-fallback') flags.skipFallback = true;
     else if (arg.startsWith('--cycles=')) {
       flags.cycles = arg
         .split('=')[1]
@@ -58,6 +77,15 @@ function parseFlags(argv: string[]): CliFlags {
   }
   return flags;
 }
+
+// Senators on 6-year terms file in only ONE of any 4-cycle window's
+// election cycles, so we expect at LEAST 1 row per active senator after the
+// bulk pass. If a senator comes back with 0 rows, something is wrong with
+// the FEC ID mapping or bulk query — fall back to per-candidate /totals/.
+// House members run every cycle; we expect 1+ per cycle but only flag 0 as
+// "broken". Keep the threshold conservative — we just want to catch the
+// "no data at all" case, not over-fetch.
+const MIN_EXPECTED_ROWS = 1;
 
 interface FecTotalsRow {
   candidate_id: string;
@@ -135,6 +163,78 @@ async function bulkCandidateTotals(candidateIds: string[], cycles: number[], api
   return out;
 }
 
+// Per-candidate fallback: fetch ALL cycles the candidate has on file via
+// /candidate/{id}/totals/ (no cycle filter). Returns rows for any cycle in
+// `wantedCycles`. Used to plug gaps the bulk endpoint left — senators on
+// 6-year terms typically only get attributed to ONE election cycle by the
+// bulk index, and first-time candidates can be missed entirely.
+async function singleCandidateTotalsForCycles(
+  candidateId: string,
+  wantedCycles: number[],
+  apiKey: string,
+): Promise<FecTotalsRow[]> {
+  const out: FecTotalsRow[] = [];
+  let page = 1;
+  const wanted = new Set(wantedCycles);
+  while (true) {
+    await pace();
+    const params = new URLSearchParams();
+    params.set('api_key', apiKey);
+    params.set('per_page', '100');
+    params.set('page', String(page));
+    params.set('sort', '-cycle');
+    const url = `${FEC_BASE}/candidate/${encodeURIComponent(candidateId)}/totals/?${params.toString()}`;
+    let r: Response | null = null;
+    let netAttempt = 0;
+    while (netAttempt < 3) {
+      try {
+        r = await fetch(url);
+        break;
+      } catch (err) {
+        netAttempt += 1;
+        const wait = 2000 * netAttempt;
+        console.warn(
+          `  [warn] network error on ${candidateId} page ${page} (attempt ${netAttempt}/3): ${
+            err instanceof Error ? err.message : err
+          }; retry in ${wait}ms`,
+        );
+        await new Promise((s) => setTimeout(s, wait));
+      }
+    }
+    if (!r) throw new Error(`network failure after 3 attempts on ${candidateId} page ${page}`);
+    if (!r.ok) {
+      if (r.status === 404) return out;
+      const body = await r.text().catch(() => '');
+      const isRateLimit = r.status === 429 || /OVER_RATE_LIMIT|rate limit/i.test(body);
+      if (isRateLimit) {
+        console.warn(`  [warn] rate limit hit on ${candidateId} page ${page}; sleeping 60s and retrying`);
+        await new Promise((s) => setTimeout(s, 60_000));
+        continue;
+      }
+      console.warn(`  [warn] HTTP ${r.status} on ${candidateId} — ${body.slice(0, 200)}`);
+      return out;
+    }
+    const j = (await r.json()) as {
+      results?: Array<Omit<FecTotalsRow, 'candidate_id'> & { candidate_id?: string }>;
+      pagination?: { pages?: number };
+    };
+    for (const row of j.results ?? []) {
+      if (!wanted.has(Number(row.cycle))) continue;
+      out.push({
+        candidate_id: row.candidate_id ?? candidateId,
+        cycle: Number(row.cycle),
+        receipts: Number(row.receipts ?? 0),
+        other_political_committee_contributions: Number(row.other_political_committee_contributions ?? 0),
+        individual_contributions: Number(row.individual_contributions ?? 0),
+      });
+    }
+    const pages = j.pagination?.pages ?? 1;
+    if (page >= pages) break;
+    page += 1;
+  }
+  return out;
+}
+
 async function main(): Promise<void> {
   const apiKey = process.env.FEC_API_KEY ?? process.env.FEC_DATA_API ?? '';
   if (!apiKey) {
@@ -204,7 +304,56 @@ async function main(): Promise<void> {
       });
     }
   }
-  console.log(`[ingest-fec-receipts-multicycle] ${byKey.size} (legislator, cycle) aggregates`);
+  console.log(`[ingest-fec-receipts-multicycle] ${byKey.size} (legislator, cycle) aggregates from bulk pass`);
+
+  // v1.7.7 fallback — find legislators with fewer than MIN_EXPECTED_ROWS
+  // (typically zero) and fall back to per-candidate /candidate/{id}/totals/
+  // for each of their FEC IDs. This catches senators on 6-year terms whose
+  // PCC files continuously but only gets attributed to a single election
+  // cycle by the bulk endpoint, and first-time candidates the bulk pass
+  // missed entirely.
+  if (!flags.skipFallback) {
+    const rowsByLeg = new Map<string, number>();
+    for (const a of byKey.values()) {
+      rowsByLeg.set(a.legId, (rowsByLeg.get(a.legId) ?? 0) + 1);
+    }
+    const missingLegs = legs.filter((l) => (rowsByLeg.get(l.id) ?? 0) < MIN_EXPECTED_ROWS && (l.fecIds?.length ?? 0) > 0);
+    console.log(
+      `[ingest-fec-receipts-multicycle] fallback: ${missingLegs.length} legislators below MIN_EXPECTED_ROWS=${MIN_EXPECTED_ROWS}`,
+    );
+    let fallbackRows = 0;
+    for (let i = 0; i < missingLegs.length; i++) {
+      const leg = missingLegs[i];
+      for (const fecId of leg.fecIds ?? []) {
+        const rows = await singleCandidateTotalsForCycles(fecId, flags.cycles, apiKey);
+        for (const r of rows) {
+          const key = `${leg.id}|${r.cycle}`;
+          const existing = byKey.get(key);
+          const receipts = Number(r.receipts ?? 0);
+          const pac = Number(r.other_political_committee_contributions ?? 0);
+          if (existing) {
+            existing.receipts += receipts;
+            existing.pacContribs += pac;
+            existing.fecIdsUsed.add(r.candidate_id);
+          } else {
+            byKey.set(key, {
+              legId: leg.id,
+              fullName: leg.fullName,
+              cycle: r.cycle,
+              receipts,
+              pacContribs: pac,
+              fecIdsUsed: new Set([r.candidate_id]),
+            });
+            fallbackRows += 1;
+          }
+        }
+      }
+      if ((i + 1) % 25 === 0) {
+        console.log(`  fallback progress: ${i + 1}/${missingLegs.length} legislators scanned`);
+      }
+    }
+    console.log(`[ingest-fec-receipts-multicycle] fallback added ${fallbackRows} (legislator, cycle) rows`);
+  }
 
   // Filter: drop cycle rows with $0 receipts (no real filing for that cycle).
   const aggs = Array.from(byKey.values()).filter((a) => a.receipts > 0);

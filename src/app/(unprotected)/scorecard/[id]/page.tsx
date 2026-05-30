@@ -15,6 +15,7 @@ import {
   getOpposedByPacs,
   getLegislatorLeadershipPacInflows,
   getLegislatorIndividualMoney,
+  getLegislatorPacInfluence_2022_2024,
   getLegislatorDimeProfile,
 } from '@/lib/scorecard/queries';
 import type {
@@ -73,24 +74,35 @@ export default async function LegislatorScorecardPage(props: Props) {
   // For CA legislators we don't have PacContribution data — fall back to the
   // legacy v1.7 PAC score from PacMoneyData.
   const votingScore = computePublishedTotal(legislator.scores);
-  const [moneyTrail, topDonors, opposedBy, legacyPacScore, leadershipPacInflows, individualMoney, dimeProfile] =
-    await Promise.all([
-      jurisdiction === 'FEDERAL'
-        ? getLegislatorMoneyTrail(legislator.id)
-        : Promise.resolve(null as PacMoneyTrail | null),
-      jurisdiction === 'FEDERAL' ? getTopDonorsForLegislator(legislator.id, 15) : Promise.resolve([] as TopDonor[]),
-      jurisdiction === 'FEDERAL' ? getOpposedByPacs(legislator.id, 10) : Promise.resolve([] as TopDonor[]),
-      getLegislatorPacScore(legislator.id),
-      jurisdiction === 'FEDERAL'
-        ? getLegislatorLeadershipPacInflows(legislator.id)
-        : Promise.resolve(null as LeadershipPacInflows | null),
-      jurisdiction === 'FEDERAL'
-        ? getLegislatorIndividualMoney(legislator.id)
-        : Promise.resolve(null as IndividualMoney | null),
-      jurisdiction === 'FEDERAL'
-        ? getLegislatorDimeProfile(legislator.id)
-        : Promise.resolve(null as DimeProfile | null),
-    ]);
+  const [
+    moneyTrail,
+    topDonors,
+    opposedBy,
+    legacyPacScore,
+    leadershipPacInflows,
+    individualMoney,
+    pacInfluence2Cyc,
+    dimeProfile,
+  ] = await Promise.all([
+    jurisdiction === 'FEDERAL'
+      ? getLegislatorMoneyTrail(legislator.id)
+      : Promise.resolve(null as PacMoneyTrail | null),
+    jurisdiction === 'FEDERAL' ? getTopDonorsForLegislator(legislator.id, 15) : Promise.resolve([] as TopDonor[]),
+    jurisdiction === 'FEDERAL' ? getOpposedByPacs(legislator.id, 10) : Promise.resolve([] as TopDonor[]),
+    getLegislatorPacScore(legislator.id),
+    jurisdiction === 'FEDERAL'
+      ? getLegislatorLeadershipPacInflows(legislator.id)
+      : Promise.resolve(null as LeadershipPacInflows | null),
+    jurisdiction === 'FEDERAL'
+      ? getLegislatorIndividualMoney(legislator.id)
+      : Promise.resolve(null as IndividualMoney | null),
+    // v1.8.2 — cycle-matched PAC influence so the Individual vs PAC % isn't
+    // structurally PAC-biased (individual data is 2022 + 2024 only).
+    jurisdiction === 'FEDERAL' ? getLegislatorPacInfluence_2022_2024(legislator.id) : Promise.resolve(0),
+    jurisdiction === 'FEDERAL'
+      ? getLegislatorDimeProfile(legislator.id)
+      : Promise.resolve(null as DimeProfile | null),
+  ]);
   const pacScore = moneyTrail?.pacScore ?? legacyPacScore;
   const avgScore = computeTwoScoreAverage(pacScore, votingScore);
   const chamberLabel =
@@ -181,7 +193,7 @@ export default async function LegislatorScorecardPage(props: Props) {
       )}
 
       {jurisdiction === 'FEDERAL' && individualMoney && individualMoney.totalItemized > 0 && (
-        <IndividualMoneySection money={individualMoney} pacTotalInfluence={moneyTrail?.totalInfluence ?? 0} />
+        <IndividualMoneySection money={individualMoney} pacTotalInfluence2Cyc={pacInfluence2Cyc} />
       )}
 
       <section className="mt-8 space-y-8">
@@ -974,14 +986,29 @@ function LeadershipPacInflowsSection({ inflows }: { inflows: LeadershipPacInflow
 // legislator's campaign, with the top employers by dollar. Surfaces the
 // industry / firm concentration in the donor base (e.g. Goldman Sachs,
 // Blackstone, big law) that PAC totals can't see.
-function IndividualMoneySection({ money, pacTotalInfluence }: { money: IndividualMoney; pacTotalInfluence: number }) {
+function IndividualMoneySection({
+  money,
+  pacTotalInfluence2Cyc,
+}: {
+  money: IndividualMoney;
+  // v1.8.2: PAC DIRECT+IE_SUPPORT for 2022 + 2024 only — matches the cycle
+  // window of `totalItemized`. The 4-cycle `totalInfluence` would bias the
+  // ratio because we never ingested 2018/2020 individual contribution files.
+  pacTotalInfluence2Cyc: number;
+}) {
   const { totalItemized, contributionCount, cyclesAvailable, topEmployers, industryMix, industryClassifiedTotal } =
     money;
-  const grandTotal = totalItemized + pacTotalInfluence;
+  const grandTotal = totalItemized + pacTotalInfluence2Cyc;
   const indivPct = grandTotal > 0 ? Math.round((totalItemized / grandTotal) * 100) : 0;
   const maxEmployer = topEmployers.length > 0 ? topEmployers[0].total : 0;
   const topIndustries = industryMix.slice(0, 8);
   const maxIndustry = topIndustries.length > 0 ? topIndustries[0].total : 0;
+  // v1.8.3 — surface industry-mix coverage explicitly. industryMix is built
+  // from the stored top-25 employers per cycle (LegislatorIndividualMoney.
+  // topEmployers), which for big-fundraising senators covers only single-
+  // digit % of the full itemized base. Without this number the per-industry
+  // % looks like a share of the whole donor base; it isn't.
+  const coveragePct = totalItemized > 0 ? (industryClassifiedTotal / totalItemized) * 100 : 0;
 
   return (
     <section className="mt-8 rounded border border-[#2C4A5E] border-gray-200 bg-white p-5 shadow-sm">
@@ -1014,9 +1041,14 @@ function IndividualMoneySection({ money, pacTotalInfluence }: { money: Individua
           </p>
         </div>
         <div className="col-span-2 rounded bg-gray-50 p-3 sm:col-span-1">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/70">Individual vs PAC</p>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/70">
+            Individual vs PAC (2022–2024)
+          </p>
           <p className="mt-1 font-serif text-2xl font-bold tabular-nums text-[#2C4A5E]">{indivPct}%</p>
-          <p className="mt-0.5 font-mono text-[10px] text-[#2C4A5E]/70">of (individual + PAC) money</p>
+          <p className="mt-0.5 font-mono text-[10px] text-[#2C4A5E]/70">
+            of (individual + PAC) money, 2-cycle window — individual data is 2022 + 2024 only, so PAC $ is scoped to
+            match.
+          </p>
         </div>
       </div>
 
@@ -1029,7 +1061,8 @@ function IndividualMoneySection({ money, pacTotalInfluence }: { money: Individua
           <p className="font-mono text-xs uppercase tracking-widest text-[#2C4A5E]/70">
             Top donor industries
             <span className="ml-2 text-[10px] normal-case text-[#2C4A5E]/60">
-              — of ${Math.round(industryClassifiedTotal).toLocaleString()} classified
+              — ${Math.round(industryClassifiedTotal).toLocaleString()} classified ({coveragePct.toFixed(1)}% of $
+              {Math.round(totalItemized).toLocaleString()} itemized)
             </span>
           </p>
           <ul className="mt-2 space-y-1">
@@ -1058,10 +1091,11 @@ function IndividualMoneySection({ money, pacTotalInfluence }: { money: Individua
             })}
           </ul>
           <p className="mt-2 font-mono text-[10px] text-[#2C4A5E]/60">
-            Rules-based employer→industry classifier (no external crosswalk). Percentages are of money we could assign
-            to a sector; the rest (FEC catch-alls + tens of thousands of small local employers) is unclassified by
-            design. Per-firm $ alone is weak signal (~2-3% of base); per-industry concentration is where the funding-
-            source story lives.
+            Industry mix is computed from the top 25 reported employers per cycle ({coveragePct.toFixed(1)}% of the
+            itemized base for this legislator). The rest is small/scattered donors with no employer signal — FEC
+            catch-alls (retired, self-employed) and tens of thousands of small local employers. Per-firm $ alone is
+            weak signal (~2-3% of base); per-industry concentration on the slice we can see is where the funding-source
+            story lives.
           </p>
         </div>
       )}

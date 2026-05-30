@@ -1,4 +1,5 @@
-// v1.7.4 — Race-level "beneficiary" attribution for IE_OPPOSE rows.
+// v1.8.4 — Race-level "beneficiary" attribution for IE_OPPOSE rows
+// (cycle-aware House attribution).
 //
 // What this exists:
 //   FEC's Schedule E filings attribute IE money to ONE target (the candidate
@@ -14,7 +15,7 @@
 //
 //   For each defeated H/S candidate (isActive=false) with IE_OPPOSE rows:
 //     1. Look up the candidate's cycle + seat (state, chamber, district).
-//     2. Find the active sitting legislator who holds that seat today.
+//     2. Find the active sitting legislator who WON that seat in that cycle.
 //     3. For each IE_OPPOSE row against the defeated candidate, write a NEW
 //        PacContribution row with kind=IE_OPPOSE_BENEFICIARY, same donor and
 //        amount, attributed to the winning sitting legislator.
@@ -25,15 +26,17 @@
 //   detail page surfaces as a parallel tile.
 //
 // Coverage notes:
-//   - House: matches by (state, chamber=REP, district) → current sitting
-//     rep. Strong for recent cycles (the current rep was the winner in
-//     2022 or 2024). May misattribute for older races if multiple
-//     elections have occurred since.
-//   - Senate: matches by (state, chamber=SEN). Senate has TWO seats per
-//     state with different election years (classes). For first cut we
-//     credit BOTH active senators — this somewhat dilutes accuracy but
-//     captures that beneficiary attribution per se is on the right track.
-//     Refining to senate-class-aware attribution is a TODO.
+//   - House (v1.8.4): matches by (state, district, cycleYear) → active
+//     sitting rep who actually ran in that district in that cycle (per
+//     cn{YY}.txt CAND_ELECTION_YR). Eliminates the "cycle bleed" bug
+//     where the current NY-16 rep was credited for 2020 IE_OPPOSE against
+//     Engel/Bowman (he wasn't in the 2020 race). When the cycle's winner
+//     is no longer in our active set (e.g., Bowman, defeated in 2024),
+//     the IE_OPPOSE is left unattributed rather than mis-credited.
+//   - Senate: matches by (state, electionYear) → active sitting senator
+//     whose last election year matches the IE cycle. Was already
+//     cycle-aware. Falls back to splitting between both state senators
+//     when no exact-year match (special elections, etc.).
 //
 // Usage:
 //   npm run scorecard:attribute-ie-beneficiary
@@ -89,35 +92,111 @@ function loadFecIdToElectionYear(): Map<string, number> {
   return out;
 }
 
+// v1.8.4 — Load every House candidacy record from cn{YY}.txt across cycles.
+// Key: `${fecId}|${cycleYear}` → { state, district, electionYr }. We use
+// (cycleYear from filename) as the canonical cycle even when CAND_ELECTION_YR
+// disagrees, but we also keep electionYr for filtering down to candidates
+// who were ACTIVELY running that cycle (election_yr == filename cycle).
+interface HouseCandidacy {
+  state: string;
+  district: number;
+  electionYr: number;
+  cycleYear: number; // cn file's cycle (from filename)
+}
+function loadHouseCandidacies(): Map<string, HouseCandidacy[]> {
+  const out = new Map<string, HouseCandidacy[]>();
+  for (const cycle of CYCLES) {
+    const yy = String(cycle).slice(2);
+    const fp = path.join(FEC_BULK_BASE, `fec-bulk-${cycle}`, `cn${yy}.txt`);
+    if (!fs.existsSync(fp)) continue;
+    const text = fs.readFileSync(fp, 'utf-8');
+    for (const line of text.split('\n')) {
+      if (!line) continue;
+      const cols = line.split('|');
+      if (cols.length < 7) continue;
+      const candId = cols[0];
+      const electionYr = Number(cols[3]);
+      const state = cols[4];
+      const office = cols[5];
+      const districtStr = cols[6];
+      if (office !== 'H' || !candId || !state || !districtStr) continue;
+      // Only count candidacies whose declared election year matches the file's
+      // cycle. Without this, we'd pull stale records of candidates the FEC
+      // file still lists (e.g., someone who ran in 2020 still in the 2024
+      // cn.txt with electionYr=2020). With it, we only count true 2024 House
+      // candidates from cn24.txt.
+      if (!Number.isFinite(electionYr) || electionYr !== cycle) continue;
+      const district = Number(districtStr);
+      if (!Number.isFinite(district)) continue;
+      const entries = out.get(candId) ?? [];
+      entries.push({ state, district, electionYr, cycleYear: cycle });
+      out.set(candId, entries);
+    }
+  }
+  return out;
+}
+
 async function main(): Promise<void> {
   const flags = parseFlags(process.argv);
   console.log(`[attribute-ie-beneficiary] flags: ${JSON.stringify(flags)}`);
 
   // 1. Build seat → active-legislator map.
-  // House: (state, district) → leg (current rep, always = recent cycle winner).
+  // House (v1.8.4): (state, district, cycleYear) → active sitting rep who ran
+  //   in that district in that cycle (per cn{YY}.txt). Fixes the bug where the
+  //   current rep was credited for IE_OPPOSE from cycles BEFORE they took the
+  //   seat (e.g., Latimer crediting 2020 IE_OPPOSE against Engel/Bowman).
   // Senate: (state, electionYear) → leg (cycle-aware to avoid splitting
   //   IE_OPPOSE between senators in different classes; e.g. Fetterman gets
   //   PA 2022 IE_OPPOSE, McCormick gets PA 2024 IE_OPPOSE, NOT 50/50).
   console.log('[attribute-ie-beneficiary] loading FEC election years from cn*.txt…');
   const fecToYear = loadFecIdToElectionYear();
   console.log(`  ${fecToYear.size} candidate election years indexed`);
+  console.log('[attribute-ie-beneficiary] loading House candidacies from cn*.txt…');
+  const fecToHouseRuns = loadHouseCandidacies();
+  console.log(`  ${fecToHouseRuns.size} House candidate FEC ids with candidacies`);
 
   const active = await prisma.legislator.findMany({
     where: { isActive: true, jurisdiction: 'FEDERAL' },
     select: { id: true, fullName: true, chamber: true, state: true, district: true, fecIds: true },
   });
-  const houseBySeat = new Map<string, { id: string; fullName: string }>();
+  // House map (v1.8.4): (state, district, cycleYear) → active leg. Built by
+  // intersecting each active rep's FEC ids with cn*.txt candidacy records
+  // whose state+district match the rep's current seat. Only cycles where the
+  // rep actually ran for the seat they now hold are included; older cycles
+  // where someone else won the seat are left absent (and those IE_OPPOSE
+  // rows will be left unattributed, NOT misattributed to the current rep).
+  const houseBySeatYear = new Map<string, { id: string; fullName: string }>();
   // Senate map: (state, electionYear) → leg. Each sitting senator has a
   // most-recent election year; map that.
   const senateBySeatYear = new Map<string, { id: string; fullName: string }>();
   // Fallback senate map when we can't determine an election year for a
   // senator (no FEC id matches in cn*.txt) — credit both.
   const senateByStateFallback = new Map<string, Array<{ id: string; fullName: string }>>();
+  let houseCycleMappings = 0;
   let senateMappedByYear = 0;
   let senateNoYear = 0;
   for (const l of active) {
     if (l.chamber === 'REP' && l.district != null) {
-      houseBySeat.set(`${l.state}|${l.district}`, { id: l.id, fullName: l.fullName });
+      // For every cycle where any of this rep's FEC ids ran in their current
+      // (state, district), mark them as the seat-cycle winner. We assume any
+      // active rep whose FEC id appears in cn{cycle}.txt for their current
+      // seat WON that cycle (since they're currently serving). Edge case:
+      // a leg who lost in cycle N and won in cycle N+2 would be incorrectly
+      // mapped for cycle N. We accept this as a much-narrower miss than the
+      // current "credit for ALL past cycles in this district" bug.
+      for (const fid of l.fecIds ?? []) {
+        const runs = fecToHouseRuns.get(fid);
+        if (!runs) continue;
+        for (const r of runs) {
+          if (r.state !== l.state || r.district !== l.district) continue;
+          const k = `${l.state}|${l.district}|${r.cycleYear}`;
+          // First-wins (in case of multiple FEC ids covering same seat-cycle)
+          if (!houseBySeatYear.has(k)) {
+            houseBySeatYear.set(k, { id: l.id, fullName: l.fullName });
+            houseCycleMappings += 1;
+          }
+        }
+      }
     } else if (l.chamber === 'SEN') {
       // Find this senator's most recent election year via any of their FEC ids.
       let maxYr = 0;
@@ -137,7 +216,7 @@ async function main(): Promise<void> {
     }
   }
   console.log(
-    `[attribute-ie-beneficiary] active legs: ${active.length} (${houseBySeat.size} house, ${senateMappedByYear} senate cycle-mapped, ${senateNoYear} senate fallback)`,
+    `[attribute-ie-beneficiary] active legs: ${active.length} (${houseCycleMappings} house seat-cycle mappings, ${senateMappedByYear} senate cycle-mapped, ${senateNoYear} senate fallback)`,
   );
 
   // 2. Pull every IE_OPPOSE row against an INACTIVE leg.
@@ -182,7 +261,10 @@ async function main(): Promise<void> {
     if (!Number.isFinite(amt) || amt === 0) continue;
     let beneficiaries: Array<{ id: string; fullName: string }> = [];
     if (r.chamber === 'REP' && r.district != null) {
-      const b = houseBySeat.get(`${r.state}|${r.district}`);
+      // v1.8.4 — cycle-aware lookup. If no active leg won this exact
+      // (state, district, cycleYear), leave the row unattributed rather than
+      // crediting whoever currently holds the seat.
+      const b = houseBySeatYear.get(`${r.state}|${r.district}|${r.cycleYear}`);
       if (b) beneficiaries = [b];
     } else if (r.chamber === 'SEN') {
       // Try cycle-aware match first: which sitting senator was elected in

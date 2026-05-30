@@ -224,6 +224,19 @@ export async function getPacScoresByLegislator(legislatorIds: string[]): Promise
 //
 // denominator = 0 → score is null (no PAC data, render "no data" badge).
 //
+// v1.7.7 (2026-05-29): Missing-receipts guard. The 4-cycle PacMoneyData
+// ingest only writes a row when FEC returns receipts > 0, so senators with
+// gaps in their fundraising windows (e.g. McCormick had no FEC totals for
+// 2018/2020/2022; Markey/Booker/Sanders only file in their re-election
+// cycle) can wind up with totalReceipts = 0. In that case denom = IE_SUPPORT
+// alone, which collapses to a near-zero score driven entirely by Super PAC
+// activity — not a defensible "PAC Score." When totalReceipts = 0 AND
+// countsAgainst > 0, we now return pacScore = null ("no data") rather than
+// computing a misleading score from IE alone. ingest-fec-receipts-multicycle
+// was also widened to backfill from /candidate/{id}/totals/ for any
+// legislator the bulk endpoint skipped, so this guard is a belt-and-braces
+// safety net, not the primary fix.
+//
 // IE_OPPOSE is tracked separately (info-only): a Super PAC spending against
 // the legislator doesn't change their score either way.
 
@@ -295,6 +308,12 @@ export async function getPacScoresByLegislatorV171(legislatorIds: string[]): Pro
     const ca = Number(r.countsAgainst);
     const ie = Number(r.ieSupport);
     const receipts = receiptsByLeg.get(r.legislatorId) ?? 0;
+    // v1.7.7 safety guard: if there are no principal-committee receipts on
+    // record AND there is meaningful counts-against activity, the IE-only
+    // denominator produces a misleading score (e.g. McCormick's $14.86M IE
+    // alone collapsed to "6"). Treat as no data instead. Leaves the score
+    // valid for cases where the leg legitimately has both receipts and IE.
+    if (receipts <= 0 && ca > 0) continue;
     const denom = receipts + (Number.isFinite(ie) ? ie : 0);
     if (!Number.isFinite(denom) || denom <= 0) continue;
     const ratio = ca / denom;
@@ -359,14 +378,22 @@ export async function getLegislatorMoneyTrail(legislatorId: string): Promise<Pac
   // totalReceipts on the principal committee side; we only add them to the
   // countsAgainst numerator (when the original donor was corp/dark/foreign).
   const denominator = totalReceipts + ieSupportTotal;
+  // v1.7.7 safety guard (mirrors getPacScoresByLegislatorV171): when there
+  // are zero principal-committee receipts on record but real counts-against
+  // activity exists, the resulting score is driven entirely by IE_SUPPORT
+  // and reads as misleadingly low. Return null ("no data") in that case so
+  // the UI renders a "no data" badge rather than a near-zero number.
+  const noReceiptsData = totalReceipts <= 0 && countsAgainst > 0;
   const pacScore =
-    denominator > 0 ? Math.max(0, Math.min(100, Math.round((1 - countsAgainst / denominator) * 100))) : null;
+    !noReceiptsData && denominator > 0
+      ? Math.max(0, Math.min(100, Math.round((1 - countsAgainst / denominator) * 100)))
+      : null;
   // Beneficiary view: also count IE_OPPOSE-against-defeated-opponent as
   // counts-against. Denominator includes IE_OPPOSE_BENEFICIARY too so it
-  // doesn't artificially inflate the ratio.
+  // doesn't artificially inflate the ratio. Same no-receipts guard applies.
   const beneficiaryDenominator = denominator + beneficiaryCountsAgainst;
   const beneficiaryPacScore =
-    beneficiaryDenominator > 0
+    !noReceiptsData && beneficiaryDenominator > 0
       ? Math.max(
           0,
           Math.min(100, Math.round((1 - (countsAgainst + beneficiaryCountsAgainst) / beneficiaryDenominator) * 100)),
@@ -385,6 +412,32 @@ export async function getLegislatorMoneyTrail(legislatorId: string): Promise<Pac
     beneficiaryCountsAgainst,
     beneficiaryPacScore,
   };
+}
+
+/**
+ * v1.8.2 — PAC influence summed for the 2022 + 2024 cycles only, so the
+ * "Individual vs PAC" tile on the legislator detail page can compare apples to
+ * apples against `LegislatorIndividualMoney.totalItemized` (which is itself a
+ * 2-cycle window — we never ingested 2018/2020 individual files). Without this
+ * scoping the numerator is 2-cycle while the denominator includes 2018–2024
+ * PAC dollars, biasing every legislator toward "PAC-heavy."
+ *
+ * Counts DIRECT + IE_SUPPORT only (same posture used by `totalInfluence` for
+ * the tile, minus JFC pass-through, IE_OPPOSE, and IE_OPPOSE_BENEFICIARY).
+ * Returns 0 if there is no matching contribution data — callers should treat
+ * 0 as "no overlap," not "no money."
+ */
+export async function getLegislatorPacInfluence_2022_2024(legislatorId: string): Promise<number> {
+  const rows = await prisma.$queryRaw<Array<{ total: string }>>`
+    SELECT COALESCE(SUM(amount::numeric), 0)::text AS total
+    FROM "PacContribution"
+    WHERE "legislatorId" = ${legislatorId}
+      AND "cycleYear" IN (2022, 2024)
+      AND kind IN ('DIRECT', 'IE_SUPPORT')
+  `;
+  if (rows.length === 0) return 0;
+  const n = Number(rows[0].total);
+  return Number.isFinite(n) ? n : 0;
 }
 
 /**

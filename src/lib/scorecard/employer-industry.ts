@@ -158,8 +158,12 @@ const RULES: Array<{ re: RegExp; sector: IndustrySector }> = [
   // Education
   { re: /\b(UNIVERSIT|COLLEGE|SCHOOL|ACADEMY|EDUCATION|FACULTY|PROFESSOR|UCSF|UCLA)/, sector: 'EDUCATION' },
   // Health
+  // NOTE: HOSPITAL uses negative lookahead `(?!ITY)` so "HERSHA HOSPITALITY
+  // TRUST" (REIT, retail/hospitality sector) doesn't get pulled into HEALTH.
+  // The HOSPITALITY token below in RETAIL_HOSPITALITY would otherwise lose to
+  // this earlier rule. (v1.8.3)
   {
-    re: /\b(HOSPITAL|HEALTH|MEDICAL|MEDICINE|PHARMA|BIOTECH|CLINIC|PHYSICIAN|DENTAL|NURS|THERAP|BIOSCIENCE|GENENTECH|PFIZER|MERCK|ELI LILLY|ABBVIE|KAISER)/,
+    re: /\b(HOSPITAL(?!ITY)|HEALTH|MEDICAL|MEDICINE|PHARMA|BIOTECH|CLINIC|PHYSICIAN|DENTAL|NURS|THERAP|BIOSCIENCE|GENENTECH|PFIZER|MERCK|ELI LILLY|ABBVIE|KAISER)/,
     sector: 'HEALTH',
   },
   // Energy
