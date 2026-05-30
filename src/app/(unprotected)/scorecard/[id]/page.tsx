@@ -1111,6 +1111,9 @@ function IndividualMoneySection({
             of (individual + PAC) money, 2-cycle window — individual data is 2022 + 2024 only, so PAC $ is scoped to
             match.
           </p>
+          <p className="mt-1 font-mono text-[10px] italic text-[#2C4A5E]/70">
+            Note: 2-cycle ratio; PAC totals elsewhere on this page show 4-cycle aggregate.
+          </p>
         </div>
       </div>
 
