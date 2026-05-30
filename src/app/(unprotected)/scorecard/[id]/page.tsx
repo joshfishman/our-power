@@ -87,7 +87,11 @@ export default async function LegislatorScorecardPage(props: Props) {
     jurisdiction === 'FEDERAL' ? getLegislatorMoneyTrail(legislator.id) : Promise.resolve(null as PacMoneyTrail | null),
     jurisdiction === 'FEDERAL' ? getTopDonorsForLegislator(legislator.id, 15) : Promise.resolve([] as TopDonor[]),
     jurisdiction === 'FEDERAL' ? getOpposedByPacs(legislator.id, 10) : Promise.resolve([] as TopDonor[]),
-    getLegislatorPacScore(legislator.id),
+    // CA only — the v1.7.1 PAC Score from PacContribution doesn't apply to
+    // California (we don't have an FEC-equivalent contribution dataset). For
+    // federal legislators we use moneyTrail.pacScore exclusively (V171); for
+    // CA we use the legacy PacMoneyData-derived score.
+    jurisdiction === 'CA' ? getLegislatorPacScore(legislator.id) : Promise.resolve(null),
     jurisdiction === 'FEDERAL'
       ? getLegislatorLeadershipPacInflows(legislator.id)
       : Promise.resolve(null as LeadershipPacInflows | null),
@@ -99,7 +103,16 @@ export default async function LegislatorScorecardPage(props: Props) {
     jurisdiction === 'FEDERAL' ? getLegislatorPacInfluence20222024(legislator.id) : Promise.resolve(0),
     jurisdiction === 'FEDERAL' ? getLegislatorDimeProfile(legislator.id) : Promise.resolve(null as DimeProfile | null),
   ]);
-  const pacScore = moneyTrail?.pacScore ?? legacyPacScore;
+  // v1.8.6 — explicit jurisdiction split so the detail page can never disagree
+  // with the index page:
+  //   FEDERAL → v1.7.1 PAC Score from moneyTrail (null when the v1.8.1 safety
+  //             guard fires; renders as "Score pending / no data yet").
+  //   CA      → legacy PacMoneyData ratio (no V171 data exists yet for CA).
+  // No silent federal→legacy fallback. Previously the detail page fell back
+  // to legacyPacScore whenever moneyTrail.pacScore was null, which produced a
+  // different PAC score than the index page (and a "no data" guard that
+  // wasn't actually no-data on the detail surface).
+  const pacScore = jurisdiction === 'FEDERAL' ? moneyTrail?.pacScore ?? null : legacyPacScore;
   const avgScore = computeTwoScoreAverage(pacScore, votingScore);
   const chamberLabel =
     jurisdiction === 'FEDERAL' ? CHAMBER_LABEL_FEDERAL[legislator.chamber] : CHAMBER_LABEL_STATE[legislator.chamber];
