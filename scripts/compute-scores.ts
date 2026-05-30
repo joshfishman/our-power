@@ -77,7 +77,7 @@ const CORPORATE_PAC_THRESHOLD = 0.05;
 async function computePacAchievements(
   jurisdiction: CliFlags['jurisdiction'],
   dryRun: boolean,
-): Promise<{ written: number; achieved: number }> {
+): Promise<{ written: number; achieved: number; skippedNullRatio: number }> {
   // Find both markers (federal + CA) — they have parallel slugs.
   const markers = await prisma.marker.findMany({
     where: { slug: { in: ['corporate-pac-refusal', 'corporate-pac-refusal-ca'] } },
@@ -85,7 +85,7 @@ async function computePacAchievements(
   });
   if (markers.length === 0) {
     console.warn('  [pac] no corporate-pac-refusal marker found in DB — skip');
-    return { written: 0, achieved: 0 };
+    return { written: 0, achieved: 0, skippedNullRatio: 0 };
   }
   const markerByJurisdiction = new Map(markers.map((m) => [m.jurisdiction as 'FEDERAL' | 'CA', m]));
 
@@ -108,11 +108,23 @@ async function computePacAchievements(
 
   let written = 0;
   let achieved = 0;
+  let skippedNullRatio = 0;
   for (const leg of legislators) {
     const pac = leg.pacData[0];
     if (!pac) continue;
     const marker = markerByJurisdiction.get(leg.jurisdiction as 'FEDERAL' | 'CA');
     if (!marker) continue;
+    // Null-ratio guard: when BOTH source fields are null, treat as "no data" rather
+    // than collapsing to 0 (which pacScoreFromRatio rewards as a perfect +2). A legitimate
+    // zero-corporate-receipt case (totalReceipts > 0, corporatePacAmount = 0) still has
+    // corporatePacPercentage = 0 (not null), so this guard does not skip those rows.
+    if (pac.combinedCorporateRatio == null && pac.corporatePacPercentage == null) {
+      skippedNullRatio += 1;
+      console.warn(
+        `[compute-scores] skipping ${leg.fullName} (${leg.jurisdiction}): both combinedCorporateRatio and corporatePacPercentage are null — no PAC data, not "0% corporate"`,
+      );
+      continue;
+    }
     const ratio = Number(pac.combinedCorporateRatio ?? pac.corporatePacPercentage ?? 0);
     const continuousScore = pacScoreFromRatio(ratio);
     const actionTaken = continuousScore >= 0 ? 'ACTED_FOR' : 'ACTED_AGAINST';
@@ -152,7 +164,7 @@ async function computePacAchievements(
     });
     written += 1;
   }
-  return { written, achieved };
+  return { written, achieved, skippedNullRatio };
 }
 
 async function autoVerifyAll(jurisdiction: CliFlags['jurisdiction'], dryRun: boolean): Promise<number> {
@@ -188,7 +200,7 @@ async function main(): Promise<void> {
   // before scoring so the scorer picks them up.
   const pacResult = await computePacAchievements(flags.jurisdiction, flags.dryRun);
   console.log(
-    `[compute-scores] pac achievements: wrote ${pacResult.written}, ${pacResult.achieved} pass the <5% threshold`,
+    `[compute-scores] pac achievements: wrote ${pacResult.written}, ${pacResult.achieved} pass the <5% threshold, skipped ${pacResult.skippedNullRatio} (both ratio fields null = no data)`,
   );
 
   if (flags.autoVerify) {
