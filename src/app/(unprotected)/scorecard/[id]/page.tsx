@@ -693,8 +693,15 @@ function MoneyTrail({
     beneficiaryCountsAgainst,
     beneficiaryPacScore,
   } = moneyTrail;
-  // Sort classes by dollar amount desc for the breakdown bars
-  const classRows = Object.entries(byClass).sort((a, b) => b[1] - a[1]);
+  // Sort classes by dollar amount desc for the breakdown bars. v1.8.6 — drop
+  // negative-net slices (refund-heavy CONDUIT in particular) from the bars;
+  // they were rendering as "−3% Conduit $−14,593" which read as nonsense.
+  // Stash the dropped totals so we can surface them as a one-line footnote
+  // below the breakdown — preserving the disclosure without polluting the
+  // visualization.
+  const rawClassRows = Object.entries(byClass).sort((a, b) => b[1] - a[1]);
+  const classRows = rawClassRows.filter(([, amt]) => amt > 0);
+  const negativeClassRows = rawClassRows.filter(([, amt]) => amt < 0);
   // The PAC Score uses receipts+IE_SUPPORT as denominator (matches the v1.7.1
   // spike). countsAgainst / totalInfluence — i.e. how concentrated the PAC
   // intake is — is a separate "PAC mix" stat, shown as well.
@@ -818,6 +825,20 @@ function MoneyTrail({
             <span className="font-semibold text-[#2C4A5E]">via JFC:</span> $
             {Math.round(jfcPassThroughTotal).toLocaleString()} attributed to corporate PACs routed through Joint
             Fundraising Committees (apportioned by JFC outbound share).
+          </p>
+        )}
+        {negativeClassRows.length > 0 && (
+          <p className="mt-2 font-mono text-[11px] text-[#2C4A5E]/80">
+            {negativeClassRows.map(([cls, amt], i) => {
+              const tone = PAC_CLASS_TONE[cls] ?? PAC_CLASS_TONE.UNKNOWN;
+              return (
+                <span key={cls}>
+                  {i > 0 && ' · '}
+                  <span className="font-semibold text-[#2C4A5E]">{tone.label} (net of refunds):</span> −$
+                  {Math.abs(Math.round(amt)).toLocaleString()}
+                </span>
+              );
+            })}
           </p>
         )}
       </div>
