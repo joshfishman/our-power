@@ -350,7 +350,7 @@ function HeroTwoScore({
 
 function HeroCell({
   label,
-  value,
+  value: rawValue,
   large = false,
   subline,
 }: {
@@ -359,6 +359,11 @@ function HeroCell({
   large?: boolean;
   subline?: string;
 }) {
+  // v1.8.6 — clamp the displayed value to ≥0 so the hero tiles never read as
+  // a "−2% Voting" (a few legislators have plank-level scores that arithmetic
+  // out below zero in edge cases). The raw stored score is untouched; this is
+  // a render-layer guard only.
+  const value = rawValue === null ? null : Math.max(0, rawValue);
   // v1.7 — steep gradient inside the 30-70% band where the real distribution
   // lives. Pinned to natural percentages, no calibration.
   const colorClass =
@@ -419,7 +424,13 @@ function PacContinuousScore({
 /** Per-plank score renderer. Under v1.7 each plank score is a 0-100
  *  alignment percent (votes + cosponsorship folded together at the bill
  *  level), so we color it on the same steep gradient as the hero. */
-function ScoreNumber({ value, size }: { value: number; size: 'hero' | 'plank' }) {
+function ScoreNumber({ value: rawValue, size }: { value: number; size: 'hero' | 'plank' }) {
+  // v1.8.6 — clamp the displayed plank score to ≥0. Raw `RepresentativeScore`
+  // rows occasionally compute slightly negative when a plank has more
+  // misaligned secondary votes than aligned ones with the current weights;
+  // surfacing "Plank 1 −1%" reads as broken to a casual viewer. Stored value
+  // is unchanged.
+  const value = Math.max(0, rawValue);
   const colorClass =
     value >= 80
       ? 'text-green-700'

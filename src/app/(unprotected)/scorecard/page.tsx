@@ -302,7 +302,19 @@ function colorClassFor(percent: number): string {
   return 'text-red-700';
 }
 
-function ScoreCell({ label, value, large = false }: { label: string; value: number | null; large?: boolean }) {
+function ScoreCell({
+  label,
+  value: rawValue,
+  large = false,
+}: {
+  label: string;
+  value: number | null;
+  large?: boolean;
+}) {
+  // v1.8.6 — clamp the displayed score to ≥0 so the index never reads as
+  // "Voting −2%" or "Plank 1 −1%". The raw stored RepresentativeScore is
+  // unchanged; this only adjusts what the user sees.
+  const value = rawValue === null ? null : Math.max(0, rawValue);
   // Each cell is a labeled column: tiny uppercase label on top, big % below.
   // `large` flag makes the Average cell a step bigger so the eye lands on it.
   const sizeClass = large ? 'text-3xl' : 'text-xl';
