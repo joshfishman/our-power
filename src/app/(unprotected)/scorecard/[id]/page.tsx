@@ -15,7 +15,7 @@ import {
   getOpposedByPacs,
   getLegislatorLeadershipPacInflows,
   getLegislatorIndividualMoney,
-  getLegislatorPacInfluence_2022_2024,
+  getLegislatorPacInfluence20222024,
   getLegislatorDimeProfile,
 } from '@/lib/scorecard/queries';
 import type {
@@ -98,7 +98,7 @@ export default async function LegislatorScorecardPage(props: Props) {
       : Promise.resolve(null as IndividualMoney | null),
     // v1.8.2 — cycle-matched PAC influence so the Individual vs PAC % isn't
     // structurally PAC-biased (individual data is 2022 + 2024 only).
-    jurisdiction === 'FEDERAL' ? getLegislatorPacInfluence_2022_2024(legislator.id) : Promise.resolve(0),
+    jurisdiction === 'FEDERAL' ? getLegislatorPacInfluence20222024(legislator.id) : Promise.resolve(0),
     jurisdiction === 'FEDERAL'
       ? getLegislatorDimeProfile(legislator.id)
       : Promise.resolve(null as DimeProfile | null),
