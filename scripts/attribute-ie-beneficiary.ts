@@ -1,5 +1,20 @@
 // v1.8.4 — Race-level "beneficiary" attribution for IE_OPPOSE rows
 // (cycle-aware House attribution).
+// v1.8.9 — Drop the Senate cross-state fallback. When no senator's
+//   electionYr matches the IE cycleYear for that state, leave unattributed
+//   (same conservative behavior the House path has had since v1.8.4).
+//   Previously, PA-2022 IE_OPPOSE was being split 50/50 between Fetterman
+//   (the actual 2022 candidate) and McCormick (whose only race we have is
+//   2024), and similar misattributions for WI-2022 (Baldwin / Johnson),
+//   NV-2022, AZ-2022, MT-2020. The "any senator in this state" fallback
+//   never produced a correct answer — if neither senator ran in that
+//   cycle's general election, splitting credit between them is purely a
+//   guess. Drop it, like we did for the House.
+//   Legitimate dual-race-same-cycle paths (e.g. Georgia 2020/2022 where
+//   BOTH senators have electionYr === cycleYear) still flow through the
+//   exact-year senateBySeatYear map: a state with two distinct (state|
+//   cycleYear) keys keeps two distinct mappings, and we only credit the
+//   one whose seat the IE filing actually pertains to.
 //
 // What this exists:
 //   FEC's Schedule E filings attribute IE money to ONE target (the candidate
@@ -33,10 +48,12 @@
 //     Engel/Bowman (he wasn't in the 2020 race). When the cycle's winner
 //     is no longer in our active set (e.g., Bowman, defeated in 2024),
 //     the IE_OPPOSE is left unattributed rather than mis-credited.
-//   - Senate: matches by (state, electionYear) → active sitting senator
-//     whose last election year matches the IE cycle. Was already
-//     cycle-aware. Falls back to splitting between both state senators
-//     when no exact-year match (special elections, etc.).
+//   - Senate (v1.8.9): matches by (state, electionYear) → active sitting
+//     senator whose last election year matches the IE cycle. Strict
+//     exact-year match only — no cross-state fallback. When the cycle's
+//     actual general-election candidate is no longer in our active set
+//     (lost, or hadn't been the candidate that cycle), the IE_OPPOSE is
+//     left unattributed rather than mis-split between current senators.
 //
 // Usage:
 //   npm run scorecard:attribute-ie-beneficiary
@@ -64,15 +81,25 @@ function parseFlags(argv: string[]): CliFlags {
   return flags;
 }
 
-// Load each active legislator's last election year by joining their FEC IDs
-// against cn{YY}.txt across cycles. Used to map Senate IE_OPPOSE to the
-// correct senator (Class 1/2/3) by matching the IE's cycleYear to the
-// senator's last election year.
+// Cycles we read cn{YY}.txt for. Used by both House and (v1.8.9) Senate
+// candidacy loaders to map active legislators back to the cycles they
+// actually ran in for their current seat.
 const CYCLES = [2018, 2020, 2022, 2024];
 const FEC_BULK_BASE = path.join(process.cwd(), 'data');
 
-function loadFecIdToElectionYear(): Map<string, number> {
-  const out = new Map<string, number>();
+// v1.8.9 — Load all Senate candidacies from cn{YY}.txt where the file's cycle
+// matches CAND_ELECTION_YR. Mirrors loadHouseCandidacies. Replaces the old
+// loadFecIdToElectionYear (which last-write-wins captured forward-looking
+// re-election years from cn24.txt — e.g., Fetterman's cn24.txt entry says
+// 2028, so his PA|maxYr key was PA|2028 not PA|2022, leaving every 2022 PA
+// IE_OPPOSE unmatched and falling through to the now-removed state fallback).
+interface SenateCandidacy {
+  state: string;
+  electionYr: number;
+  cycleYear: number;
+}
+function loadSenateCandidacies(): Map<string, SenateCandidacy[]> {
+  const out = new Map<string, SenateCandidacy[]>();
   for (const cycle of CYCLES) {
     const yy = String(cycle).slice(2);
     const fp = path.join(FEC_BULK_BASE, `fec-bulk-${cycle}`, `cn${yy}.txt`);
@@ -81,12 +108,21 @@ function loadFecIdToElectionYear(): Map<string, number> {
     for (const line of text.split('\n')) {
       if (!line) continue;
       const cols = line.split('|');
-      if (cols.length < 4) continue;
+      if (cols.length < 6) continue;
       const candId = cols[0];
       const electionYr = Number(cols[3]);
-      if (!candId || !Number.isFinite(electionYr)) continue;
-      // Most recent wins (iterating oldest → newest).
-      out.set(candId, electionYr);
+      const state = cols[4];
+      const office = cols[5];
+      if (office !== 'S' || !candId || !state) continue;
+      // Only count senate candidacies whose declared election year matches the
+      // file's cycle. Filters out stale or forward-looking entries (a senator
+      // already filed for 2028 re-election in 2024 has CAND_ELECTION_YR=2028
+      // in cn24.txt — that's not a 2024 candidacy and shouldn't seed PA|2024
+      // or PA|2028).
+      if (!Number.isFinite(electionYr) || electionYr !== cycle) continue;
+      const entries = out.get(candId) ?? [];
+      entries.push({ state, electionYr, cycleYear: cycle });
+      out.set(candId, entries);
     }
   }
   return out;
@@ -145,15 +181,16 @@ async function main(): Promise<void> {
   //   in that district in that cycle (per cn{YY}.txt). Fixes the bug where the
   //   current rep was credited for IE_OPPOSE from cycles BEFORE they took the
   //   seat (e.g., Latimer crediting 2020 IE_OPPOSE against Engel/Bowman).
-  // Senate: (state, electionYear) → leg (cycle-aware to avoid splitting
-  //   IE_OPPOSE between senators in different classes; e.g. Fetterman gets
-  //   PA 2022 IE_OPPOSE, McCormick gets PA 2024 IE_OPPOSE, NOT 50/50).
-  console.log('[attribute-ie-beneficiary] loading FEC election years from cn*.txt…');
-  const fecToYear = loadFecIdToElectionYear();
-  console.log(`  ${fecToYear.size} candidate election years indexed`);
+  // Senate (v1.8.9): (state, electionYear) → leg. Strict exact-year match.
+  //   No "any senator in this state" fallback. e.g. Fetterman gets PA 2022
+  //   IE_OPPOSE; McCormick gets PA 2024 IE_OPPOSE; PA 2020 (none of our
+  //   active set) is left unattributed.
   console.log('[attribute-ie-beneficiary] loading House candidacies from cn*.txt…');
   const fecToHouseRuns = loadHouseCandidacies();
   console.log(`  ${fecToHouseRuns.size} House candidate FEC ids with candidacies`);
+  console.log('[attribute-ie-beneficiary] loading Senate candidacies from cn*.txt…');
+  const fecToSenateRuns = loadSenateCandidacies();
+  console.log(`  ${fecToSenateRuns.size} Senate candidate FEC ids with candidacies`);
 
   const active = await prisma.legislator.findMany({
     where: { isActive: true, jurisdiction: 'FEDERAL' },
@@ -169,9 +206,9 @@ async function main(): Promise<void> {
   // Senate map: (state, electionYear) → leg. Each sitting senator has a
   // most-recent election year; map that.
   const senateBySeatYear = new Map<string, { id: string; fullName: string }>();
-  // Fallback senate map when we can't determine an election year for a
-  // senator (no FEC id matches in cn*.txt) — credit both.
-  const senateByStateFallback = new Map<string, Array<{ id: string; fullName: string }>>();
+  // v1.8.9 — Senators with no cn.txt cycle hit are logged but NOT mapped.
+  // We previously had a "splitting between both senators" fallback; it
+  // was always wrong when the actual cycle's candidate wasn't sitting.
   let houseCycleMappings = 0;
   let senateMappedByYear = 0;
   let senateNoYear = 0;
@@ -198,21 +235,35 @@ async function main(): Promise<void> {
         }
       }
     } else if (l.chamber === 'SEN') {
-      // Find this senator's most recent election year via any of their FEC ids.
-      let maxYr = 0;
+      // v1.8.9 — Mirror the House approach: for every cycle where any of
+      // this senator's FEC ids ran in cn{cycle}.txt with CAND_ELECTION_YR
+      // matching the cycle (i.e., they were ACTUALLY a candidate that
+      // cycle, not a sitting incumbent already filed for next-cycle
+      // re-election), mark them as the seat-cycle winner. Previously this
+      // used only their single most-recent election year, which forward-
+      // looking cn24.txt entries corrupted (e.g., Fetterman cn24.txt says
+      // electionYr=2028, so PA|2022 went unmapped and 2022 IE_OPPOSE fell
+      // through to the now-removed state fallback that split between
+      // Fetterman and McCormick). We assume any sitting senator whose FEC
+      // id appears as a candidate that cycle WON it (since they're
+      // currently serving). Edge case: a senator who lost cycle N and
+      // won cycle N+2 would be incorrectly mapped for cycle N — narrow
+      // miss versus the old "split with whichever other senator" bug.
+      let mapped = false;
       for (const fid of l.fecIds ?? []) {
-        const y = fecToYear.get(fid);
-        if (y && y > maxYr) maxYr = y;
+        const runs = fecToSenateRuns.get(fid);
+        if (!runs) continue;
+        for (const r of runs) {
+          if (r.state !== l.state) continue;
+          const k = `${l.state}|${r.cycleYear}`;
+          if (!senateBySeatYear.has(k)) {
+            senateBySeatYear.set(k, { id: l.id, fullName: l.fullName });
+            mapped = true;
+          }
+        }
       }
-      if (maxYr > 0) {
-        senateBySeatYear.set(`${l.state}|${maxYr}`, { id: l.id, fullName: l.fullName });
-        senateMappedByYear += 1;
-      } else {
-        const cur = senateByStateFallback.get(l.state) ?? [];
-        cur.push({ id: l.id, fullName: l.fullName });
-        senateByStateFallback.set(l.state, cur);
-        senateNoYear += 1;
-      }
+      if (mapped) senateMappedByYear += 1;
+      else senateNoYear += 1;
     }
   }
   console.log(
@@ -267,30 +318,26 @@ async function main(): Promise<void> {
       const b = houseBySeatYear.get(`${r.state}|${r.district}|${r.cycleYear}`);
       if (b) beneficiaries = [b];
     } else if (r.chamber === 'SEN') {
-      // Try cycle-aware match first: which sitting senator was elected in
-      // r.cycleYear? Exact-year match expected for typical primary/general.
+      // v1.8.9 — Exact-year match only. If no sitting senator's election
+      // year matches r.cycleYear for r.state, leave the row unattributed
+      // (conservative, mirrors House behavior since v1.8.4). The previous
+      // "fall back to splitting between both senators" path produced
+      // PA-2022 → Fetterman + McCormick (McCormick wasn't on the 2022
+      // ballot), WI-2022 → Baldwin + Johnson (Baldwin was 2018/2024),
+      // NV-2022, AZ-2022, MT-2020 misattributions. When the actual
+      // cycle's candidate isn't in our active legislator set (lost
+      // re-election, didn't run that cycle), no credit is the right
+      // answer.
       const exact = senateBySeatYear.get(`${r.state}|${r.cycleYear}`);
-      if (exact) {
-        beneficiaries = [exact];
-      } else {
-        // No senator matches that election year exactly. Could be a special
-        // election or a senator whose cn.txt year we didn't capture. Fall
-        // back to splitting between both current senators.
-        beneficiaries = senateByStateFallback.get(r.state) ?? [];
-        // Also try: any senator in this state regardless of fallback flag.
-        if (beneficiaries.length === 0) {
-          for (const [key, leg] of senateBySeatYear) {
-            if (key.startsWith(`${r.state}|`)) beneficiaries.push(leg);
-          }
-        }
-      }
+      if (exact) beneficiaries = [exact];
     }
     if (beneficiaries.length === 0) {
       unmatched += 1;
       continue;
     }
-    // Senate gets both senators; split the credit 50/50 to avoid
-    // double-counting the spending total when both senators benefit.
+    // v1.8.9 — Both House and Senate now produce a single beneficiary at
+    // most. The split path remains for safety in case future code adds
+    // legitimate multi-beneficiary cases.
     const share = beneficiaries.length === 1 ? amt : amt / beneficiaries.length;
     for (const ben of beneficiaries) {
       const key = `${ben.id}|${r.donorCommitteeId}|${r.cycleYear}`;
@@ -307,7 +354,7 @@ async function main(): Promise<void> {
     else creditedSenate += 1;
   }
   console.log(
-    `[attribute-ie-beneficiary] mapped ${creditedHouse} House IE_OPPOSE → winner, ${creditedSenate} Senate IE_OPPOSE → both seat senators, ${unmatched} unmatched`,
+    `[attribute-ie-beneficiary] mapped ${creditedHouse} House IE_OPPOSE → winner, ${creditedSenate} Senate IE_OPPOSE → cycle-year senator, ${unmatched} unmatched (v1.8.9: no cross-state fallback)`,
   );
   console.log(`[attribute-ie-beneficiary] aggregates to write: ${agg.size}`);
 
