@@ -427,7 +427,7 @@ export async function getLegislatorMoneyTrail(legislatorId: string): Promise<Pac
  * Returns 0 if there is no matching contribution data — callers should treat
  * 0 as "no overlap," not "no money."
  */
-export async function getLegislatorPacInfluence_2022_2024(legislatorId: string): Promise<number> {
+export async function getLegislatorPacInfluence20222024(legislatorId: string): Promise<number> {
   const rows = await prisma.$queryRaw<Array<{ total: string }>>`
     SELECT COALESCE(SUM(amount::numeric), 0)::text AS total
     FROM "PacContribution"
