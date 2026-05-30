@@ -388,6 +388,32 @@ export async function getLegislatorMoneyTrail(legislatorId: string): Promise<Pac
 }
 
 /**
+ * v1.8.2 — PAC influence summed for the 2022 + 2024 cycles only, so the
+ * "Individual vs PAC" tile on the legislator detail page can compare apples to
+ * apples against `LegislatorIndividualMoney.totalItemized` (which is itself a
+ * 2-cycle window — we never ingested 2018/2020 individual files). Without this
+ * scoping the numerator is 2-cycle while the denominator includes 2018–2024
+ * PAC dollars, biasing every legislator toward "PAC-heavy."
+ *
+ * Counts DIRECT + IE_SUPPORT only (same posture used by `totalInfluence` for
+ * the tile, minus JFC pass-through, IE_OPPOSE, and IE_OPPOSE_BENEFICIARY).
+ * Returns 0 if there is no matching contribution data — callers should treat
+ * 0 as "no overlap," not "no money."
+ */
+export async function getLegislatorPacInfluence_2022_2024(legislatorId: string): Promise<number> {
+  const rows = await prisma.$queryRaw<Array<{ total: string }>>`
+    SELECT COALESCE(SUM(amount::numeric), 0)::text AS total
+    FROM "PacContribution"
+    WHERE "legislatorId" = ${legislatorId}
+      AND "cycleYear" IN (2022, 2024)
+      AND kind IN ('DIRECT', 'IE_SUPPORT')
+  `;
+  if (rows.length === 0) return 0;
+  const n = Number(rows[0].total);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/**
  * v1.7.1 — top donor PACs for one legislator. Returns at most `limit` rows
  * sorted by total $ (DIRECT + IE_SUPPORT) descending. Includes the class
  * so the UI can badge them appropriately.
