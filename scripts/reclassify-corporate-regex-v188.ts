@@ -187,7 +187,9 @@ async function main(): Promise<void> {
   const sortedClasses = Object.keys(newClassCounts).sort();
   for (const cls of sortedClasses) {
     console.log(
-      `    ${cls.padEnd(14)} ${String(newClassCounts[cls]).padStart(4)} committees   $${Math.round(newClassDollars[cls]).toLocaleString()}`,
+      `    ${cls.padEnd(14)} ${String(newClassCounts[cls]).padStart(4)} committees   $${Math.round(
+        newClassDollars[cls],
+      ).toLocaleString()}`,
     );
   }
 
@@ -202,11 +204,11 @@ async function main(): Promise<void> {
         `    ${id}  ${flip.name.slice(0, 50).padEnd(50)}  CORPORATE -> ${flip.newClass.padEnd(12)}  ${flip.newReason}`,
       );
     } else if (keep) {
-      console.log(
-        `    ${id}  ${keep.name.slice(0, 50).padEnd(50)}  STAYS CORPORATE                ${keep.reason}`,
-      );
+      console.log(`    ${id}  ${keep.name.slice(0, 50).padEnd(50)}  STAYS CORPORATE                ${keep.reason}`);
     } else {
-      console.log(`    ${id}  (not in CORPORATE+no-connectedOrg candidate set — already non-CORPORATE or has connectedOrg)`);
+      console.log(
+        `    ${id}  (not in CORPORATE+no-connectedOrg candidate set — already non-CORPORATE or has connectedOrg)`,
+      );
     }
   }
 
@@ -220,9 +222,7 @@ async function main(): Promise<void> {
     keptCorporateCount: kept.length,
     totalDollarsReclassified: Math.round(totalDollars),
     newClassCounts,
-    newClassDollars: Object.fromEntries(
-      Object.entries(newClassDollars).map(([k, v]) => [k, Math.round(v)]),
-    ),
+    newClassDollars: Object.fromEntries(Object.entries(newClassDollars).map(([k, v]) => [k, Math.round(v)])),
     flips,
   };
   fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
