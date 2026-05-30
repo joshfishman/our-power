@@ -21,7 +21,7 @@
 // "+0 with full coverage" — the same evidence transparency goal as the
 // three-state rendering.
 
-export const METHODOLOGY_VERSION = 'v1.7.1';
+export const METHODOLOGY_VERSION = 'v1.8.6';
 
 export type MarkerTypeForScoring = 'PRIMARY' | 'SECONDARY';
 export type AchievementStatus = 'ACTED_FOR' | 'ACTED_AGAINST' | 'NO_RECORD';

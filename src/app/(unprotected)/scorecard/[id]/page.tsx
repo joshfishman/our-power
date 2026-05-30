@@ -133,9 +133,20 @@ export default async function LegislatorScorecardPage(props: Props) {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
-      <Link href="/scorecard" className="text-sm text-gray-600 hover:text-gray-900">
-        ← Back to scorecard
-      </Link>
+      <div className="flex items-baseline justify-between gap-3">
+        <Link href="/scorecard" className="text-sm text-gray-600 hover:text-gray-900">
+          ← Back to scorecard
+        </Link>
+        {/* v1.8.6 — single canonical methodology stamp at the top of the page.
+            Sub-stamps inside each section read as "introduced in vX" notes,
+            not as conflicting page-wide versions. */}
+        <Link
+          href="/scorecard/methodology"
+          title="Methodology version applied to every score on this page"
+          className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/80 hover:text-[#8B3A3A]">
+          Methodology {METHODOLOGY_VERSION} (latest applied) →
+        </Link>
+      </div>
 
       <header className="mt-4 flex items-center gap-6 border-b-2 border-gray-900 pb-6">
         <LegislatorAvatar fullName={legislator.fullName} photoUrl={legislator.photoUrl} size={96} />
@@ -721,7 +732,11 @@ function MoneyTrail({
     <section className="mt-8 rounded border border-2 border-[#8B3A3A] border-gray-200 bg-white p-5 shadow-sm">
       <header className="flex items-baseline justify-between gap-3">
         <h2 className="font-serif text-2xl font-bold text-[#2C4A5E]">Money trail</h2>
-        <p className="font-mono text-xs uppercase tracking-widest text-[#2C4A5E]/80">v1.7.1 · 4-cycle aggregate</p>
+        <p
+          title="Money trail surface introduced in v1.7.1; applied methodology shown at page top."
+          className="font-mono text-xs uppercase tracking-widest text-[#2C4A5E]/80">
+          4-cycle aggregate
+        </p>
       </header>
       <p className="mt-1 text-sm text-[#2C4A5E]">
         Where this legislator&apos;s PAC + Super PAC IE money came from across 2018–2024.{' '}
@@ -930,7 +945,11 @@ function LeadershipPacInflowsSection({ inflows }: { inflows: LeadershipPacInflow
     <section className="mt-8 rounded border border-[#8B3A3A]/60 border-gray-200 bg-white p-5 shadow-sm">
       <header className="flex items-baseline justify-between gap-3">
         <h2 className="font-serif text-xl font-bold text-[#2C4A5E]">Leadership PAC inflows</h2>
-        <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/80">v1.7.2 · informational</p>
+        <p
+          title="Leadership PAC inflows surface introduced in v1.7.2; applied methodology shown at page top."
+          className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/80">
+          informational
+        </p>
       </header>
       <p className="mt-1 text-sm text-[#2C4A5E]">
         This legislator sponsors {pacCount === 1 ? 'a leadership PAC' : `${pacCount} leadership PACs`} — legally
@@ -1032,10 +1051,7 @@ function IndividualMoneySection({
   if (totalItemized === 0) {
     return (
       <section className="mt-8 rounded border border-[#2C4A5E] border-gray-200 bg-white p-5 shadow-sm">
-        <header className="flex items-baseline justify-between gap-3">
-          <h2 className="font-serif text-xl font-bold text-[#2C4A5E]">Individual donors</h2>
-          <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/80">v1.7.5</p>
-        </header>
+        <h2 className="font-serif text-xl font-bold text-[#2C4A5E]">Individual donors</h2>
         <p className="mt-2 text-sm italic text-[#2C4A5E]/80">
           No itemized FEC individual filings for this cycle yet.
         </p>
@@ -1058,8 +1074,10 @@ function IndividualMoneySection({
     <section className="mt-8 rounded border border-[#2C4A5E] border-gray-200 bg-white p-5 shadow-sm">
       <header className="flex items-baseline justify-between gap-3">
         <h2 className="font-serif text-xl font-bold text-[#2C4A5E]">Individual donors</h2>
-        <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/80">
-          v1.7.5 · cycles {cyclesAvailable.sort((a, b) => a - b).join(', ')}
+        <p
+          title="Individual donors surface introduced in v1.7.5; applied methodology shown at page top."
+          className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/80">
+          cycles {cyclesAvailable.sort((a, b) => a - b).join(', ')}
         </p>
       </header>
       <p className="mt-1 text-sm text-[#2C4A5E]">
