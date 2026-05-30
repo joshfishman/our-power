@@ -982,6 +982,12 @@ function IndividualMoneySection({ money, pacTotalInfluence }: { money: Individua
   const maxEmployer = topEmployers.length > 0 ? topEmployers[0].total : 0;
   const topIndustries = industryMix.slice(0, 8);
   const maxIndustry = topIndustries.length > 0 ? topIndustries[0].total : 0;
+  // v1.8.3 — surface industry-mix coverage explicitly. industryMix is built
+  // from the stored top-25 employers per cycle (LegislatorIndividualMoney.
+  // topEmployers), which for big-fundraising senators covers only single-
+  // digit % of the full itemized base. Without this number the per-industry
+  // % looks like a share of the whole donor base; it isn't.
+  const coveragePct = totalItemized > 0 ? (industryClassifiedTotal / totalItemized) * 100 : 0;
 
   return (
     <section className="mt-8 rounded border border-[#2C4A5E] bg-[#2C4A5E]/60 p-5">
@@ -1029,7 +1035,8 @@ function IndividualMoneySection({ money, pacTotalInfluence }: { money: Individua
           <p className="font-mono text-xs uppercase tracking-widest text-[#F5DEB3]/60">
             Top donor industries
             <span className="ml-2 text-[10px] normal-case text-[#F5DEB3]/50">
-              — of ${Math.round(industryClassifiedTotal).toLocaleString()} classified
+              — ${Math.round(industryClassifiedTotal).toLocaleString()} classified ({coveragePct.toFixed(1)}% of $
+              {Math.round(totalItemized).toLocaleString()} itemized)
             </span>
           </p>
           <ul className="mt-2 space-y-1">
@@ -1058,10 +1065,11 @@ function IndividualMoneySection({ money, pacTotalInfluence }: { money: Individua
             })}
           </ul>
           <p className="mt-2 font-mono text-[10px] text-[#F5DEB3]/50">
-            Rules-based employer→industry classifier (no external crosswalk). Percentages are of money we could assign
-            to a sector; the rest (FEC catch-alls + tens of thousands of small local employers) is unclassified by
-            design. Per-firm $ alone is weak signal (~2-3% of base); per-industry concentration is where the funding-
-            source story lives.
+            Industry mix is computed from the top 25 reported employers per cycle ({coveragePct.toFixed(1)}% of the
+            itemized base for this legislator). The rest is small/scattered donors with no employer signal — FEC
+            catch-alls (retired, self-employed) and tens of thousands of small local employers. Per-firm $ alone is
+            weak signal (~2-3% of base); per-industry concentration on the slice we can see is where the funding-source
+            story lives.
           </p>
         </div>
       )}
