@@ -84,9 +84,7 @@ export default async function LegislatorScorecardPage(props: Props) {
     pacInfluence2Cyc,
     dimeProfile,
   ] = await Promise.all([
-    jurisdiction === 'FEDERAL'
-      ? getLegislatorMoneyTrail(legislator.id)
-      : Promise.resolve(null as PacMoneyTrail | null),
+    jurisdiction === 'FEDERAL' ? getLegislatorMoneyTrail(legislator.id) : Promise.resolve(null as PacMoneyTrail | null),
     jurisdiction === 'FEDERAL' ? getTopDonorsForLegislator(legislator.id, 15) : Promise.resolve([] as TopDonor[]),
     jurisdiction === 'FEDERAL' ? getOpposedByPacs(legislator.id, 10) : Promise.resolve([] as TopDonor[]),
     getLegislatorPacScore(legislator.id),
@@ -99,9 +97,7 @@ export default async function LegislatorScorecardPage(props: Props) {
     // v1.8.2 — cycle-matched PAC influence so the Individual vs PAC % isn't
     // structurally PAC-biased (individual data is 2022 + 2024 only).
     jurisdiction === 'FEDERAL' ? getLegislatorPacInfluence20222024(legislator.id) : Promise.resolve(0),
-    jurisdiction === 'FEDERAL'
-      ? getLegislatorDimeProfile(legislator.id)
-      : Promise.resolve(null as DimeProfile | null),
+    jurisdiction === 'FEDERAL' ? getLegislatorDimeProfile(legislator.id) : Promise.resolve(null as DimeProfile | null),
   ]);
   const pacScore = moneyTrail?.pacScore ?? legacyPacScore;
   const avgScore = computeTwoScoreAverage(pacScore, votingScore);
@@ -1093,9 +1089,9 @@ function IndividualMoneySection({
           <p className="mt-2 font-mono text-[10px] text-[#2C4A5E]/60">
             Industry mix is computed from the top 25 reported employers per cycle ({coveragePct.toFixed(1)}% of the
             itemized base for this legislator). The rest is small/scattered donors with no employer signal — FEC
-            catch-alls (retired, self-employed) and tens of thousands of small local employers. Per-firm $ alone is
-            weak signal (~2-3% of base); per-industry concentration on the slice we can see is where the funding-source
-            story lives.
+            catch-alls (retired, self-employed) and tens of thousands of small local employers. Per-firm $ alone is weak
+            signal (~2-3% of base); per-industry concentration on the slice we can see is where the funding-source story
+            lives.
           </p>
         </div>
       )}
