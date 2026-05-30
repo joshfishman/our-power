@@ -1026,6 +1026,22 @@ function IndividualMoneySection({
 }) {
   const { totalItemized, contributionCount, cyclesAvailable, topEmployers, industryMix, industryClassifiedTotal } =
     money;
+  // v1.8.6 — defensive empty-state. Parent already gates on totalItemized>0
+  // but if we ever wind up here with 0, render a single graceful "no data"
+  // line instead of the full breakdown with zeros + a narrative blurb.
+  if (totalItemized === 0) {
+    return (
+      <section className="mt-8 rounded border border-[#2C4A5E] border-gray-200 bg-white p-5 shadow-sm">
+        <header className="flex items-baseline justify-between gap-3">
+          <h2 className="font-serif text-xl font-bold text-[#2C4A5E]">Individual donors</h2>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/80">v1.7.5</p>
+        </header>
+        <p className="mt-2 text-sm italic text-[#2C4A5E]/80">
+          No itemized FEC individual filings for this cycle yet.
+        </p>
+      </section>
+    );
+  }
   const grandTotal = totalItemized + pacTotalInfluence2Cyc;
   const indivPct = grandTotal > 0 ? Math.round((totalItemized / grandTotal) * 100) : 0;
   const maxEmployer = topEmployers.length > 0 ? topEmployers[0].total : 0;
@@ -1235,9 +1251,11 @@ function DonorProfileSection({ profile, party }: { profile: DimeProfile; party: 
               <div className="h-full bg-[#F5DEB3]/70" style={{ width: `${Math.min(100, smallDollarPct)}%` }} />
             </div>
           )}
-          <p className="mt-2 font-mono text-[10px] text-[#2C4A5E]/60">
-            ${(totalUnitemized / 1000).toFixed(0)}K small-dollar · ${(totalIndivContribs / 1000).toFixed(0)}K itemized
-          </p>
+          {totalUnitemized + totalIndivContribs > 0 ? (
+            <p className="mt-2 font-mono text-[10px] text-[#2C4A5E]/60">
+              ${(totalUnitemized / 1000).toFixed(0)}K small-dollar · ${(totalIndivContribs / 1000).toFixed(0)}K itemized
+            </p>
+          ) : null}
         </div>
       </div>
       <p className="mt-3 font-mono text-[10px] text-[#2C4A5E]/60">
