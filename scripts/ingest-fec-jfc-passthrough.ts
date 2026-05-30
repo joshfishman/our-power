@@ -1,3 +1,39 @@
+// v1.8.6 (audit #33) — JFC (Joint Fundraising Committee) pass-through attribution.
+//
+// Bug fixes from the methodology audit (2026-05-29):
+//   1. PARTY-COMMITTEE OUTBOUND was being silently dropped from the
+//      apportionment denominator. JFCs like "Trump Victory" or "Nancy
+//      Pelosi Victory Fund" route material shares of their inbound to
+//      DCCC/NRCC/DSCC/NRSC + state parties — committees that aren't
+//      candidate principals. The old code skipped those outbound rows
+//      entirely (cmteToCand miss → return). That made totalOutbound
+//      = candidate-only, which OVERSTATED each candidate's share and
+//      inflated the corp-PAC dollars attributed to them. Fix: track
+//      party-committee outbound in the totalOutbound denominator while
+//      still attributing only to candidate-principal recipients.
+//   2. MEMO_CD ROWS were being double-counted. FEC bulk uses MEMO_CD =
+//      'X' or 'XR' on memo entries — rows that re-describe a parent
+//      transaction (e.g., the JFC line of a contribution itemized on
+//      Schedule A by both the JFC and a participating committee).
+//      Reading them as real transactions double-counts the dollar.
+//      Fix: skip MEMO_CD IN ('X','XR') on inbound 18K and outbound
+//      24G/24K in both itoth and itpas2. (Note: itoth places MEMO_CD
+//      at col 18; itpas2 at col 19 — itpas2 has an extra CAND_ID col.)
+//   3. NUMERATOR-ONLY ASYMMETRY: see (1). With party outbound out of
+//      the denominator, the per-candidate share was a numerator that
+//      didn't reflect the JFC's actual distribution pattern.
+//   4. TRANSACTION_TP CHECK: itoth handles both 24G and 24K (correct);
+//      itpas2 carries only 24K (in-kind 24G doesn't appear there per
+//      FEC schema) — confirmed and left as-is.
+//
+// Verification on 2024 itoth.txt:
+//   - 24K/24G rows with MEMO_CD = 'X': 8,974 (memo double-counts)
+//   - 18K rows with MEMO_CD = 'X': 488 (inbound memo double-counts)
+// On 2024 itpas2.txt:
+//   - 24K rows with MEMO_CD = 'X': 6,549
+//
+// ─── original v1.7.2 notes preserved below ─────────────────────────────
+//
 // v1.7.2 — JFC (Joint Fundraising Committee) pass-through attribution.
 //
 // Closes a known gap in the v1.7.1 PAC score: when a corporate PAC routes
@@ -100,10 +136,25 @@ function loadCommitteeMaps(): {
   cmteToCand: Map<string, string>;
   jfcIds: Set<string>;
   cmteName: Map<string, string>;
+  partyIds: Set<string>;
 } {
   const cmteToCand = new Map<string, string>();
   const jfcIds = new Set<string>();
   const cmteName = new Map<string, string>();
+  // CMTE_TP X = State/subordinate party committee, Y = National party
+  // (DNC/RNC + DCCC/NRCC/DSCC/NRSC + state coordinating committees). Bug #1:
+  // party outbound from a JFC must be counted in totalOutbound so per-candidate
+  // shares are correctly proportional, even though no candidate is the recipient.
+  const partyIds = new Set<string>([
+    // Hill committees — hard-coded belt-and-braces in case the cm.txt walk
+    // misses an older cycle for any of these IDs.
+    'C00000935', // DCCC
+    'C00075820', // NRCC
+    'C00042366', // DSCC
+    'C00027466', // NRSC
+    'C00010603', // DNC
+    'C00003418', // RNC
+  ]);
   for (const { dir } of CYCLE_DIRS) {
     const cmPath = path.join(dir, 'cm.txt');
     if (!fs.existsSync(cmPath)) continue;
@@ -115,14 +166,16 @@ function loadCommitteeMaps(): {
       const cmteId = cols[0];
       const name = cols[1];
       const designation = cols[8];
+      const cmteType = cols[9];
       const candId = cols[14];
       if (!cmteId) continue;
       if (name && !cmteName.has(cmteId)) cmteName.set(cmteId, name);
       if (designation === 'P' && candId) cmteToCand.set(cmteId, candId);
       if (designation === 'J') jfcIds.add(cmteId);
+      if (cmteType === 'X' || cmteType === 'Y') partyIds.add(cmteId);
     }
   }
-  return { cmteToCand, jfcIds, cmteName };
+  return { cmteToCand, jfcIds, cmteName, partyIds };
 }
 
 interface JfcAgg {
@@ -163,17 +216,27 @@ async function processCycle(
   candToLeg: Map<string, string>,
   classifiedDonors: Map<string, string>,
   attributions: Map<string, Attribution>,
+  partyIds: Set<string>,
 ): Promise<{
   jfcsActive: number;
   rowsAttributed: number;
   dollarsAttributed: number;
   perJfcDebug: Map<string, JfcAgg>;
+  memoSkipped: number;
+  partyOutboundDollars: number;
 }> {
   const itpasPath = path.join(dir, 'itpas2.txt');
   const othPath = path.join(dir, 'itoth.txt');
   if (!fs.existsSync(itpasPath)) {
     console.warn(`  cycle ${cycle}: missing itpas2.txt — skipping`);
-    return { jfcsActive: 0, rowsAttributed: 0, dollarsAttributed: 0, perJfcDebug: new Map() };
+    return {
+      jfcsActive: 0,
+      rowsAttributed: 0,
+      dollarsAttributed: 0,
+      perJfcDebug: new Map(),
+      memoSkipped: 0,
+      partyOutboundDollars: 0,
+    };
   }
   if (!fs.existsSync(othPath)) {
     console.warn(
@@ -181,7 +244,14 @@ async function processCycle(
         .toString()
         .slice(-2)}.zip from FEC bulk to enable JFC inbound)`,
     );
-    return { jfcsActive: 0, rowsAttributed: 0, dollarsAttributed: 0, perJfcDebug: new Map() };
+    return {
+      jfcsActive: 0,
+      rowsAttributed: 0,
+      dollarsAttributed: 0,
+      perJfcDebug: new Map(),
+      memoSkipped: 0,
+      partyOutboundDollars: 0,
+    };
   }
 
   const perJfc = new Map<string, JfcAgg>();
@@ -205,17 +275,32 @@ async function processCycle(
   let othRows = 0;
   let othInbound = 0;
   let othOutbound = 0;
+  let othMemoSkipped = 0;
+  let othPartyOutboundDollars = 0;
   console.log(`  cycle ${cycle}: scanning itoth.txt …`);
   othRows = await streamLines(
     othPath,
     (cols) => {
-      if (cols.length < 17) return;
+      if (cols.length < 19) return;
       const cmteId = cols[0];
       const tx = cols[5];
       const entityTp = cols[6];
       const amount = Number(cols[14]) || 0;
       const otherId = cols[15];
+      // itoth.txt MEMO_CD lives at index 18. Memo rows ('X' / 'XR') re-state a
+      // parent transaction already itemized elsewhere — counting them double-
+      // counts the dollar. Skip on inbound 18K and outbound 24G/24K alike.
+      const memoCd = cols[18];
       if (!cmteId || amount <= 0) return;
+      if (memoCd === 'X' || memoCd === 'XR') {
+        if (
+          jfcIds.has(cmteId) &&
+          (tx === '18K' || tx === '24G' || tx === '24K')
+        ) {
+          othMemoSkipped += 1;
+        }
+        return;
+      }
 
       // INBOUND: filer is a JFC, transaction is 18K (contribution from another
       // federal committee), entity type is PAC (or COM = committee).
@@ -229,14 +314,19 @@ async function processCycle(
         return;
       }
 
-      // OUTBOUND: filer is a JFC, transaction is 24G or 24K, OTHER_ID is a
-      // candidate principal committee.
+      // OUTBOUND: filer is a JFC, transaction is 24G or 24K. Recipient may be
+      // a candidate principal (gets attributed) OR a party committee like
+      // DCCC/NRCC (only contributes to the totalOutbound denominator so the
+      // candidate shares are correctly proportional — see bug #1 in the
+      // header comment).
       if ((tx === '24G' || tx === '24K') && jfcIds.has(cmteId) && otherId) {
         const candId = cmteToCand.get(otherId);
-        if (!candId) return;
+        const isParty = partyIds.has(otherId);
+        if (!candId && !isParty) return;
         const j = getJfc(cmteId);
         j.outbound.set(otherId, (j.outbound.get(otherId) ?? 0) + amount);
         othOutbound += 1;
+        if (!candId && isParty) othPartyOutboundDollars += amount;
       }
     },
     `itoth(${cycle})`,
@@ -244,36 +334,52 @@ async function processCycle(
 
   // itpas2.txt — additional 24K outbound from JFCs (recorded on the
   // contributions-to-candidates schedule). Many JFCs split between itoth and
-  // itpas2 depending on filer convention.
+  // itpas2 depending on filer convention. itpas2 carries only 24K (in-kind
+  // 24G isn't reported here per FEC schema — verified against 2024 bulk).
+  // itpas2 schema differs from itoth: CAND_ID at col 16, FILE_NUM col 18,
+  // MEMO_CD col 19, MEMO_TEXT col 20.
   console.log(`  cycle ${cycle}: scanning itpas2.txt …`);
   let pas2Rows = 0;
   let pas2Outbound = 0;
+  let pas2MemoSkipped = 0;
+  let pas2PartyOutboundDollars = 0;
   pas2Rows = await streamLines(
     itpasPath,
     (cols) => {
-      if (cols.length < 17) return;
+      if (cols.length < 20) return;
       const cmteId = cols[0];
       const tx = cols[5];
       const amount = Number(cols[14]) || 0;
       const otherId = cols[15];
+      const memoCd = cols[19];
       if (!cmteId || amount <= 0) return;
       if (tx !== '24K') return;
       if (!jfcIds.has(cmteId)) return;
+      if (memoCd === 'X' || memoCd === 'XR') {
+        pas2MemoSkipped += 1;
+        return;
+      }
       const candId = cmteToCand.get(otherId);
-      if (!candId) return;
+      const isParty = partyIds.has(otherId);
+      if (!candId && !isParty) return;
       const j = getJfc(cmteId);
       j.outbound.set(otherId, (j.outbound.get(otherId) ?? 0) + amount);
       pas2Outbound += 1;
+      if (!candId && isParty) pas2PartyOutboundDollars += amount;
     },
     `itpas2(${cycle})`,
   );
 
+  const memoSkipped = othMemoSkipped + pas2MemoSkipped;
+  const partyOutboundDollars = othPartyOutboundDollars + pas2PartyOutboundDollars;
   console.log(
     `  cycle ${cycle}: itoth=${othRows.toLocaleString()} rows · itpas2=${pas2Rows.toLocaleString()} rows · ` +
       `inbound matches=${othInbound.toLocaleString()} · outbound matches=${(
         othOutbound + pas2Outbound
       ).toLocaleString()} ` +
-      `(itoth ${othOutbound.toLocaleString()} + itpas2 ${pas2Outbound.toLocaleString()})`,
+      `(itoth ${othOutbound.toLocaleString()} + itpas2 ${pas2Outbound.toLocaleString()}) · ` +
+      `memo-skipped=${memoSkipped.toLocaleString()} · ` +
+      `party-outbound-in-denom=$${Math.round(partyOutboundDollars).toLocaleString()}`,
   );
 
   // Apportion.
@@ -320,7 +426,14 @@ async function processCycle(
       `${jfcsActive} apportioned · ${rowsAttributed.toLocaleString()} attributions · ` +
       `$${Math.round(dollarsAttributed).toLocaleString()} apportioned`,
   );
-  return { jfcsActive, rowsAttributed, dollarsAttributed, perJfcDebug: perJfc };
+  return {
+    jfcsActive,
+    rowsAttributed,
+    dollarsAttributed,
+    perJfcDebug: perJfc,
+    memoSkipped,
+    partyOutboundDollars,
+  };
 }
 
 async function main(): Promise<void> {
@@ -330,10 +443,11 @@ async function main(): Promise<void> {
   const candToLeg = await loadCandToLegMap();
   console.log(`[ingest-fec-jfc-passthrough] ${candToLeg.size} FEC cand → legislator`);
 
-  const { cmteToCand, jfcIds, cmteName } = loadCommitteeMaps();
+  const { cmteToCand, jfcIds, cmteName, partyIds } = loadCommitteeMaps();
   console.log(
     `[ingest-fec-jfc-passthrough] ${cmteToCand.size.toLocaleString()} principal-committee → cand · ` +
-      `${jfcIds.size.toLocaleString()} JFC committees identified`,
+      `${jfcIds.size.toLocaleString()} JFC committees identified · ` +
+      `${partyIds.size.toLocaleString()} party committees flagged for denominator`,
   );
 
   const classified = await prisma.pacClassification.findMany({
@@ -354,19 +468,34 @@ async function main(): Promise<void> {
   let grandJfcs = 0;
   let grandRows = 0;
   let grandDollars = 0;
+  let grandMemoSkipped = 0;
+  let grandPartyOutbound = 0;
 
   for (const { cycle, dir } of CYCLE_DIRS) {
     if (flags.cycle !== null && cycle !== flags.cycle) continue;
-    const r = await processCycle(cycle, dir, jfcIds, cmteToCand, candToLeg, classifiedDonors, attributions);
+    const r = await processCycle(
+      cycle,
+      dir,
+      jfcIds,
+      cmteToCand,
+      candToLeg,
+      classifiedDonors,
+      attributions,
+      partyIds,
+    );
     grandJfcs += r.jfcsActive;
     grandRows += r.rowsAttributed;
     grandDollars += r.dollarsAttributed;
+    grandMemoSkipped += r.memoSkipped;
+    grandPartyOutbound += r.partyOutboundDollars;
   }
 
   console.log(
     `\n[ingest-fec-jfc-passthrough] TOTAL: ${grandJfcs.toLocaleString()} JFCs apportioned · ` +
       `${attributions.size.toLocaleString()} unique (leg, donor, cycle) rows · ` +
-      `$${Math.round(grandDollars).toLocaleString()} apportioned`,
+      `$${Math.round(grandDollars).toLocaleString()} apportioned · ` +
+      `${grandMemoSkipped.toLocaleString()} memo rows skipped · ` +
+      `$${Math.round(grandPartyOutbound).toLocaleString()} party-committee outbound counted in denom`,
   );
 
   // Top 20 attributions for sanity.
