@@ -1,6 +1,7 @@
 import { apiError, corsOptionsResponse, enforceRateLimit, requestId, withCors } from '@/lib/api-utils';
 import { logError } from '@/lib/logger';
 import { getPublicPlanks, parseJurisdictionParam } from '@/lib/scorecard/queries';
+import { METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
 
 // GET /api/scorecard/planks?jurisdiction=FEDERAL|CA
 //
@@ -20,7 +21,7 @@ export async function GET(request: Request) {
 
     return withCors(
       Response.json(
-        { planks, methodologyVersion: 'v1.0' },
+        { planks, methodologyVersion: METHODOLOGY_VERSION },
         { headers: { 'X-Request-Id': reqId, 'Cache-Control': 'public, max-age=300' } },
       ),
       request,

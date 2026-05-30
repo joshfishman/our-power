@@ -1,6 +1,7 @@
 import { apiError, corsOptionsResponse, enforceRateLimit, requestId, withCors } from '@/lib/api-utils';
 import { logError } from '@/lib/logger';
 import { findLegislatorByAnyId, computePublishedTotal } from '@/lib/scorecard/queries';
+import { METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
 
 // GET /api/scorecard/legislators/:id
 //
@@ -67,7 +68,7 @@ export async function GET(request: Request, props: { params: Promise<{ id: strin
             dataSource: p.dataSource,
             dataSourceUrl: p.dataSourceUrl,
           })),
-          methodologyVersion: 'v1.0',
+          methodologyVersion: METHODOLOGY_VERSION,
         },
         { headers: { 'X-Request-Id': reqId, 'Cache-Control': 'public, max-age=300' } },
       ),
