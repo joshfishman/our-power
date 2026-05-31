@@ -87,7 +87,11 @@ export default async function LegislatorScorecardPage(props: Props) {
     jurisdiction === 'FEDERAL' ? getLegislatorMoneyTrail(legislator.id) : Promise.resolve(null as PacMoneyTrail | null),
     jurisdiction === 'FEDERAL' ? getTopDonorsForLegislator(legislator.id, 15) : Promise.resolve([] as TopDonor[]),
     jurisdiction === 'FEDERAL' ? getOpposedByPacs(legislator.id, 10) : Promise.resolve([] as TopDonor[]),
-    getLegislatorPacScore(legislator.id),
+    // CA only — the v1.7.1 PAC Score from PacContribution doesn't apply to
+    // California (we don't have an FEC-equivalent contribution dataset). For
+    // federal legislators we use moneyTrail.pacScore exclusively (V171); for
+    // CA we use the legacy PacMoneyData-derived score.
+    jurisdiction === 'CA' ? getLegislatorPacScore(legislator.id) : Promise.resolve(null),
     jurisdiction === 'FEDERAL'
       ? getLegislatorLeadershipPacInflows(legislator.id)
       : Promise.resolve(null as LeadershipPacInflows | null),
@@ -99,7 +103,16 @@ export default async function LegislatorScorecardPage(props: Props) {
     jurisdiction === 'FEDERAL' ? getLegislatorPacInfluence20222024(legislator.id) : Promise.resolve(0),
     jurisdiction === 'FEDERAL' ? getLegislatorDimeProfile(legislator.id) : Promise.resolve(null as DimeProfile | null),
   ]);
-  const pacScore = moneyTrail?.pacScore ?? legacyPacScore;
+  // v1.8.6 — explicit jurisdiction split so the detail page can never disagree
+  // with the index page:
+  //   FEDERAL → v1.7.1 PAC Score from moneyTrail (null when the v1.8.1 safety
+  //             guard fires; renders as "Score pending / no data yet").
+  //   CA      → legacy PacMoneyData ratio (no V171 data exists yet for CA).
+  // No silent federal→legacy fallback. Previously the detail page fell back
+  // to legacyPacScore whenever moneyTrail.pacScore was null, which produced a
+  // different PAC score than the index page (and a "no data" guard that
+  // wasn't actually no-data on the detail surface).
+  const pacScore = jurisdiction === 'FEDERAL' ? moneyTrail?.pacScore ?? null : legacyPacScore;
   const avgScore = computeTwoScoreAverage(pacScore, votingScore);
   const chamberLabel =
     jurisdiction === 'FEDERAL' ? CHAMBER_LABEL_FEDERAL[legislator.chamber] : CHAMBER_LABEL_STATE[legislator.chamber];
@@ -133,9 +146,20 @@ export default async function LegislatorScorecardPage(props: Props) {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
-      <Link href="/scorecard" className="text-sm text-gray-600 hover:text-gray-900">
-        ← Back to scorecard
-      </Link>
+      <div className="flex items-baseline justify-between gap-3">
+        <Link href="/scorecard" className="text-sm text-gray-600 hover:text-gray-900">
+          ← Back to scorecard
+        </Link>
+        {/* v1.8.6 — single canonical methodology stamp at the top of the page.
+            Sub-stamps inside each section read as "introduced in vX" notes,
+            not as conflicting page-wide versions. */}
+        <Link
+          href="/scorecard/methodology"
+          title="Methodology version applied to every score on this page"
+          className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/80 hover:text-[#8B3A3A]">
+          Methodology {METHODOLOGY_VERSION} (latest applied) →
+        </Link>
+      </div>
 
       <header className="mt-4 flex items-center gap-6 border-b-2 border-gray-900 pb-6">
         <LegislatorAvatar fullName={legislator.fullName} photoUrl={legislator.photoUrl} size={96} />
@@ -350,7 +374,7 @@ function HeroTwoScore({
 
 function HeroCell({
   label,
-  value,
+  value: rawValue,
   large = false,
   subline,
 }: {
@@ -359,6 +383,11 @@ function HeroCell({
   large?: boolean;
   subline?: string;
 }) {
+  // v1.8.6 — clamp the displayed value to ≥0 so the hero tiles never read as
+  // a "−2% Voting" (a few legislators have plank-level scores that arithmetic
+  // out below zero in edge cases). The raw stored score is untouched; this is
+  // a render-layer guard only.
+  const value = rawValue === null ? null : Math.max(0, rawValue);
   // v1.7 — steep gradient inside the 30-70% band where the real distribution
   // lives. Pinned to natural percentages, no calibration.
   const colorClass =
@@ -419,7 +448,13 @@ function PacContinuousScore({
 /** Per-plank score renderer. Under v1.7 each plank score is a 0-100
  *  alignment percent (votes + cosponsorship folded together at the bill
  *  level), so we color it on the same steep gradient as the hero. */
-function ScoreNumber({ value, size }: { value: number; size: 'hero' | 'plank' }) {
+function ScoreNumber({ value: rawValue, size }: { value: number; size: 'hero' | 'plank' }) {
+  // v1.8.6 — clamp the displayed plank score to ≥0. Raw `RepresentativeScore`
+  // rows occasionally compute slightly negative when a plank has more
+  // misaligned secondary votes than aligned ones with the current weights;
+  // surfacing "Plank 1 −1%" reads as broken to a casual viewer. Stored value
+  // is unchanged.
+  const value = Math.max(0, rawValue);
   const colorClass =
     value >= 80
       ? 'text-green-700'
@@ -693,8 +728,15 @@ function MoneyTrail({
     beneficiaryCountsAgainst,
     beneficiaryPacScore,
   } = moneyTrail;
-  // Sort classes by dollar amount desc for the breakdown bars
-  const classRows = Object.entries(byClass).sort((a, b) => b[1] - a[1]);
+  // Sort classes by dollar amount desc for the breakdown bars. v1.8.6 — drop
+  // negative-net slices (refund-heavy CONDUIT in particular) from the bars;
+  // they were rendering as "−3% Conduit $−14,593" which read as nonsense.
+  // Stash the dropped totals so we can surface them as a one-line footnote
+  // below the breakdown — preserving the disclosure without polluting the
+  // visualization.
+  const rawClassRows = Object.entries(byClass).sort((a, b) => b[1] - a[1]);
+  const classRows = rawClassRows.filter(([, amt]) => amt > 0);
+  const negativeClassRows = rawClassRows.filter(([, amt]) => amt < 0);
   // The PAC Score uses receipts+IE_SUPPORT as denominator (matches the v1.7.1
   // spike). countsAgainst / totalInfluence — i.e. how concentrated the PAC
   // intake is — is a separate "PAC mix" stat, shown as well.
@@ -703,7 +745,11 @@ function MoneyTrail({
     <section className="mt-8 rounded border border-2 border-[#8B3A3A] border-gray-200 bg-white p-5 shadow-sm">
       <header className="flex items-baseline justify-between gap-3">
         <h2 className="font-serif text-2xl font-bold text-[#2C4A5E]">Money trail</h2>
-        <p className="font-mono text-xs uppercase tracking-widest text-[#2C4A5E]/80">v1.7.1 · 4-cycle aggregate</p>
+        <p
+          title="Money trail surface introduced in v1.7.1; applied methodology shown at page top."
+          className="font-mono text-xs uppercase tracking-widest text-[#2C4A5E]/80">
+          4-cycle aggregate
+        </p>
       </header>
       <p className="mt-1 text-sm text-[#2C4A5E]">
         Where this legislator&apos;s PAC + Super PAC IE money came from across 2018–2024.{' '}
@@ -820,6 +866,20 @@ function MoneyTrail({
             Fundraising Committees (apportioned by JFC outbound share).
           </p>
         )}
+        {negativeClassRows.length > 0 && (
+          <p className="mt-2 font-mono text-[11px] text-[#2C4A5E]/80">
+            {negativeClassRows.map(([cls, amt], i) => {
+              const tone = PAC_CLASS_TONE[cls] ?? PAC_CLASS_TONE.UNKNOWN;
+              return (
+                <span key={cls}>
+                  {i > 0 && ' · '}
+                  <span className="font-semibold text-[#2C4A5E]">{tone.label} (net of refunds):</span> −$
+                  {Math.abs(Math.round(amt)).toLocaleString()}
+                </span>
+              );
+            })}
+          </p>
+        )}
       </div>
 
       {/* Top donor PACs */}
@@ -898,7 +958,11 @@ function LeadershipPacInflowsSection({ inflows }: { inflows: LeadershipPacInflow
     <section className="mt-8 rounded border border-[#8B3A3A]/60 border-gray-200 bg-white p-5 shadow-sm">
       <header className="flex items-baseline justify-between gap-3">
         <h2 className="font-serif text-xl font-bold text-[#2C4A5E]">Leadership PAC inflows</h2>
-        <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/80">v1.7.2 · informational</p>
+        <p
+          title="Leadership PAC inflows surface introduced in v1.7.2; applied methodology shown at page top."
+          className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/80">
+          informational
+        </p>
       </header>
       <p className="mt-1 text-sm text-[#2C4A5E]">
         This legislator sponsors {pacCount === 1 ? 'a leadership PAC' : `${pacCount} leadership PACs`} — legally
@@ -994,6 +1058,17 @@ function IndividualMoneySection({
 }) {
   const { totalItemized, contributionCount, cyclesAvailable, topEmployers, industryMix, industryClassifiedTotal } =
     money;
+  // v1.8.6 — defensive empty-state. Parent already gates on totalItemized>0
+  // but if we ever wind up here with 0, render a single graceful "no data"
+  // line instead of the full breakdown with zeros + a narrative blurb.
+  if (totalItemized === 0) {
+    return (
+      <section className="mt-8 rounded border border-[#2C4A5E] border-gray-200 bg-white p-5 shadow-sm">
+        <h2 className="font-serif text-xl font-bold text-[#2C4A5E]">Individual donors</h2>
+        <p className="mt-2 text-sm italic text-[#2C4A5E]/80">No itemized FEC individual filings for this cycle yet.</p>
+      </section>
+    );
+  }
   const grandTotal = totalItemized + pacTotalInfluence2Cyc;
   const indivPct = grandTotal > 0 ? Math.round((totalItemized / grandTotal) * 100) : 0;
   const maxEmployer = topEmployers.length > 0 ? topEmployers[0].total : 0;
@@ -1010,8 +1085,10 @@ function IndividualMoneySection({
     <section className="mt-8 rounded border border-[#2C4A5E] border-gray-200 bg-white p-5 shadow-sm">
       <header className="flex items-baseline justify-between gap-3">
         <h2 className="font-serif text-xl font-bold text-[#2C4A5E]">Individual donors</h2>
-        <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/80">
-          v1.7.5 · cycles {cyclesAvailable.sort((a, b) => a - b).join(', ')}
+        <p
+          title="Individual donors surface introduced in v1.7.5; applied methodology shown at page top."
+          className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/80">
+          cycles {cyclesAvailable.sort((a, b) => a - b).join(', ')}
         </p>
       </header>
       <p className="mt-1 text-sm text-[#2C4A5E]">
@@ -1044,6 +1121,9 @@ function IndividualMoneySection({
           <p className="mt-0.5 font-mono text-[10px] text-[#2C4A5E]/70">
             of (individual + PAC) money, 2-cycle window — individual data is 2022 + 2024 only, so PAC $ is scoped to
             match.
+          </p>
+          <p className="mt-1 font-mono text-[10px] italic text-[#2C4A5E]/70">
+            Note: 2-cycle ratio; PAC totals elsewhere on this page show 4-cycle aggregate.
           </p>
         </div>
       </div>
@@ -1203,9 +1283,11 @@ function DonorProfileSection({ profile, party }: { profile: DimeProfile; party: 
               <div className="h-full bg-[#F5DEB3]/70" style={{ width: `${Math.min(100, smallDollarPct)}%` }} />
             </div>
           )}
-          <p className="mt-2 font-mono text-[10px] text-[#2C4A5E]/60">
-            ${(totalUnitemized / 1000).toFixed(0)}K small-dollar · ${(totalIndivContribs / 1000).toFixed(0)}K itemized
-          </p>
+          {totalUnitemized + totalIndivContribs > 0 ? (
+            <p className="mt-2 font-mono text-[10px] text-[#2C4A5E]/60">
+              ${(totalUnitemized / 1000).toFixed(0)}K small-dollar · ${(totalIndivContribs / 1000).toFixed(0)}K itemized
+            </p>
+          ) : null}
         </div>
       </div>
       <p className="mt-3 font-mono text-[10px] text-[#2C4A5E]/60">

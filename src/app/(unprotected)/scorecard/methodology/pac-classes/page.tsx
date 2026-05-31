@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import prisma from '@/lib/prisma/prisma';
+import { METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
 
 export const metadata: Metadata = {
   title: 'PAC Classification | Scorecard Methodology',
@@ -182,7 +183,7 @@ export default async function PacClassesMethodologyPage() {
       </Link>
 
       <header className="mt-4 border-b-2 border-gray-900 pb-6">
-        <p className="font-mono text-xs uppercase tracking-widest text-gray-500">Methodology · v1.7.1</p>
+        <p className="font-mono text-xs uppercase tracking-widest text-gray-500">Methodology · {METHODOLOGY_VERSION}</p>
         <h1 className="mt-1 font-serif text-4xl font-bold text-gray-900">How we classify PACs</h1>
         <p className="mt-3 max-w-2xl text-base text-gray-700">
           Every federal PAC sits in one of eight classes. Three count <strong>against</strong> the legislator&apos;s PAC

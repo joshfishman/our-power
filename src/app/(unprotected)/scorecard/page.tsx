@@ -70,19 +70,29 @@ export default async function ScorecardIndexPage(props: { searchParams: Promise<
   // uses natural percentages and does not anchor.)
   void calibrationRow;
 
-  // v1.7 — bulk PAC scores for everyone on this page, keyed by legislatorId.
-  // v1.7.1 PAC scores come from PacContribution (computed live from FEC
-  // bulk data). For federal legs we use the new score; for CA legs (no FEC
-  // contribution data yet) we fall back to the legacy PacMoneyData number.
-  const legIds = legislators.map((l) => l.id);
+  // v1.8.6 — explicit jurisdiction split, matched precisely on the detail
+  // page so the index and detail can never show different PAC scores for the
+  // same legislator. Previously the index fell back from V171 to legacy
+  // PacMoneyData on null; the detail page didn't have that fallback for some
+  // null paths and had it for others. Now:
+  //   FEDERAL → v1.7.1 PAC Score from PacContribution exclusively. If the
+  //             v1.8.1 safety guard fires (no receipts on record + meaningful
+  //             counts-against), we return null and render "Score pending"
+  //             rather than silently falling back to a stale legacy ratio.
+  //   CA      → legacy PacMoneyData ratio (no PacContribution data for CA).
+  const federalIds = legislators.filter((l) => l.jurisdiction === 'FEDERAL').map((l) => l.id);
+  const caIds = legislators.filter((l) => l.jurisdiction === 'CA').map((l) => l.id);
   const [v171ScoresById, legacyScoresById] = await Promise.all([
-    getPacScoresByLegislatorV171(legIds),
-    getPacScoresByLegislator(legIds),
+    federalIds.length > 0 ? getPacScoresByLegislatorV171(federalIds) : Promise.resolve(new Map()),
+    caIds.length > 0 ? getPacScoresByLegislator(caIds) : Promise.resolve(new Map()),
   ]);
   const pacScoresById = new Map<string, number | null>();
-  for (const id of legIds) {
-    const v171 = v171ScoresById.get(id);
-    pacScoresById.set(id, v171 ?? legacyScoresById.get(id) ?? null);
+  for (const leg of legislators) {
+    if (leg.jurisdiction === 'FEDERAL') {
+      pacScoresById.set(leg.id, v171ScoresById.get(leg.id) ?? null);
+    } else {
+      pacScoresById.set(leg.id, legacyScoresById.get(leg.id) ?? null);
+    }
   }
 
   const buildHref = (overrides: Partial<SearchParams>): string => {
@@ -302,7 +312,19 @@ function colorClassFor(percent: number): string {
   return 'text-red-700';
 }
 
-function ScoreCell({ label, value, large = false }: { label: string; value: number | null; large?: boolean }) {
+function ScoreCell({
+  label,
+  value: rawValue,
+  large = false,
+}: {
+  label: string;
+  value: number | null;
+  large?: boolean;
+}) {
+  // v1.8.6 — clamp the displayed score to ≥0 so the index never reads as
+  // "Voting −2%" or "Plank 1 −1%". The raw stored RepresentativeScore is
+  // unchanged; this only adjusts what the user sees.
+  const value = rawValue === null ? null : Math.max(0, rawValue);
   // Each cell is a labeled column: tiny uppercase label on top, big % below.
   // `large` flag makes the Average cell a step bigger so the eye lands on it.
   const sizeClass = large ? 'text-3xl' : 'text-xl';

@@ -104,8 +104,8 @@ describe('scoreLegislator — v1.3', () => {
 });
 
 describe('METHODOLOGY_VERSION', () => {
-  it('is v1.7.1', () => {
-    expect(METHODOLOGY_VERSION).toBe('v1.7.1');
+  it('is v1.8.11', () => {
+    expect(METHODOLOGY_VERSION).toBe('v1.8.11');
   });
 });
 
