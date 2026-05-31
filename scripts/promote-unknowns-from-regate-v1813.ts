@@ -123,10 +123,25 @@ function decide(row: Row, legislatorNamePieces: Set<string>): Decision {
     }
   }
 
-  // (4) DARK_MONEY — super PAC + no sponsor + political name + $ threshold.
+  // (4) DARK_MONEY — super PAC + no real corporate sponsor + $ threshold.
+  // Two pathways:
+  //   (4a) sponsor is empty AND name matches political pattern (catches the
+  //        named super PACs: America First Action, Honor PA, etc.)
+  //   (4b) sponsor is empty OR sponsor is itself a super-PAC-shaped name
+  //        ("...Fund", "...Action", "...Committee" — i.e., not a real
+  //        corporate parent) AND >$1M counts-against. Catches single-word
+  //        super PACs (FAIRSHAKE) and shell-sponsored ones (DITCH FUND,
+  //        whose sponsor is "DEMOCRATIC DEFENSE FUND").
   const isSuperPacType = SUPER_PAC_TYPES.has(cType);
   const looksPolitical = POLITICAL_NAME_PATTERN.test(name);
   const aboveThreshold = row.totalCountsAgainst > COUNTS_AGAINST_THRESHOLD;
+  const aboveHighThreshold = row.totalCountsAgainst > 1_000_000;
+  // Sponsor is "effectively empty" if it's blank/NONE OR matches a super-PAC
+  // name shape (no real corporate parent).
+  const sponsorShape = /\b(FUND|ACTION|PAC|COMMITTEE|FORWARD|VICTORY|MAJORITY|LEADERSHIP)\b/i;
+  const sponsorIsAnotherSuperPac = !sponsorIsEmpty && sponsorShape.test(sponsor);
+  const sponsorEffectivelyEmpty = sponsorIsEmpty || sponsorIsAnotherSuperPac;
+
   if (isSuperPacType && sponsorIsEmpty && looksPolitical && aboveThreshold) {
     return {
       committeeId: row.committeeId,
@@ -134,6 +149,16 @@ function decide(row: Row, legislatorNamePieces: Set<string>): Decision {
       oldClass: 'UNKNOWN',
       newClass: 'DARK_MONEY',
       rule: `dark_money: super-pac type=${cType}, no connectedOrg, political name, $${row.totalCountsAgainst.toLocaleString()} counts-against`,
+      totalCountsAgainst: row.totalCountsAgainst,
+    };
+  }
+  if (isSuperPacType && sponsorEffectivelyEmpty && aboveHighThreshold) {
+    return {
+      committeeId: row.committeeId,
+      name: row.name,
+      oldClass: 'UNKNOWN',
+      newClass: 'DARK_MONEY',
+      rule: `dark_money: super-pac type=${cType}, sponsor="${sponsor || '(empty)'}" (no real corporate parent), $${row.totalCountsAgainst.toLocaleString()} counts-against (>$1M)`,
       totalCountsAgainst: row.totalCountsAgainst,
     };
   }
@@ -226,20 +251,24 @@ async function main() {
     return;
   }
 
-  console.log(`[v1.8.13] applying ${promotions.length} promotions in one transaction...`);
-  await prisma.$transaction(
-    promotions.map((d) =>
-      prisma.pacClassification.update({
-        where: { committeeId: d.committeeId },
-        data: {
-          class: d.newClass as 'DARK_MONEY' | 'LEADERSHIP' | 'LABOR' | 'ACTIVIST',
-          reason: `v1.8.13-promote: ${d.rule}`,
-          source: 'auto',
-        },
-      }),
-    ),
-  );
-  console.log(`[v1.8.13] applied ${promotions.length} promotions.`);
+  // Sequential apply — script is safely re-runnable since each update is
+  // class='UNKNOWN' → new class, and a re-run will find 0 UNKNOWN rows for
+  // already-applied committeeIds. Transaction atomicity not required.
+  console.log(`[v1.8.13] applying ${promotions.length} promotions sequentially...`);
+  let applied = 0;
+  for (const d of promotions) {
+    await prisma.pacClassification.update({
+      where: { committeeId: d.committeeId },
+      data: {
+        class: d.newClass as 'DARK_MONEY' | 'LEADERSHIP' | 'LABOR' | 'ACTIVIST',
+        reason: `v1.8.13-promote: ${d.rule}`,
+        source: 'auto',
+      },
+    });
+    applied += 1;
+    if (applied % 25 === 0) console.log(`  applied ${applied}/${promotions.length}`);
+  }
+  console.log(`[v1.8.13] applied ${applied} promotions.`);
 
   await prisma.$disconnect();
 }
