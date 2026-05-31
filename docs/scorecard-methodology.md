@@ -208,7 +208,7 @@ any of these:
 
 **Conservative-attribution rule:** committees with no classification default to MONEY. We'd rather over-count outside money pressure (penalizing legislators where some IE was actually grassroots) than under-count it (letting donor-class IE go unmeasured).
 
-**California:** Cal-Access raw data via the California Civic Data Coalition (CCDC) pipeline. CA classifications haven't been populated yet — CA legislators score on direct PAC ratio only until the table is filled in.
+**California:** Cal-Access raw data via the California Civic Data Coalition (CCDC) pipeline. CA classifications **are populated** (29,695 committees: 15,778 CORPORATE / 5,929 TRADE_ASSOCIATION / 4,608 LABOR / 2,748 IDEOLOGICAL / 632 PARTY) via `scripts/ingest-ca-classifications.ts`. CA PacMoneyData covers ~119 active CA legislators across 2024 + 2026 cycles with `dataSource='CAL_ACCESS_CCDC'`. Schema parity with federal: same per-row buckets (corporate, IE_SUPPORT, IE_OPPOSE) so CA scores compute on the same rubric as federal.
 
 The scoring engine prefers the highest-fidelity source where multiple records exist for the same legislator.
 
