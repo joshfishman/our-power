@@ -708,6 +708,21 @@ function autoClassify(c: PacRow): { proposed: string; reason: string } {
   ];
   for (const p of ideologicalPatterns) if (p.test(blob)) return { proposed: 'IDEOLOGICAL', reason: `/${p.source}/` };
 
+  // v1.8.8 (audit #B): Gate the corporate name-pack on a non-empty
+  // `connected_organization_name`. Real corporate PACs (separate segregated
+  // funds, trade-assoc PACs) ALWAYS file FEC F1 with a connected_org — that
+  // affiliation is what makes them a corporate PAC in the first place.
+  // Super PACs (committee_type O/I/V/W/U/E) almost never have one. Without
+  // this gate, broad shapes like `\bINC\b`, `\bLLC\b`, `\bCORP\b`,
+  // `\bASSOCIATION\b`, `\bDEFENSE\b` swept ~80 super PACs (~$112M of
+  // IE_OPPOSE) — AMERICA FIRST ACTION INC, HONOR PENNSYLVANIA INC,
+  // DEFENDING MAIN STREET SUPERPAC INC, DITCH FUND (connectedOrg
+  // "DEMOCRATIC DEFENSE FUND") — into CORPORATE when they're DARK_MONEY.
+  // FEC enumerates "NONE" / "" for committees with no connected sponsor;
+  // both forms must miss the gate.
+  const sponsorRaw = c.connected_org.trim().toUpperCase();
+  const hasConnectedOrg = sponsorRaw !== '' && sponsorRaw !== 'NONE';
+
   const corporatePatterns = [
     // Accounting / consulting / professional services firms
     /DELOITTE/,
@@ -903,7 +918,14 @@ function autoClassify(c: PacRow): { proposed: string; reason: string } {
     /CONAGRA/,
     /TYSON/,
     /KRAFT/,
-    /UNITED ?HEALTH/,
+    // v1.8.8: tightened. The old `/UNITED ?HEALTH/` regex caught the labor PAC
+    // "1199 SEIU UNITED HEALTHCARE WORKERS EAST" — a union local, not the
+    // insurer. Require explicit corporate-entity name shapes for UnitedHealth
+    // Group / UnitedHealthcare. The labor name-pack above will route the
+    // healthcare-worker union to LABOR before this branch runs.
+    /\bUNITEDHEALTH\b/,
+    /\bUNITED HEALTH GROUP\b/,
+    /UNITED HEALTHCARE(?! WORKERS)/,
     /CVS HEALTH/,
     /ANTHEM/,
     /CIGNA/,
@@ -960,7 +982,17 @@ function autoClassify(c: PacRow): { proposed: string; reason: string } {
     /BANKERS/,
     /\bINSURANCE\b/,
     /\bENERGY\b/,
-    /\bDEFENSE\b/,
+    // v1.8.8: tightened. The old bare `\bDEFENSE\b` was catching ideological
+    // / Second-Amendment / dark-money super PACs ("2A DEFENSE FUND",
+    // "DEMOCRATIC DEFENSE FUND", "VOTING RIGHTS DEFENSE FUND"). Narrow to
+    // defense-industry / defense-contractor / Pentagon-lobby shapes only.
+    /\bDEFENSE INDUSTR/,
+    /\bDEFENSE CONTRACT/,
+    /\bDEFENSE MANUFACTUR/,
+    /\bDEFENSE ?TECH/,
+    /\bDEFENSE SOLUTIONS/,
+    /\bDEFENSE SYSTEMS/,
+    /\bMISSILE DEFENSE\b/,
     /\bAEROSPACE\b/,
     /\bRAILROAD/,
     /\bRESTAURANT/,
@@ -973,7 +1005,11 @@ function autoClassify(c: PacRow): { proposed: string; reason: string } {
     /EMPLOYEES PAC/,
     /EMPLOYEES POLITICAL/,
   ];
-  for (const p of corporatePatterns) if (p.test(blob)) return { proposed: 'CORPORATE', reason: `/${p.source}/` };
+  // v1.8.8: name-pack only runs when FEC has a connected_organization_name.
+  // Super PACs without one fall through to UNKNOWN (later DARK_MONEY review).
+  if (hasConnectedOrg) {
+    for (const p of corporatePatterns) if (p.test(blob)) return { proposed: 'CORPORATE', reason: `/${p.source}/` };
+  }
 
   return { proposed: 'UNKNOWN', reason: 'no signal' };
 }
