@@ -262,9 +262,18 @@ async function main(): Promise<void> {
     }
   }
 
-  // Clear existing v1.7.1 contributions first (we re-ingest from scratch each time)
-  console.log(`[ingest-fec-classified] clearing existing PacContribution rows…`);
-  await prisma.$executeRawUnsafe(`DELETE FROM "PacContribution"`);
+  // Clear existing rows for the cycles being ingested. Pre-v1.8.12 this was
+  // an unconditional `DELETE FROM "PacContribution"` which wiped EVERY cycle
+  // even when `--cycle=NNNN` was set — caused prior cycles to vanish on any
+  // single-cycle re-ingest run. Now we scope to cycles being processed.
+  // Also skip the IE_OPPOSE_BENEFICIARY rows (those are derived rows written
+  // by attribute-ie-beneficiary.ts, not ingested here).
+  const cyclesToProcess = flags.cycle !== null ? [flags.cycle] : CYCLE_DIRS.map((c) => c.cycle);
+  console.log(`[ingest-fec-classified] clearing PacContribution rows for cycles: ${cyclesToProcess.join(', ')} (excluding IE_OPPOSE_BENEFICIARY)`);
+  await prisma.$executeRawUnsafe(
+    `DELETE FROM "PacContribution" WHERE "cycleYear" = ANY($1::int[]) AND kind <> 'IE_OPPOSE_BENEFICIARY'`,
+    cyclesToProcess,
+  );
 
   const BATCH = 500;
   let written = 0;
