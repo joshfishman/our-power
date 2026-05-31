@@ -8,9 +8,11 @@ import type { SeedPlank } from './types';
 // reuse can't bite at the federal level the same way, but pinning is still
 // the safest contract).
 //
-// Pre-119th historical bills (CHIPS Act, IIJA, PACT Act) are kept as
-// PROVISIONAL until the 117th Congress dataset is downloaded — they
-// won't resolve against the 119th-only dataset on disk today.
+// Pre-119th historical bills (CHIPS Act H.R.4346 / IIJA H.R.3684 / PACT
+// Act S.3373) were activated 2026-05-30 (v1.8.15) after downloading the
+// 117th Congress LegiScan dataset (session_id=1823, dataset_date
+// 2023-01-04) into data/US/2021-2022_117th_Congress/. Each carries a
+// pinned legiscanBillId from that dataset and isProvisional=false.
 
 export const FEDERAL_PLANKS: SeedPlank[] = [
   {
@@ -177,9 +179,10 @@ export const FEDERAL_PLANKS: SeedPlank[] = [
             billNumber: 'H.R.4346',
             billTitle: 'CHIPS and Science Act',
             actionType: 'VOTE_YES',
-            isProvisional: true,
+            legiscanBillId: 1518388,
+            isProvisional: false,
             notes:
-              'PROVISIONAL: 117th Congress (2021-2022) historical vote. Will not resolve against 119th-only LegiScan dataset. To activate: download 117th Congress LegiScan archive, set legiscanBillId, flip isProvisional=false.',
+              'Signed into law 2022-08-09. H.R.4346 began as the Legislative Branch Appropriations Act vehicle and was substituted via Senate amendment (SA 5135) to become CHIPS and Science. Final passage House 243-187 on 2022-07-28 (rc 1222482); Senate cloture 64-32 on 2022-07-27. https://legiscan.com/US/bill/HB4346/2021',
           },
           {
             congressNumber: 117,
@@ -187,9 +190,10 @@ export const FEDERAL_PLANKS: SeedPlank[] = [
             billNumber: 'H.R.3684',
             billTitle: 'Infrastructure Investment and Jobs Act',
             actionType: 'VOTE_YES',
-            isProvisional: true,
+            legiscanBillId: 1514715,
+            isProvisional: false,
             notes:
-              'PROVISIONAL: 117th Congress (2021-2022) historical vote. Same activation path as CHIPS — needs 117th dataset.',
+              'Signed into law 2021-11-15. Bipartisan Infrastructure Law. Senate passed 69-30 on 2021-08-10 (rc 1105920); House agreed to Senate amendment 228-206 on 2021-11-05 (rc 1115607). https://legiscan.com/US/bill/HB3684/2021',
           },
         ],
       },
@@ -506,9 +510,10 @@ export const FEDERAL_PLANKS: SeedPlank[] = [
             billNumber: 'S.3373',
             billTitle: 'Honoring our PACT Act',
             actionType: 'VOTE_YES',
-            isProvisional: true,
+            legiscanBillId: 1537975,
+            isProvisional: false,
             notes:
-              'PROVISIONAL: 117th Congress (2021-2022) historical vote. To activate: download 117th Congress LegiScan archive, set legiscanBillId, flip isProvisional=false.',
+              'Signed into law 2022-08-10. Sergeant First Class Heath Robinson Honoring our Promise to Address Comprehensive Toxics Act. House passed 342-88 on 2022-07-13 (rc 1222095); Senate agreed to House amendment 86-11 on 2022-08-02 (rc 1222937). https://legiscan.com/US/bill/SB3373/2021',
           },
         ],
       },
