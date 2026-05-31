@@ -1065,9 +1065,7 @@ function IndividualMoneySection({
     return (
       <section className="mt-8 rounded border border-[#2C4A5E] border-gray-200 bg-white p-5 shadow-sm">
         <h2 className="font-serif text-xl font-bold text-[#2C4A5E]">Individual donors</h2>
-        <p className="mt-2 text-sm italic text-[#2C4A5E]/80">
-          No itemized FEC individual filings for this cycle yet.
-        </p>
+        <p className="mt-2 text-sm italic text-[#2C4A5E]/80">No itemized FEC individual filings for this cycle yet.</p>
       </section>
     );
   }
