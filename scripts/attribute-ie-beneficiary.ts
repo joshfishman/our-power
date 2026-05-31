@@ -71,12 +71,14 @@ const prisma = new PrismaClient({ adapter });
 
 interface CliFlags {
   dryRun: boolean;
+  cycle: number | null; // v1.8.12 — restrict to single cycle if set
 }
 
 function parseFlags(argv: string[]): CliFlags {
-  const flags: CliFlags = { dryRun: false };
+  const flags: CliFlags = { dryRun: false, cycle: null };
   for (const arg of argv.slice(2)) {
     if (arg === '--dry-run') flags.dryRun = true;
+    else if (arg.startsWith('--cycle=')) flags.cycle = Number(arg.split('=')[1]);
   }
   return flags;
 }
@@ -84,7 +86,10 @@ function parseFlags(argv: string[]): CliFlags {
 // Cycles we read cn{YY}.txt for. Used by both House and (v1.8.9) Senate
 // candidacy loaders to map active legislators back to the cycles they
 // actually ran in for their current seat.
-const CYCLES = [2018, 2020, 2022, 2024];
+// v1.8.12 — cycles parameterized. Defaults 2018→2026; missing
+// `data/fec-bulk-{cycle}/` is silently skipped by the existsSync guard in
+// the per-cycle loop. Single cycle via `--cycle=2026`.
+const CYCLES = [2018, 2020, 2022, 2024, 2026];
 const FEC_BULK_BASE = path.join(process.cwd(), 'data');
 
 // v1.8.9 — Load all Senate candidacies from cn{YY}.txt where the file's cycle
