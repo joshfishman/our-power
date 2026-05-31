@@ -8,6 +8,7 @@ import {
   getLegislatorIndividualMoney,
   getLegislatorDimeProfile,
   computePublishedTotal,
+  getGhostBeneficiariesForSeat,
 } from '@/lib/scorecard/queries';
 
 type Props = { params: Promise<{ seat: string }> };
@@ -84,6 +85,17 @@ export default async function RaceScorecardPage(props: Props) {
 
   if (candidates.length === 0) notFound();
 
+  // v1.8.14 — Ghost-beneficiary surface. If prior cycles in this seat carry
+  // IE_OPPOSE dollars we cannot credit to any sitting legislator (because the
+  // cycle winner is no longer in our active set), surface them honestly here
+  // rather than letting them silently disappear from the per-legislator
+  // Beneficiary PAC view.
+  const ghostRows = await getGhostBeneficiariesForSeat(
+    seat.state,
+    seat.chamber === 'SEN' ? 'SENATE' : 'HOUSE',
+    seat.district != null ? String(seat.district) : null,
+  );
+
   // Fetch money data per candidate in parallel.
   type Profile = {
     pacScore: number | null;
@@ -140,6 +152,25 @@ export default async function RaceScorecardPage(props: Props) {
           . Same money lenses we apply to sitting members — applied to every candidate.
         </p>
       </header>
+
+      {ghostRows.length > 0 ? (
+        <section className="mt-6 rounded-lg border border-[#2C4A5E]/40 bg-[#2C4A5E]/60 p-4 text-[#F5DEB3]">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/80">
+            Ghost beneficiary — prior cycles
+          </p>
+          <p className="mt-2 font-serif text-sm leading-relaxed">
+            {ghostRows
+              .map((g) => `$${(g.totalAgainst / 1_000_000).toFixed(1)}M of ${g.cycleYear} IE_OPPOSE in this seat`)
+              .join('; ')}{' '}
+            {ghostRows.length === 1 ? 'is' : 'are'} not yet attributable. The cycle winner is no longer in our active
+            legislator set (defeated, retired, or ran for a different office), so we surface these dollars here rather
+            than letting them disappear.{' '}
+            <Link href="/scorecard/ghost-beneficiary" className="underline hover:text-white">
+              National ghost-beneficiary table →
+            </Link>
+          </p>
+        </section>
+      ) : null}
 
       {partyOrder.map((party) => {
         const list = byParty[party];

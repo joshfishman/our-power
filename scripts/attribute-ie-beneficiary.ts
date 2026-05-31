@@ -304,6 +304,21 @@ async function main(): Promise<void> {
     amount: number;
   }
   const agg = new Map<string, BenAgg>();
+  // v1.8.14 — Ghost beneficiary aggregator. Every IE_OPPOSE row we cannot
+  // credit (no active leg won the cycle's seat) gets summed here by
+  // (state, district, chamber, cycleYear). Surfaces in GhostBeneficiary so
+  // these dollars don't silently disappear — the methodology promise is that
+  // every dollar shows up somewhere, even when no current legislator can
+  // honestly be credited as the beneficiary.
+  interface GhostAgg {
+    state: string;
+    district: string | null;
+    chamber: 'HOUSE' | 'SENATE';
+    cycleYear: number;
+    totalAgainst: number;
+    rowCount: number;
+  }
+  const ghostAgg = new Map<string, GhostAgg>();
   let creditedHouse = 0;
   let creditedSenate = 0;
   let unmatched = 0;
@@ -333,6 +348,21 @@ async function main(): Promise<void> {
     }
     if (beneficiaries.length === 0) {
       unmatched += 1;
+      // v1.8.14 — accumulate ghost-beneficiary aggregate.
+      const chamberLabel: 'HOUSE' | 'SENATE' = r.chamber === 'REP' ? 'HOUSE' : 'SENATE';
+      const districtKey = r.chamber === 'REP' && r.district != null ? String(r.district) : null;
+      const gKey = `${r.state}|${districtKey ?? ''}|${chamberLabel}|${r.cycleYear}`;
+      const g = ghostAgg.get(gKey) ?? {
+        state: r.state,
+        district: districtKey,
+        chamber: chamberLabel,
+        cycleYear: r.cycleYear,
+        totalAgainst: 0,
+        rowCount: 0,
+      };
+      g.totalAgainst += amt;
+      g.rowCount += 1;
+      ghostAgg.set(gKey, g);
       continue;
     }
     // v1.8.9 — Both House and Senate now produce a single beneficiary at
@@ -358,6 +388,27 @@ async function main(): Promise<void> {
   );
   console.log(`[attribute-ie-beneficiary] aggregates to write: ${agg.size}`);
 
+  // v1.8.14 — Ghost beneficiary aggregate summary.
+  let ghostTotalHouse = 0;
+  let ghostTotalSenate = 0;
+  let ghostRowsHouse = 0;
+  let ghostRowsSenate = 0;
+  for (const g of ghostAgg.values()) {
+    if (g.chamber === 'HOUSE') {
+      ghostTotalHouse += g.totalAgainst;
+      ghostRowsHouse += 1;
+    } else {
+      ghostTotalSenate += g.totalAgainst;
+      ghostRowsSenate += 1;
+    }
+  }
+  console.log(
+    `[attribute-ie-beneficiary] ghost (unattributed) aggregate: ` +
+      `${ghostRowsHouse} House seat-cycles ($${Math.round(ghostTotalHouse).toLocaleString()}), ` +
+      `${ghostRowsSenate} Senate seat-cycles ($${Math.round(ghostTotalSenate).toLocaleString()}), ` +
+      `total $${Math.round(ghostTotalHouse + ghostTotalSenate).toLocaleString()}`,
+  );
+
   if (flags.dryRun) {
     // Show top 20 beneficiaries by total credited $
     const byLeg = new Map<string, number>();
@@ -377,6 +428,13 @@ async function main(): Promise<void> {
           l.district ? '-' + l.district : ''
         }  ${l.chamber}  ${l.fullName}`,
       );
+    }
+    // v1.8.14 — dry-run ghost report
+    const topGhost = [...ghostAgg.values()].sort((a, b) => b.totalAgainst - a.totalAgainst).slice(0, 20);
+    console.log('\n[DRY RUN] top 20 ghost (unattributed) seat-cycles:');
+    for (const g of topGhost) {
+      const seat = g.chamber === 'HOUSE' ? `${g.state}-${g.district ?? '?'}` : `${g.state}-SEN`;
+      console.log(`  $${Math.round(g.totalAgainst).toLocaleString().padStart(12)}  ${seat}  ${g.cycleYear}`);
     }
     await prisma.$disconnect();
     return;
@@ -444,6 +502,42 @@ async function main(): Promise<void> {
     console.log(
       `  ${r.party}-${r.state.padEnd(2)}  $${Math.round(Number(r.total)).toLocaleString().padStart(12)}  ${r.fullName}`,
     );
+  }
+
+  // v1.8.14 — Write ghost-beneficiary aggregate.
+  // Replace-and-insert (full refresh). One row per (state, district, chamber,
+  // cycleYear) seat-cycle whose IE_OPPOSE rows could not be attributed.
+  await prisma.ghostBeneficiary.deleteMany({});
+  const ghostRows = [...ghostAgg.values()].map((g) => ({
+    state: g.state,
+    district: g.district,
+    chamber: g.chamber,
+    cycleYear: g.cycleYear,
+    totalAgainst: g.totalAgainst.toFixed(2),
+    rowCount: g.rowCount,
+  }));
+  if (ghostRows.length > 0) {
+    await prisma.ghostBeneficiary.createMany({ data: ghostRows, skipDuplicates: true });
+  }
+  console.log(`[attribute-ie-beneficiary] ✓ wrote ${ghostRows.length} GhostBeneficiary rows`);
+
+  // Also dump a CSV snapshot for ad-hoc analysis / spreadsheet sharing.
+  const csvPath = path.join(process.cwd(), 'data', 'ghost-beneficiary-202605.csv');
+  const sortedGhost = [...ghostAgg.values()].sort((a, b) => b.totalAgainst - a.totalAgainst);
+  const csvLines = ['state,district,chamber,cycleYear,totalAgainst,rowCount'];
+  for (const g of sortedGhost) {
+    csvLines.push(
+      `${g.state},${g.district ?? ''},${g.chamber},${g.cycleYear},${g.totalAgainst.toFixed(2)},${g.rowCount}`,
+    );
+  }
+  fs.writeFileSync(csvPath, csvLines.join('\n') + '\n', 'utf-8');
+  console.log(`[attribute-ie-beneficiary] ✓ wrote ${csvPath}`);
+
+  // Show top 15 ghost seat-cycles for transparency.
+  console.log('\n[attribute-ie-beneficiary] Top 15 ghost (unattributed) seat-cycles:');
+  for (const g of sortedGhost.slice(0, 15)) {
+    const seat = g.chamber === 'HOUSE' ? `${g.state}-${g.district ?? '?'}` : `${g.state}-SEN`;
+    console.log(`  $${Math.round(g.totalAgainst).toLocaleString().padStart(12)}  ${seat}  ${g.cycleYear}`);
   }
 
   await prisma.$disconnect();

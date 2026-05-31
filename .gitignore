@@ -53,6 +53,7 @@ next-env.d.ts
 !/data/manual-*.csv
 !/data/pac-candidates.csv
 !/data/leadership-pacs-manual.csv
+!/data/ghost-beneficiary-*.csv
 /CA/
 
 # Claude Code / Cursor working directories

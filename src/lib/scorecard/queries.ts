@@ -1235,3 +1235,76 @@ export async function getScoreCalibration(version: string): Promise<ScoreCalibra
     negativeAnchor: Number(row.negativeAnchor),
   };
 }
+
+// v1.8.14 — Ghost beneficiary surface. Reads from GhostBeneficiary, the
+// aggregate of IE_OPPOSE dollars in seat-cycles whose winner is no longer
+// in our active legislator set (defeated next cycle, retired, ran for a
+// different office). These dollars are spent but not yet attributable —
+// the surface keeps them visible rather than letting them silently
+// disappear from the per-legislator Beneficiary PAC view.
+export interface GhostBeneficiaryRow {
+  state: string;
+  district: string | null;
+  chamber: 'HOUSE' | 'SENATE';
+  cycleYear: number;
+  totalAgainst: number;
+  rowCount: number;
+}
+
+export async function getAllGhostBeneficiaries(): Promise<GhostBeneficiaryRow[]> {
+  const rows = await prisma.ghostBeneficiary.findMany({
+    orderBy: { totalAgainst: 'desc' },
+  });
+  return rows.map((r) => ({
+    state: r.state,
+    district: r.district,
+    chamber: r.chamber as 'HOUSE' | 'SENATE',
+    cycleYear: r.cycleYear,
+    totalAgainst: Number(r.totalAgainst),
+    rowCount: r.rowCount,
+  }));
+}
+
+// For a single seat (state + chamber + district), return every prior-cycle
+// ghost-beneficiary row. The race page uses this to render the per-seat
+// transparency note. District is the numeric district as a string for
+// House seats; null for Senate.
+export async function getGhostBeneficiariesForSeat(
+  state: string,
+  chamber: 'HOUSE' | 'SENATE',
+  district: string | null,
+): Promise<GhostBeneficiaryRow[]> {
+  const rows = await prisma.ghostBeneficiary.findMany({
+    where: { state, chamber, district },
+    orderBy: { cycleYear: 'desc' },
+  });
+  return rows.map((r) => ({
+    state: r.state,
+    district: r.district,
+    chamber: r.chamber as 'HOUSE' | 'SENATE',
+    cycleYear: r.cycleYear,
+    totalAgainst: Number(r.totalAgainst),
+    rowCount: r.rowCount,
+  }));
+}
+
+export async function getGhostBeneficiaryTotals(): Promise<{
+  totalDollars: number;
+  totalRows: number;
+  houseDollars: number;
+  senateDollars: number;
+}> {
+  const all = await getAllGhostBeneficiaries();
+  let house = 0;
+  let senate = 0;
+  for (const r of all) {
+    if (r.chamber === 'HOUSE') house += r.totalAgainst;
+    else senate += r.totalAgainst;
+  }
+  return {
+    totalDollars: house + senate,
+    totalRows: all.length,
+    houseDollars: house,
+    senateDollars: senate,
+  };
+}

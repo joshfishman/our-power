@@ -1185,6 +1185,29 @@ enum MotivationClass {
   PEOPLE
 }
 
+/// v1.8.14 — Ghost beneficiary aggregate. Surfaces the IE_OPPOSE dollars
+/// that `attribute-ie-beneficiary.ts` cannot credit to any active legislator
+/// because the cycle's winner is no longer in our active set (defeated next
+/// cycle, retired, died, ran for a different office). Without this surface,
+/// those dollars silently disappear from the per-legislator Beneficiary PAC
+/// view — the methodology promise is that every dollar surfaces somewhere.
+/// One row per (state, district|null, chamber, cycleYear) seat-cycle with
+/// any unattributed IE_OPPOSE.
+model GhostBeneficiary {
+  id           String   @id @default(cuid())
+  state        String
+  district     String? // null for U.S. Senate; numeric district as string for U.S. House
+  chamber      String // 'HOUSE' or 'SENATE'
+  cycleYear    Int
+  totalAgainst Decimal  @db.Decimal(14, 2)
+  rowCount     Int
+  createdAt    DateTime @default(now())
+
+  @@unique([state, district, chamber, cycleYear])
+  @@index([cycleYear])
+  @@index([chamber, cycleYear])
+}
+
 enum ApiCallSource {
   LEGISCAN
   CONGRESSGOV
