@@ -80,7 +80,6 @@ export default async function ScorecardIndexPage(props: { searchParams: Promise<
   //             counts-against), we return null and render "Score pending"
   //             rather than silently falling back to a stale legacy ratio.
   //   CA      → legacy PacMoneyData ratio (no PacContribution data for CA).
-  const legIds = legislators.map((l) => l.id);
   const federalIds = legislators.filter((l) => l.jurisdiction === 'FEDERAL').map((l) => l.id);
   const caIds = legislators.filter((l) => l.jurisdiction === 'CA').map((l) => l.id);
   const [v171ScoresById, legacyScoresById] = await Promise.all([
