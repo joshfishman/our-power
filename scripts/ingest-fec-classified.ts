@@ -34,11 +34,16 @@ import { PrismaPg } from '@prisma/adapter-pg';
 const adapter = new PrismaPg({ connectionString: process.env.DIRECT_URL || process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
 
+// v1.8.12 — cycles parameterized. Defaults cover 2018→2026; missing
+// directories (e.g., a partial 2026 download) are silently skipped by the
+// existsSync guard inside the read loop. To process a single cycle, pass
+// `--cycle=2026`. To add a new cycle going forward, append to this list.
 const CYCLE_DIRS = [
   { cycle: 2018, dir: path.join(process.cwd(), 'data', 'fec-bulk-2018') },
   { cycle: 2020, dir: path.join(process.cwd(), 'data', 'fec-bulk-2020') },
   { cycle: 2022, dir: path.join(process.cwd(), 'data', 'fec-bulk-2022') },
   { cycle: 2024, dir: path.join(process.cwd(), 'data', 'fec-bulk-2024') },
+  { cycle: 2026, dir: path.join(process.cwd(), 'data', 'fec-bulk-2026') },
 ];
 
 interface CliFlags {

@@ -93,11 +93,15 @@ import { PrismaPg } from '@prisma/adapter-pg';
 const adapter = new PrismaPg({ connectionString: process.env.DIRECT_URL || process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
 
+// v1.8.12 — cycles parameterized. Defaults cover 2018→2026; missing
+// directories are silently skipped by the existsSync guard inside the read
+// loop. Single cycle via `--cycle=2026`.
 const CYCLE_DIRS = [
   { cycle: 2018, dir: path.join(process.cwd(), 'data', 'fec-bulk-2018') },
   { cycle: 2020, dir: path.join(process.cwd(), 'data', 'fec-bulk-2020') },
   { cycle: 2022, dir: path.join(process.cwd(), 'data', 'fec-bulk-2022') },
   { cycle: 2024, dir: path.join(process.cwd(), 'data', 'fec-bulk-2024') },
+  { cycle: 2026, dir: path.join(process.cwd(), 'data', 'fec-bulk-2026') },
 ];
 
 // PAC classes whose money "counts against" — must match queries.ts.
