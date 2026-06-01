@@ -159,6 +159,13 @@ function lastNameTokensOverlap(a: string, b: string): boolean {
  * that mapping, attempts a name + jurisdiction match against existing
  * Legislator rows and backfills legiscanPeopleId on hit.
  *
+ * If a `LegiscanBulkClient` is supplied, we ALSO consult the dataset's
+ * `people/*.json` index for a bioguide_id and try a bioguideId lookup
+ * before falling back to name matching. This handles the cross-session
+ * case (LegiScan assigns DIFFERENT people_id values per session — a
+ * stored 119th people_id won't match a 117th payload, but bioguide
+ * IDs are stable across sessions).
+ *
  * Returns null if no match (caller increments unmapped counter).
  */
 async function resolveLegislator(
@@ -166,6 +173,7 @@ async function resolveLegislator(
   jurisdiction: 'FEDERAL' | 'CA',
   fullName: string,
   party: string | null,
+  client?: LegiscanBulkClient,
 ): Promise<{ id: string } | null> {
   const peopleIdNum = Number(externalPersonId);
 
@@ -175,6 +183,33 @@ async function resolveLegislator(
     select: { id: true },
   });
   if (direct) return direct;
+
+  // Cross-session fallback: bridge people_id → bioguide_id via the
+  // bulk dataset's people index, then look up by bioguideId. Federal
+  // only — CA people files don't carry bioguide_id, so getBioguide-
+  // ByPeopleId returns undefined for those and we fall through.
+  if (client) {
+    const bioguideId = await client.getBioguideByPeopleId(peopleIdNum);
+    if (bioguideId) {
+      const byBioguide = await prisma.legislator.findUnique({
+        where: { bioguideId },
+        select: { id: true, legiscanPeopleId: true },
+      });
+      if (byBioguide) {
+        // DON'T overwrite an existing legiscanPeopleId — the column
+        // can only hold one session's id, and whichever was learned
+        // first is fine for that session's direct path. This bioguide
+        // fallback handles the OTHER session(s) going forward.
+        if (byBioguide.legiscanPeopleId === null) {
+          await prisma.legislator.update({
+            where: { id: byBioguide.id },
+            data: { legiscanPeopleId: peopleIdNum },
+          });
+        }
+        return { id: byBioguide.id };
+      }
+    }
+  }
 
   // No fullName supplied (roll-call voters called with ''): can't name-match.
   if (!fullName) return null;
@@ -438,8 +473,11 @@ async function syncBill(
     string,
     { tier: NormalizedSponsor['tier']; rawTier: NormalizedSponsor['rawTier']; sponsorOrder: number | null }
   >();
+  // Pass the bulk client (if in bulk mode) to enable cross-session
+  // bioguide fallback when the direct people_id lookup misses.
+  const bulkClient = client instanceof LegiscanBulkClient ? client : undefined;
   for (const s of bill.sponsors) {
-    const leg = await resolveLegislator(s.externalPersonId, jurisdiction, s.name, s.party);
+    const leg = await resolveLegislator(s.externalPersonId, jurisdiction, s.name, s.party, bulkClient);
     if (leg) {
       sponsorMap.set(leg.id, {
         tier: s.tier,
@@ -490,7 +528,7 @@ async function syncBill(
   }> = [];
   for (const rc of bill.rollCalls) {
     for (const v of rc.votes) {
-      const leg = await resolveLegislator(v.externalPersonId, jurisdiction, /* fullName */ '', null);
+      const leg = await resolveLegislator(v.externalPersonId, jurisdiction, /* fullName */ '', null, bulkClient);
       if (!leg) {
         stats.unmappedVoters += 1;
         continue;
