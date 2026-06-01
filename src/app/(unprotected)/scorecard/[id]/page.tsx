@@ -106,9 +106,10 @@ export default async function LegislatorScorecardPage(props: Props) {
     jurisdiction === 'FEDERAL' ? getLegislatorPacInfluence20222024(legislator.id) : Promise.resolve(0),
     jurisdiction === 'FEDERAL' ? getLegislatorDimeProfile(legislator.id) : Promise.resolve(null as DimeProfile | null),
     // v1.9.1 — outside-money surface (IE_SUPPORT + IE_OPPOSE_BENEFICIARY).
-    // Transparency on dark-money flows that shaped this leg's races, surfaced
-    // separately from the PAC Score because under v1.9.1 weighting IE_SUPPORT
-    // is half-weight and IE_OPPOSE_BENEFICIARY is zero-weight in scoring.
+    // Transparency on dark-money flows that shaped this leg's races. Under
+    // v1.9.1 two-tier weighting, IE_SUPPORT counts at FULL weight in the PAC
+    // Score (supported is supported); IE_OPPOSE_BENEFICIARY is zero-weight,
+    // surfaced here for transparency only.
     jurisdiction === 'FEDERAL'
       ? getOutsideMoneyForLegislator(legislator.id, 15)
       : Promise.resolve(null as OutsideMoneySummary | null),
@@ -769,9 +770,10 @@ function MoneyTrail({
         </p>
       </header>
       <p className="mt-1 text-sm text-[#2C4A5E]">
-        Where this legislator&apos;s PAC + Super PAC IE money came from across 2018–2024. Under v1.9.1, IE_SUPPORT
-        counts at half-weight; IE_OPPOSE_BENEFICIARY is broken out below in &ldquo;Outside money in your races&rdquo;
-        and does not enter this score.{' '}
+        Where this legislator&apos;s PAC + Super PAC IE money came from across 2018–2024. Under v1.9.1, every dollar
+        spent on their behalf — direct, JFC, leadership-PAC, or IE_SUPPORT — counts at full weight.
+        IE_OPPOSE_BENEFICIARY is broken out below in &ldquo;Outside money in your races&rdquo; and does not enter this
+        score.{' '}
         <Link href="/scorecard/methodology/pac-classes" className="underline hover:text-white">
           How classes work →
         </Link>
@@ -795,7 +797,7 @@ function MoneyTrail({
               : `${(denominator / 1000).toFixed(0)}K`}
           </p>
           <p className="mt-0.5 font-mono text-[10px] text-[#2C4A5E]/70">
-            Receipts ${(totalReceipts / 1000).toFixed(0)}K + ½ × IE support (v1.9.1)
+            Receipts ${(totalReceipts / 1000).toFixed(0)}K + IE support (v1.9.1)
           </p>
         </div>
         <div className="rounded bg-gray-50 p-3">
@@ -839,10 +841,10 @@ function MoneyTrail({
             </div>
           </div>
           <p className="mt-2 text-xs text-[#2C4A5E]/90">
-            What the PAC Score would be if IE spent against a defeated opponent counted at FULL weight. Under v1.9.1
-            this is transparency only — the legislator could not refuse spending directed at someone else, so it does
-            not enter the official PAC Score. See &ldquo;Outside money in your races&rdquo; below for the same dollars
-            broken out by donor class.
+            What the PAC Score would be if IE spent against a defeated opponent counted at full weight. Under v1.9.1
+            this is transparency only — money spent on the opponent&apos;s race is not money spent on this
+            legislator&apos;s behalf, so it does not enter the official PAC Score. See &ldquo;Outside money in your
+            races&rdquo; below for the same dollars broken out by donor class.
           </p>
         </div>
       )}
@@ -974,12 +976,12 @@ function MoneyTrail({
 }
 
 // v1.9.1 — Outside money in your races. IE_SUPPORT (outside groups spending
-// FOR the legislator, half-weight under v1.9.1) and IE_OPPOSE_BENEFICIARY
-// (outside groups spending AGAINST the legislator's opponent, zero-weight —
-// the legislator could not refuse it). Surfaced for transparency even when
-// they contribute nothing to the PAC Score: dark-money flows like Warnock's
-// $277M and Fetterman's $88M shape the race and the public deserves to see
-// them, scored or not.
+// FOR the legislator, full weight under v1.9.1 — supported is supported) and
+// IE_OPPOSE_BENEFICIARY (outside groups spending AGAINST the legislator's
+// opponent, zero-weight — money spent on someone else's race, not on the
+// legislator's behalf). Surfaced for transparency: dark-money flows like
+// Warnock's $277M and Fetterman's $88M shape the race and the public deserves
+// to see them broken out alongside the score.
 function OutsideMoneySection({ summary }: { summary: OutsideMoneySummary }) {
   const { ieSupportTotal, ieOpposeBeneficiaryTotal, byClass, topSpenders } = summary;
   const fmtUsd = (n: number): string => {
@@ -994,7 +996,7 @@ function OutsideMoneySection({ summary }: { summary: OutsideMoneySummary }) {
         <p
           title="Outside-money surface introduced in v1.9.1; PAC Score weighting shown at page top."
           className="font-mono text-xs uppercase tracking-widest text-[#2C4A5E]/80">
-          v1.9.1 — three-tier weighting
+          v1.9.1 — two-tier weighting
         </p>
       </header>
 
@@ -1002,9 +1004,10 @@ function OutsideMoneySection({ summary }: { summary: OutsideMoneySummary }) {
         Outside groups — Super PACs, dark-money 501(c)(4)s, ideological vehicles — spent{' '}
         <span className="font-semibold">{fmtUsd(ieSupportTotal)}</span> to help elect this legislator and{' '}
         <span className="font-semibold">{fmtUsd(ieOpposeBeneficiaryTotal)}</span> to defeat their opponents across
-        2018–2024. They did not raise this money. Under v1.9.1, IE_SUPPORT counts at half-weight in the PAC Score;
-        IE_OPPOSE_BENEFICIARY is transparency-only and does not affect the score — the legislator could not refuse
-        spending directed against an opponent.
+        2018–2024. They did not raise this money. Under v1.9.1, IE_SUPPORT counts at FULL weight in the PAC Score —
+        supported is supported, regardless of whether the dollar landed in the legislator&apos;s committee or in a Super
+        PAC ad on their behalf. IE_OPPOSE_BENEFICIARY is transparency-only and does not enter the score — money spent
+        against the opponent is on that race, not on this legislator&apos;s behalf.
       </p>
 
       {/* Headline tiles — navy / wheat civic register, brick-red accent border. */}
@@ -1014,7 +1017,7 @@ function OutsideMoneySection({ summary }: { summary: OutsideMoneySummary }) {
           <p className="mt-1 font-serif text-3xl font-bold tabular-nums">{fmtUsd(ieSupportTotal)}</p>
           <p className="mt-1 font-mono text-[11px] text-[#F5DEB3]/80">
             IE_SUPPORT — outside-group independent expenditures filed for this candidate.{' '}
-            <span className="font-semibold">Half-weight</span> in the PAC Score (Tier 2).
+            <span className="font-semibold">Full weight</span> in the PAC Score — supported is supported.
           </p>
         </div>
         <div className="rounded border border-[#2C4A5E]/40 bg-[#2C4A5E]/60 p-4 text-[#F5DEB3]">
@@ -1024,7 +1027,7 @@ function OutsideMoneySection({ summary }: { summary: OutsideMoneySummary }) {
           <p className="mt-1 font-serif text-3xl font-bold tabular-nums">{fmtUsd(ieOpposeBeneficiaryTotal)}</p>
           <p className="mt-1 font-mono text-[11px] text-[#F5DEB3]/80">
             IE_OPPOSE_BENEFICIARY — credited to the seat winner via the v1.7.4 attribution.{' '}
-            <span className="font-semibold">Zero weight</span> in the PAC Score (Tier 3, transparency only).
+            <span className="font-semibold">Zero weight</span> in the PAC Score — transparency only.
           </p>
         </div>
       </div>
@@ -1092,7 +1095,7 @@ function OutsideMoneySection({ summary }: { summary: OutsideMoneySummary }) {
                   </span>
                   {s.ieSupport > 0 && (
                     <span
-                      title="IE supporting this legislator (half-weight in PAC Score)"
+                      title="IE supporting this legislator (full weight in PAC Score)"
                       className="w-20 shrink-0 text-right font-mono text-xs tabular-nums text-[#2C4A5E]">
                       FOR {fmtUsd(s.ieSupport)}
                     </span>

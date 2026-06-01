@@ -1,15 +1,15 @@
 // scripts/recompute-pac-ratio-v191.ts
 //
 // v1.9.1 one-shot: recompute `combinedCorporateRatio` on every existing
-// `PacMoneyData` row using the v1.9.1 three-tier outside-money formula:
+// `PacMoneyData` row using the v1.9.1 two-tier outside-money formula:
 //
-//   ratio = (corporatePacAmount + 0.5 * corporateIeSupportAmount)
-//           / (totalReceipts + 0.5 * corporateIeSupportAmount)
+//   ratio = (corporatePacAmount + corporateIeSupportAmount)
+//           / (totalReceipts + corporateIeSupportAmount)
 //
-// IE_SUPPORT (Tier 2) counts at 50% in both numerator and denominator.
-// IE_OPPOSE_BENEFICIARY (Tier 3, stored in corporateIeAgainstOpponentAmount)
-// drops to 0% weight — the legislator could not refuse spending against
-// their opponent.
+// IE_SUPPORT counts at FULL weight in both numerator and denominator —
+// supported is supported. IE_OPPOSE_BENEFICIARY (money spent against the
+// opponent, stored in corporateIeAgainstOpponentAmount) is zero-weight —
+// surfaced for transparency on the page but absent from the ratio.
 //
 // Idempotent. Safe to re-run. Use after pulling the methodology change but
 // before `npm run scorecard:compute -- --publish`.
@@ -51,9 +51,9 @@ async function main(): Promise<void> {
         p."cycleYear" AS "cycleYear",
         p."combinedCorporateRatio"::text AS "before",
         CASE
-          WHEN (p."totalReceipts" + 0.5 * COALESCE(p."corporateIeSupportAmount", 0)) > 0
-          THEN LEAST(1.0, (p."corporatePacAmount" + 0.5 * COALESCE(p."corporateIeSupportAmount", 0))
-                       / NULLIF(p."totalReceipts" + 0.5 * COALESCE(p."corporateIeSupportAmount", 0), 0))::text
+          WHEN (p."totalReceipts" + COALESCE(p."corporateIeSupportAmount", 0)) > 0
+          THEN LEAST(1.0, (p."corporatePacAmount" + COALESCE(p."corporateIeSupportAmount", 0))
+                       / NULLIF(p."totalReceipts" + COALESCE(p."corporateIeSupportAmount", 0), 0))::text
           ELSE NULL
         END AS "after"
       FROM "PacMoneyData" p
@@ -76,9 +76,9 @@ async function main(): Promise<void> {
     UPDATE "PacMoneyData"
     SET
       "combinedCorporateRatio" = CASE
-        WHEN ("totalReceipts" + 0.5 * COALESCE("corporateIeSupportAmount", 0)) > 0
-        THEN LEAST(1.0, ("corporatePacAmount" + 0.5 * COALESCE("corporateIeSupportAmount", 0))
-                     / NULLIF("totalReceipts" + 0.5 * COALESCE("corporateIeSupportAmount", 0), 0))
+        WHEN ("totalReceipts" + COALESCE("corporateIeSupportAmount", 0)) > 0
+        THEN LEAST(1.0, ("corporatePacAmount" + COALESCE("corporateIeSupportAmount", 0))
+                     / NULLIF("totalReceipts" + COALESCE("corporateIeSupportAmount", 0), 0))
         ELSE NULL
       END,
       "updatedAt" = NOW()
