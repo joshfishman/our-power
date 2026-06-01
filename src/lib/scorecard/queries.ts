@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-use-before-define */
 // Server-side data fetching for the scorecard pages and API routes.
 // All functions are read-only and safe to call from public surface area.
 
@@ -185,9 +186,7 @@ export function computeTwoScoreAverage(pacScore: number | null, votingScore: num
  * unqualified name could be reclaimed by the current-methodology helper that
  * was previously suffixed `V171`.
  */
-export async function getLegacyPacScoresByLegislator(
-  legislatorIds: string[],
-): Promise<Map<string, number | null>> {
+export async function getLegacyPacScoresByLegislator(legislatorIds: string[]): Promise<Map<string, number | null>> {
   if (legislatorIds.length === 0) return new Map();
   // Most-recent PAC row per legislator. We use DISTINCT ON in raw SQL since
   // Prisma doesn't expose it directly — the per-row dataSource priority is
@@ -692,7 +691,7 @@ export async function getOutsideMoneyForLegislator(legislatorId: string, topLimi
 //   2. topDonors             — DIRECT + IE_SUPPORT + JFC_PASS_THROUGH per donor
 //   3. opposedBy             — IE_OPPOSE per donor (info-only)
 //   4. outsideMoney          — IE_SUPPORT + IE_OPPOSE_BENEFICIARY summary
-//   5. pacInfluence2022_2024 — cycle-scoped PAC total for the "Indiv vs PAC" tile
+//   5. pacInfluence20222024 — cycle-scoped PAC total for the "Indiv vs PAC" tile
 //   6. leadershipPacInflows  — different table (LeadershipPacInflow)
 //   7. individualMoney       — different table (LegislatorIndividualMoney)
 //   8. dimeProfile           — different table (LegislatorDimeProfile)
@@ -723,7 +722,7 @@ export interface LegislatorPacDetailRollup {
   topDonors: TopDonor[];
   opposedBy: TopDonor[];
   outsideMoney: OutsideMoneySummary;
-  pacInfluence2022_2024: number;
+  pacInfluence20222024: number;
   leadershipPacInflows: LeadershipPacInflows | null;
   individualMoney: IndividualMoney | null;
   dimeProfile: DimeProfile | null;
@@ -797,7 +796,7 @@ export async function getLegislatorPacDetailRollup(legislatorId: string): Promis
   let beneficiaryCountsAgainst = 0;
 
   // ─── Derive cycle-scoped 2022+2024 PAC influence (DIRECT + IE_SUPPORT) ──
-  let pacInfluence2022_2024 = 0;
+  let pacInfluence20222024 = 0;
 
   // ─── Per-(committee, kind) totals for topDonors / opposedBy / outsideMoney ──
   interface CommitteeKindSum {
@@ -886,9 +885,9 @@ export async function getLegislatorPacDetailRollup(legislatorId: string): Promis
       else countsAgainstTier1 += amt;
     }
 
-    // pacInfluence2022_2024: DIRECT + IE_SUPPORT only, cycles 2022 + 2024.
+    // pacInfluence20222024: DIRECT + IE_SUPPORT only, cycles 2022 + 2024.
     if ((r.cycleYear === 2022 || r.cycleYear === 2024) && (r.kind === 'DIRECT' || r.kind === 'IE_SUPPORT')) {
-      pacInfluence2022_2024 += amt;
+      pacInfluence20222024 += amt;
     }
   }
 
@@ -995,7 +994,7 @@ export async function getLegislatorPacDetailRollup(legislatorId: string): Promis
     topDonors,
     opposedBy,
     outsideMoney,
-    pacInfluence2022_2024,
+    pacInfluence20222024,
     leadershipPacInflows,
     individualMoney,
     dimeProfile,

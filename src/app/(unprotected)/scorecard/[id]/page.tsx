@@ -89,7 +89,7 @@ export default async function LegislatorScorecardPage(props: Props) {
   const opposedBy: TopDonor[] = rollup?.opposedBy ?? [];
   const leadershipPacInflows: LeadershipPacInflows | null = rollup?.leadershipPacInflows ?? null;
   const individualMoney: IndividualMoney | null = rollup?.individualMoney ?? null;
-  const pacInfluence2Cyc: number = rollup?.pacInfluence2022_2024 ?? 0;
+  const pacInfluence2Cyc: number = rollup?.pacInfluence20222024 ?? 0;
   const dimeProfile: DimeProfile | null = rollup?.dimeProfile ?? null;
   const outsideMoney: OutsideMoneySummary | null = rollup?.outsideMoney ?? null;
   // v1.8.6 — explicit jurisdiction split so the detail page can never disagree
