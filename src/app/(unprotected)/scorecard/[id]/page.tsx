@@ -59,15 +59,17 @@ export default async function LegislatorScorecardPage(props: Props) {
 
   const jurisdiction = legislator.jurisdiction as 'FEDERAL' | 'CA';
   const planks = await getPublicPlanks(jurisdiction);
-  // v1.7.1 two-score model:
+  // v1.9.1 two-score model:
   //   Voting Record = mean of per-plank alignment percentages (0-100)
-  //   PAC Score     = v1.7.1 computed from PacContribution per-class breakdown
-  //                   (CORPORATE + DARK_MONEY + FOREIGN_POLICY / total influence)
+  //   PAC Score     = computed from PacContribution per-class breakdown under
+  //                   three-tier outside-money weighting (Tier 1 full, Tier 2
+  //                   IE_SUPPORT half, Tier 3 IE_OPPOSE_BENEFICIARY zero)
   //   Avg           = simple mean of the two
-  // We compute the money trail in parallel; v1.7.1 PAC Score and per-class
-  // breakdown both come out of getLegislatorMoneyTrail.
-  // For CA legislators we don't have PacContribution data — fall back to the
-  // legacy v1.7 PAC score from PacMoneyData.
+  // PAC Score, per-class breakdown, top donors, opposed-by, outside money,
+  // leadership-PAC inflows, individual money, dime profile, and the 2022+2024
+  // PAC-influence total all come out of getLegislatorPacDetailRollup in a
+  // single round-trip. For CA legislators PacContribution data doesn't exist
+  // — fall back to the legacy PAC score from PacMoneyData.
   const votingScore = computePublishedTotal(legislator.scores);
   // v1.9.1 perf — for FEDERAL legislators all 8 PacContribution-backed views
   // collapse into ONE rollup query (5 round-trips down from 8, with the heavy
@@ -76,7 +78,7 @@ export default async function LegislatorScorecardPage(props: Props) {
   // views apply.
   const [rollup, legacyPacScore] = await Promise.all([
     jurisdiction === 'FEDERAL' ? getLegislatorPacDetailRollup(legislator.id) : Promise.resolve(null),
-    // CA only — the v1.7.1 PAC Score from PacContribution doesn't apply to
+    // CA only — the v1.9.1 PAC Score from PacContribution doesn't apply to
     // California (we don't have an FEC-equivalent contribution dataset). For
     // federal legislators we use rollup.moneyTrail.pacScore exclusively; for
     // CA we use the legacy PacMoneyData-derived score.
@@ -92,9 +94,9 @@ export default async function LegislatorScorecardPage(props: Props) {
   const outsideMoney: OutsideMoneySummary | null = rollup?.outsideMoney ?? null;
   // v1.8.6 — explicit jurisdiction split so the detail page can never disagree
   // with the index page:
-  //   FEDERAL → v1.7.1 PAC Score from moneyTrail (null when the v1.8.1 safety
+  //   FEDERAL → v1.9.1 PAC Score from moneyTrail (null when the v1.7.7 safety
   //             guard fires; renders as "Score pending / no data yet").
-  //   CA      → legacy PacMoneyData ratio (no V171 data exists yet for CA).
+  //   CA      → legacy PacMoneyData ratio (no PacContribution data for CA).
   // No silent federal→legacy fallback. Previously the detail page fell back
   // to legacyPacScore whenever moneyTrail.pacScore was null, which produced a
   // different PAC score than the index page (and a "no data" guard that
@@ -104,7 +106,7 @@ export default async function LegislatorScorecardPage(props: Props) {
   const chamberLabel =
     jurisdiction === 'FEDERAL' ? CHAMBER_LABEL_FEDERAL[legislator.chamber] : CHAMBER_LABEL_STATE[legislator.chamber];
 
-  // v1.7.1 — per-plank bill breakdown. Every bill that contributes to each
+  // v1.9.1 — per-plank bill breakdown. Every bill that contributes to each
   // plank's score, with the legislator's position (vote and/or cosponsorship).
   const billBreakdown = await getLegislatorBillBreakdown(
     legislator.id,

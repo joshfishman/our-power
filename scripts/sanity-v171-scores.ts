@@ -18,7 +18,7 @@ const prisma = new PrismaClient({ adapter });
 // the import.
 (globalThis as unknown as { prisma?: unknown }).prisma = prisma;
 
-import { getPacScoresByLegislatorV171, getLegislatorMoneyTrail } from '../src/lib/scorecard/queries';
+import { getPacScoresByLegislator, getLegislatorMoneyTrail } from '../src/lib/scorecard/queries';
 
 const MARQUEE = [
   { name: 'Scalise', spike: 51 },
@@ -50,7 +50,7 @@ async function main(): Promise<void> {
     rows.push({ leg, spike: m.spike });
   }
 
-  const scoreMap = await getPacScoresByLegislatorV171(rows.map((r) => r.leg.id));
+  const scoreMap = await getPacScoresByLegislator(rows.map((r) => r.leg.id));
 
   console.log('Marquee v1.7.1 sanity:');
   console.log('Name                         Live   Spike  Δ');

@@ -7,8 +7,8 @@ import {
   parseJurisdictionParam,
   computePublishedTotal,
   getScoreCalibration,
+  getLegacyPacScoresByLegislator,
   getPacScoresByLegislator,
-  getPacScoresByLegislatorV171,
   computeTwoScoreAverage,
 } from '@/lib/scorecard/queries';
 import { METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
@@ -72,24 +72,24 @@ export default async function ScorecardIndexPage(props: { searchParams: Promise<
 
   // v1.8.6 — explicit jurisdiction split, matched precisely on the detail
   // page so the index and detail can never show different PAC scores for the
-  // same legislator. Previously the index fell back from V171 to legacy
-  // PacMoneyData on null; the detail page didn't have that fallback for some
-  // null paths and had it for others. Now:
-  //   FEDERAL → v1.7.1 PAC Score from PacContribution exclusively. If the
-  //             v1.8.1 safety guard fires (no receipts on record + meaningful
+  // same legislator. Previously the index fell back from the
+  // PacContribution-based path to legacy PacMoneyData on null; the detail page
+  // didn't have that fallback for some null paths and had it for others. Now:
+  //   FEDERAL → v1.9.1 PAC Score from PacContribution exclusively. If the
+  //             v1.7.7 safety guard fires (no receipts on record + meaningful
   //             counts-against), we return null and render "Score pending"
   //             rather than silently falling back to a stale legacy ratio.
   //   CA      → legacy PacMoneyData ratio (no PacContribution data for CA).
   const federalIds = legislators.filter((l) => l.jurisdiction === 'FEDERAL').map((l) => l.id);
   const caIds = legislators.filter((l) => l.jurisdiction === 'CA').map((l) => l.id);
-  const [v171ScoresById, legacyScoresById] = await Promise.all([
-    federalIds.length > 0 ? getPacScoresByLegislatorV171(federalIds) : Promise.resolve(new Map()),
-    caIds.length > 0 ? getPacScoresByLegislator(caIds) : Promise.resolve(new Map()),
+  const [federalScoresById, legacyScoresById] = await Promise.all([
+    federalIds.length > 0 ? getPacScoresByLegislator(federalIds) : Promise.resolve(new Map()),
+    caIds.length > 0 ? getLegacyPacScoresByLegislator(caIds) : Promise.resolve(new Map()),
   ]);
   const pacScoresById = new Map<string, number | null>();
   for (const leg of legislators) {
     if (leg.jurisdiction === 'FEDERAL') {
-      pacScoresById.set(leg.id, v171ScoresById.get(leg.id) ?? null);
+      pacScoresById.set(leg.id, federalScoresById.get(leg.id) ?? null);
     } else {
       pacScoresById.set(leg.id, legacyScoresById.get(leg.id) ?? null);
     }

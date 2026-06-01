@@ -1,24 +1,18 @@
-// Phase 4 scoring engine — methodology v1.2.
+// Phase 4 scoring engine — methodology v1.9.1.
 //
-// Simple +1 / -1 point model:
-//   ACTED_FOR     → +1
-//   ACTED_AGAINST → -1
-//   NO_RECORD     →  0 (no row exists, no contribution)
-//
-// Score per plank = sum of marker points on that plank (can be negative).
-// Total score = sum across all planks (can be negative).
-//
-// This replaces the v1.0/v1.1 0-5 rubric. Reasons:
-//   1. Each action has a clean, transparent weight — no rubric ambiguity.
-//   2. Scores aren't bounded by an artificial denominator. A legislator
-//      who voted yes on 12 things and against 2 reads as +10, not 4/25
-//      (which collapsed the activity).
-//   3. Compute is O(n) per legislator — fits in a single DB pass with
-//      no risk of timeout from 3,000+ rubric upserts.
+// Per-marker weights (set by weightForAchievement below): a signed point
+// model that scales VOTE evidence by ±1, COSPONSOR evidence by ±1/±2/±3
+// (sponsor tier), and PAC evidence by the continuous v1.4 gradient in
+// pacScoreFromRatio. v1.9.1 adds three-tier outside-money weighting in the
+// PAC Score path (see src/lib/scorecard/queries.ts) — IE_SUPPORT counts at
+// half weight; IE_OPPOSE_BENEFICIARY is transparency-only at zero weight.
+// The per-plank score is the sum of marker weights on that plank (signed);
+// per-plank Voting Score is the bill-level alignment percent computed
+// upstream in compute-scores.ts and persisted as RepresentativeScore.
 //
 // Coverage indicator (X measured of Y trackable) still ships on the
-// page, so readers can distinguish "+0 with low coverage" from
-// "+0 with full coverage" — the same evidence transparency goal as the
+// page so readers can distinguish "+0 with low coverage" from "+0 with
+// full coverage" — the same evidence-transparency goal as the
 // three-state rendering.
 
 export const METHODOLOGY_VERSION = 'v1.9.1';
@@ -62,8 +56,10 @@ export interface AchievementForScoring {
 }
 
 /**
- * Methodology v1.3 weight table — see docs/scorecard-methodology.md
- * for the public-facing rationale.
+ * v1.9.1 weight table (unchanged from v1.3/v1.4 except for the PAC path,
+ * which now reads continuous achievementScore values populated by the
+ * three-tier outside-money weighting downstream in compute-scores). See
+ * docs/scorecard-methodology.md for the public-facing rationale.
  *
  *   COSPONSOR Author / Sponsor        → +3
  *   COSPONSOR Principal / Coauthor    → +2
@@ -74,16 +70,20 @@ export interface AchievementForScoring {
  *                                            recorded non-yes counts the
  *                                            same: the bill needed your
  *                                            yes to pass)
- *   PAC FILING ACTED_FOR  (under 5%)  → +1
- *   PAC FILING ACTED_AGAINST          → -1
+ *   PAC FILING (FEC_FILING / CAL_ACCESS_FILING) → continuous
+ *                                            achievementScore from
+ *                                            pacScoreFromRatio (v1.4
+ *                                            gradient, v1.9.1 weights
+ *                                            applied to its input ratio)
  *   NO_RECORD or absent row           →  0
  */
 export function weightForAchievement(a: AchievementForScoring): number {
-  // v1.4: PAC marker uses continuous achievementScore when present
+  // PAC marker uses continuous achievementScore when present (v1.4 gradient
+  // input today carries v1.9.1 three-tier outside-money weighting).
   if ((a.evidenceType === 'FEC_FILING' || a.evidenceType === 'CAL_ACCESS_FILING') && a.achievementScore != null) {
     return a.achievementScore;
   }
-  // Existing v1.3 weight table follows (unchanged)
+  // Existing weight table follows (unchanged since v1.3).
   if (a.actionTaken !== 'ACTED_FOR' && a.actionTaken !== 'ACTED_AGAINST') return 0;
   const sign = a.actionTaken === 'ACTED_FOR' ? 1 : -1;
   if (a.evidenceType === 'COSPONSOR') {
@@ -95,19 +95,21 @@ export function weightForAchievement(a: AchievementForScoring): number {
 }
 
 /**
- * Methodology v1.4 continuous PAC gradient. Maps a combined corporate-money
- * ratio (direct + IE in numerator, total receipts + same IE in denominator)
- * to a marker score in [-3, +2].
+ * Continuous PAC gradient (introduced v1.4, current under v1.9.1). Maps the
+ * combined corporate-money ratio (numerator: counts-against under the v1.9.1
+ * three-tier weighting — Tier 1 full, Tier 2 IE_SUPPORT half, Tier 3 zero;
+ * denominator: principal-committee receipts + half-weighted IE_SUPPORT) to
+ * a marker score in [-3, +2].
  *
  *   ratio 0.00 → +2  (real zero — reward maximally)
- *   ratio 0.05 → +1  (the v1.3 threshold — partial credit)
+ *   ratio 0.05 → +1  (the legacy v1.3 threshold — partial credit)
  *   ratio 0.15 → 0   (neutral)
  *   ratio 0.35 → -1
  *   ratio 0.65 → -2
  *   ratio 0.85 → -3  (floor — corporate dominance)
  *
  * Linear interpolation between anchors. Clamped at endpoints. The reward for
- * being at "real zero" (0%) is bigger than the cliff at the v1.3 threshold,
+ * being at "real zero" (0%) is bigger than the cliff at the legacy threshold,
  * so legislators who genuinely refuse corporate money get more credit than
  * those who just barely qualify.
  */
