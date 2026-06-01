@@ -180,9 +180,9 @@ export const FEDERAL_PLANKS: SeedPlank[] = [
             billTitle: 'CHIPS and Science Act',
             actionType: 'VOTE_YES',
             legiscanBillId: 1518388,
-            isProvisional: false,
+            isProvisional: true,
             notes:
-              'Signed into law 2022-08-09. H.R.4346 began as the Legislative Branch Appropriations Act vehicle and was substituted via Senate amendment (SA 5135) to become CHIPS and Science. Final passage House 243-187 on 2022-07-28 (rc 1222482); Senate cloture 64-32 on 2022-07-27. https://legiscan.com/US/bill/HB4346/2021',
+              'TEMPORARILY ROLLED BACK 2026-05-31: v1.8.15 sync wrote only ~12% of expected Senate roll-call coverage because LegiScan 117th-session people IDs differ from 119th and the sync resolver only looks up by stored legiscanPeopleId. Will be re-activated once the bioguide-fallback patch lands.',
           },
           {
             congressNumber: 117,
@@ -191,9 +191,9 @@ export const FEDERAL_PLANKS: SeedPlank[] = [
             billTitle: 'Infrastructure Investment and Jobs Act',
             actionType: 'VOTE_YES',
             legiscanBillId: 1514715,
-            isProvisional: false,
+            isProvisional: true,
             notes:
-              'Signed into law 2021-11-15. Bipartisan Infrastructure Law. Senate passed 69-30 on 2021-08-10 (rc 1105920); House agreed to Senate amendment 228-206 on 2021-11-05 (rc 1115607). https://legiscan.com/US/bill/HB3684/2021',
+              'TEMPORARILY ROLLED BACK 2026-05-31: v1.8.15 sync wrote only ~12% of expected Senate roll-call coverage because LegiScan 117th-session people IDs differ from 119th and the sync resolver only looks up by stored legiscanPeopleId. Will be re-activated once the bioguide-fallback patch lands.',
           },
         ],
       },
@@ -511,9 +511,9 @@ export const FEDERAL_PLANKS: SeedPlank[] = [
             billTitle: 'Honoring our PACT Act',
             actionType: 'VOTE_YES',
             legiscanBillId: 1537975,
-            isProvisional: false,
+            isProvisional: true,
             notes:
-              'Signed into law 2022-08-10. Sergeant First Class Heath Robinson Honoring our Promise to Address Comprehensive Toxics Act. House passed 342-88 on 2022-07-13 (rc 1222095); Senate agreed to House amendment 86-11 on 2022-08-02 (rc 1222937). https://legiscan.com/US/bill/SB3373/2021',
+              'TEMPORARILY ROLLED BACK 2026-05-31: v1.8.15 sync wrote only ~12% of expected Senate roll-call coverage because LegiScan 117th-session people IDs differ from 119th and the sync resolver only looks up by stored legiscanPeopleId. Will be re-activated once the bioguide-fallback patch lands.',
           },
         ],
       },
