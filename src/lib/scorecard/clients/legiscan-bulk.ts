@@ -73,6 +73,27 @@ function extractBill(parsed: unknown): LegiscanBill | null {
 }
 
 /**
+ * Detects a LegiScan person JSON. Accepts either
+ * `{ status, person: {...} }` or a bare `{ people_id, name, ... }`.
+ *
+ * Returns the inner `{ people_id, bioguide_id }` slice we use to bridge
+ * cross-session people_id values back to a stable bioguide identifier.
+ * CA people files don't carry bioguide_id — that field will be missing
+ * and we surface `undefined` so the caller can skip cleanly.
+ */
+function extractPerson(parsed: unknown): { peopleId: number; bioguideId: string | undefined } | null {
+  if (!parsed || typeof parsed !== 'object') return null;
+  const obj = parsed as Record<string, unknown>;
+  const inner = (obj.person as Record<string, unknown> | undefined) ?? obj;
+  if (typeof inner.people_id !== 'number') return null;
+  const bg = inner.bioguide_id;
+  return {
+    peopleId: inner.people_id,
+    bioguideId: typeof bg === 'string' && bg.length > 0 ? bg : undefined,
+  };
+}
+
+/**
  * Detects a LegiScan roll-call detail JSON. Accepts either
  * `{ status, roll_call: {...} }` or a bare `{ roll_call_id, votes, ... }`.
  */
@@ -133,6 +154,18 @@ export class LegiscanBulkClient implements LegislativeDataSource {
 
   private rollCallPathsById = new Map<number, string>();
 
+  /**
+   * Bridge from LegiScan people_id → bioguide_id, populated from
+   * `people/*.json` files in the dataset. LegiScan assigns DIFFERENT
+   * people_id values per session (a 117th-Congress people_id is not
+   * the same as a 119th-Congress people_id for the same human), so
+   * the sync engine uses this map as a cross-session fallback when
+   * the direct `Legislator.legiscanPeopleId` lookup misses.
+   *
+   * Federal-only: CA `people/*.json` files don't carry bioguide_id.
+   */
+  private bioguideByPeopleId = new Map<number, string>();
+
   // Per-process cache of parsed-and-normalized bills.
   private parsedBillCache = new Map<number, NormalizedBill>();
 
@@ -153,7 +186,20 @@ export class LegiscanBulkClient implements LegislativeDataSource {
     this.billsById.clear();
     this.billsByNumber.clear();
     this.rollCallPathsById.clear();
+    this.bioguideByPeopleId.clear();
     this.parsedBillCache.clear();
+  }
+
+  /**
+   * Cross-session people_id → bioguide_id lookup. Returns undefined if
+   * the dataset has no person entry for this people_id, or if the
+   * person file is CA (no bioguide_id field).
+   *
+   * Triggers a one-time directory walk if the index isn't built yet.
+   */
+  async getBioguideByPeopleId(peopleId: number): Promise<string | undefined> {
+    await this.ensureIndexed();
+    return this.bioguideByPeopleId.get(peopleId);
   }
 
   private async ensureIndexed(): Promise<void> {
@@ -175,6 +221,7 @@ export class LegiscanBulkClient implements LegislativeDataSource {
 
     let bills = 0;
     let rollCalls = 0;
+    let people = 0;
     let scanned = 0;
 
     const walk = async (dir: string): Promise<void> => {
@@ -221,6 +268,18 @@ export class LegiscanBulkClient implements LegislativeDataSource {
         if (rcRaw) {
           this.rollCallPathsById.set(rcRaw.roll_call_id, full);
           rollCalls += 1;
+          continue;
+        }
+        const personRaw = extractPerson(parsed);
+        if (personRaw) {
+          // CA people files don't carry bioguide_id — skip the map
+          // entry but still count the file so the indexing log is
+          // accurate. (We only need the federal entries for the
+          // cross-session fallback.)
+          if (personRaw.bioguideId) {
+            this.bioguideByPeopleId.set(personRaw.peopleId, personRaw.bioguideId);
+          }
+          people += 1;
         }
       }
     };
@@ -232,6 +291,8 @@ export class LegiscanBulkClient implements LegislativeDataSource {
         datasetDir: this.datasetDir,
         bills,
         rollCalls,
+        people,
+        bioguideMapped: this.bioguideByPeopleId.size,
         filesScanned: scanned,
         durationMs: Date.now() - start,
       });
