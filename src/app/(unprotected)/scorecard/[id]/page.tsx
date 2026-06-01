@@ -741,6 +741,7 @@ function MoneyTrail({
     byClass,
     ieOpposeTotal,
     jfcPassThroughTotal,
+    leadershipPassThroughTotal,
     beneficiaryCountsAgainst,
     beneficiaryPacScore,
   } = moneyTrail;
@@ -882,6 +883,13 @@ function MoneyTrail({
             <span className="font-semibold text-[#2C4A5E]">via JFC:</span> $
             {Math.round(jfcPassThroughTotal).toLocaleString()} attributed to corporate PACs routed through Joint
             Fundraising Committees (apportioned by JFC outbound share).
+          </p>
+        )}
+        {leadershipPassThroughTotal > 0 && (
+          <p className="mt-2 font-mono text-[11px] text-[#2C4A5E]/80">
+            <span className="font-semibold text-[#2C4A5E]">via leadership PAC:</span> $
+            {Math.round(leadershipPassThroughTotal).toLocaleString()} attributed to corporate PACs routed through
+            colleague leadership PACs (apportioned by leadership-PAC outbound share). v1.9.0.
           </p>
         )}
         {negativeClassRows.length > 0 && (

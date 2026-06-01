@@ -1056,6 +1056,7 @@ enum ContributionKind {
   DIRECT // 24K — direct PAC contribution to candidate principal committee
   JFC_FEED // 22Y — PAC-to-PAC transfer feeding the candidate's JFC (reserved, unused)
   JFC_PASS_THROUGH // 22Y attributed to legislator — corp PAC → JFC → candidate principal, proportionally apportioned to the JFC's outbound recipients
+  LEADERSHIP_PASS_THROUGH // v1.9.0: corp PAC → LEADERSHIP PAC → candidate principal, proportionally apportioned to the leadership PAC's outbound recipients. The leadership PAC is the conduit; the original CORP class of the money is preserved and counts against the recipient just like DIRECT corp money.
   IE_SUPPORT // 24E — Super PAC IE supporting THIS candidate
   IE_OPPOSE // 24A — Super PAC IE OPPOSING this candidate (info only)
   IE_OPPOSE_BENEFICIARY // v1.7.4: derived attribution — IE_OPPOSE against a defeated opponent, credited to the eventual winner. Used only by the "Beneficiary PAC Score" view; does NOT affect the per-target PAC Score.
@@ -1070,9 +1071,12 @@ model PacContribution {
   cycleYear         Int
   kind              ContributionKind
   amount            Decimal            @db.Decimal(14, 2)
-  // For JFC_PASS_THROUGH rows: comma-separated list of JFC committee IDs that
-  // routed money from this corp PAC to this candidate (a corp PAC may have
-  // contributed to multiple JFCs that each apportioned to the candidate).
+  // For JFC_PASS_THROUGH rows: list of JFC committee IDs that routed money
+  // from this corp PAC to this candidate (a corp PAC may have contributed to
+  // multiple JFCs that each apportioned to the candidate).
+  // For LEADERSHIP_PASS_THROUGH rows: list of LEADERSHIP PAC committee IDs
+  // (same role — the conduit committees that received corp money and then
+  // distributed it to candidate principals). v1.9.0.
   // For DIRECT / IE_SUPPORT / IE_OPPOSE rows: null. Informational only — the
   // unique key still aggregates per (leg, donor, cycle, kind) so the score
   // queries don't double-count.

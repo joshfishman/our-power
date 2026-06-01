@@ -273,7 +273,7 @@ export const OUTSIDE_MONEY_WEIGHTS = {
 
 export interface PacMoneyTrail {
   countsAgainst: number; // $ from CORPORATE+DARK_MONEY+FOREIGN_POLICY (counted)
-  totalInfluence: number; // $ from all classes via DIRECT or IE_SUPPORT or JFC_PASS_THROUGH
+  totalInfluence: number; // $ from all classes via DIRECT or IE_SUPPORT or JFC_PASS_THROUGH or LEADERSHIP_PASS_THROUGH
   totalReceipts: number; // principal-committee 4-cycle receipts (the denominator base)
   denominator: number; // totalReceipts + IE_SUPPORT — the score denominator
   pacScore: number | null; // (1 − counts_against / denominator) × 100
@@ -281,6 +281,7 @@ export interface PacMoneyTrail {
   ieOpposeTotal: number; // info only — Super PAC IE against this leg
   ieSupportTotal: number; // IE_SUPPORT subtotal (helpful for the page UI)
   jfcPassThroughTotal: number; // $ apportioned via JFCs (any class) — for the "via JFC" subline
+  leadershipPassThroughTotal: number; // v1.9.0: $ apportioned via leadership PACs (any class) — for the "via leadership PAC" subline
   // v1.7.4 beneficiary attribution: IE against a defeated opponent counts
   // here. counts_against_beneficiary = counts_against + benefiaryCountsAgainst
   // (only counted classes). beneficiaryPacScore is the alternative scoring
@@ -310,7 +311,7 @@ export async function getPacScoresByLegislatorV171(legislatorIds: string[]): Pro
       pcontrib."legislatorId" AS "legislatorId",
       COALESCE(SUM(CASE
         WHEN pc.class IN ('CORPORATE', 'DARK_MONEY', 'FOREIGN_POLICY')
-         AND pcontrib.kind IN ('DIRECT', 'JFC_PASS_THROUGH')
+         AND pcontrib.kind IN ('DIRECT', 'JFC_PASS_THROUGH', 'LEADERSHIP_PASS_THROUGH')
         THEN pcontrib.amount::numeric
         ELSE 0
       END), 0)::text AS "countsAgainstTier1",
@@ -395,6 +396,7 @@ export async function getLegislatorMoneyTrail(legislatorId: string): Promise<Pac
   let ieOpposeTotal = 0;
   let ieSupportTotal = 0;
   let jfcPassThroughTotal = 0;
+  let leadershipPassThroughTotal = 0;
   let beneficiaryCountsAgainst = 0;
   for (const r of rows) {
     const amt = Number(r.amount);
@@ -413,7 +415,8 @@ export async function getLegislatorMoneyTrail(legislatorId: string): Promise<Pac
     }
     if (r.kind === 'IE_SUPPORT') ieSupportTotal += amt;
     if (r.kind === 'JFC_PASS_THROUGH') jfcPassThroughTotal += amt;
-    // Bucket DIRECT + IE_SUPPORT + JFC_PASS_THROUGH by class for the breakdown display.
+    if (r.kind === 'LEADERSHIP_PASS_THROUGH') leadershipPassThroughTotal += amt;
+    // Bucket DIRECT + IE_SUPPORT + JFC_PASS_THROUGH + LEADERSHIP_PASS_THROUGH by class for the breakdown display.
     byClass[r.class] = (byClass[r.class] ?? 0) + amt;
     totalInfluence += amt;
     if ((COUNTS_AGAINST_CLASSES as readonly string[]).includes(r.class)) {
@@ -460,6 +463,7 @@ export async function getLegislatorMoneyTrail(legislatorId: string): Promise<Pac
     ieOpposeTotal,
     ieSupportTotal,
     jfcPassThroughTotal,
+    leadershipPassThroughTotal,
     beneficiaryCountsAgainst,
     beneficiaryPacScore,
   };
@@ -500,7 +504,7 @@ export interface TopDonor {
   committeeId: string;
   name: string;
   class: string;
-  total: number; // DIRECT + IE_SUPPORT + JFC_PASS_THROUGH, summed across cycles
+  total: number; // DIRECT + IE_SUPPORT + JFC_PASS_THROUGH + LEADERSHIP_PASS_THROUGH, summed across cycles
   ieOppose: number; // IE_OPPOSE same donor (often 0)
 }
 
@@ -512,7 +516,7 @@ export async function getTopDonorsForLegislator(legislatorId: string, limit = 15
       pc."committeeId" AS "committeeId",
       pc.name AS name,
       pc.class::text AS class,
-      COALESCE(SUM(CASE WHEN pcontrib.kind IN ('DIRECT', 'IE_SUPPORT', 'JFC_PASS_THROUGH')
+      COALESCE(SUM(CASE WHEN pcontrib.kind IN ('DIRECT', 'IE_SUPPORT', 'JFC_PASS_THROUGH', 'LEADERSHIP_PASS_THROUGH')
                         THEN pcontrib.amount::numeric ELSE 0 END), 0)::text AS total,
       COALESCE(SUM(CASE WHEN pcontrib.kind = 'IE_OPPOSE'
                         THEN pcontrib.amount::numeric ELSE 0 END), 0)::text AS "ieOppose"
@@ -520,7 +524,7 @@ export async function getTopDonorsForLegislator(legislatorId: string, limit = 15
     JOIN "PacClassification" pc ON pc."committeeId" = pcontrib."donorCommitteeId"
     WHERE pcontrib."legislatorId" = ${legislatorId}
     GROUP BY pc."committeeId", pc.name, pc.class
-    HAVING COALESCE(SUM(CASE WHEN pcontrib.kind IN ('DIRECT', 'IE_SUPPORT', 'JFC_PASS_THROUGH')
+    HAVING COALESCE(SUM(CASE WHEN pcontrib.kind IN ('DIRECT', 'IE_SUPPORT', 'JFC_PASS_THROUGH', 'LEADERSHIP_PASS_THROUGH')
                              THEN pcontrib.amount::numeric ELSE 0 END), 0) > 0
     ORDER BY total DESC
     LIMIT ${limit}
