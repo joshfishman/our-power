@@ -674,6 +674,324 @@ export async function getOutsideMoneyForLegislator(legislatorId: string, topLimi
   return { ieSupportTotal, ieOpposeBeneficiaryTotal, byClass, topSpenders };
 }
 
+// ─── v1.9.1 Detail-page rollup ──────────────────────────────────────────────
+//
+// The legislator detail page (`/scorecard/[id]`) needs eight related views of
+// the same legislator's money trail:
+//   1. moneyTrail            — PAC Score (counts-against / denom), per-class breakdown
+//   2. topDonors             — DIRECT + IE_SUPPORT + JFC_PASS_THROUGH per donor
+//   3. opposedBy             — IE_OPPOSE per donor (info-only)
+//   4. outsideMoney          — IE_SUPPORT + IE_OPPOSE_BENEFICIARY summary
+//   5. pacInfluence2022_2024 — cycle-scoped PAC total for the "Indiv vs PAC" tile
+//   6. leadershipPacInflows  — different table (LeadershipPacInflow)
+//   7. individualMoney       — different table (LegislatorIndividualMoney)
+//   8. dimeProfile           — different table (LegislatorDimeProfile)
+//
+// Pre-v1.9.1 the page fired all eight as separate Promise.all queries. Views
+// 1-5 are all PacContribution scans with overlapping WHERE clauses, so we'd hit
+// the same bitmap-heap-scan five times — for a marquee senator (Schumer,
+// Scalise, Warnock) with 60k+ contribution rows, that meant ~7-8s TTFB.
+//
+// This rollup collapses views 1-5 into ONE PacContribution scan that pulls
+// (class, kind, cycleYear, committeeId, name, amount) pre-aggregated by those
+// keys, then derives every per-view shape in JS. Views 6-8 hit unrelated
+// tables and run in parallel with the rollup query and the PacMoneyData
+// receipts query (which moneyTrail also needs).
+//
+// Total round-trips for `/scorecard/[id]`: 8 → 5 (1 unified PacContribution
+// scan, 1 PacMoneyData receipts sum, 3 unrelated tables). The PacContribution
+// scan dominates wall-clock so the practical TTFB improvement is closer to
+// 6-7s for marquee senators.
+//
+// Math is identical to the per-view helpers — this is a pure refactor. The
+// per-view helpers (getLegislatorMoneyTrail, getTopDonorsForLegislator, etc.)
+// remain exported so the index page, sanity scripts, and API routes can call
+// just the slice they need without paying for the full rollup.
+
+export interface LegislatorPacDetailRollup {
+  moneyTrail: PacMoneyTrail;
+  topDonors: TopDonor[];
+  opposedBy: TopDonor[];
+  outsideMoney: OutsideMoneySummary;
+  pacInfluence2022_2024: number;
+  leadershipPacInflows: LeadershipPacInflows | null;
+  individualMoney: IndividualMoney | null;
+  dimeProfile: DimeProfile | null;
+}
+
+/**
+ * v1.9.1 — Single-pass rollup of every money-trail view the detail page
+ * needs for one legislator. Replaces 8 sequential Promise.all queries with
+ * 5 round-trips (1 unified PacContribution scan + 1 PacMoneyData receipts
+ * sum + 3 unrelated-table fetches in parallel). Math is byte-identical to
+ * the per-view helpers — pure refactor for TTFB.
+ *
+ * For non-FEDERAL jurisdictions (CA) this is overkill since none of the
+ * PacContribution-backed views apply. The detail page should keep using
+ * the per-view helpers for CA. This rollup is FEDERAL-only by design.
+ */
+export async function getLegislatorPacDetailRollup(legislatorId: string): Promise<LegislatorPacDetailRollup> {
+  // ONE pre-aggregated PacContribution scan keyed on every dimension that any
+  // downstream view needs. We aggregate in SQL (SUM grouped) so the row count
+  // returned to Node is small even for senators with 60k+ raw contribution
+  // rows; downstream per-view aggregation is then pure JS.
+  const contribAggPromise = prisma.$queryRaw<
+    Array<{
+      class: string;
+      kind: string;
+      cycleYear: number;
+      committeeId: string;
+      name: string;
+      amount: string;
+    }>
+  >`
+    SELECT
+      pc.class::text AS class,
+      pcontrib.kind::text AS kind,
+      pcontrib."cycleYear" AS "cycleYear",
+      pc."committeeId" AS "committeeId",
+      pc.name AS name,
+      SUM(pcontrib.amount::numeric)::text AS amount
+    FROM "PacContribution" pcontrib
+    JOIN "PacClassification" pc ON pc."committeeId" = pcontrib."donorCommitteeId"
+    WHERE pcontrib."legislatorId" = ${legislatorId}
+    GROUP BY pc.class, pcontrib.kind, pcontrib."cycleYear", pc."committeeId", pc.name
+  `;
+
+  // PacMoneyData receipts sum — denominator base for the PAC Score. Run in
+  // parallel with the contribution scan and the unrelated-table fetches.
+  const receiptsPromise = prisma.$queryRaw<Array<{ receipts: string }>>`
+    SELECT COALESCE(SUM("totalReceipts"::numeric), 0)::text AS receipts
+    FROM "PacMoneyData"
+    WHERE "legislatorId" = ${legislatorId}
+  `;
+
+  const [contribAgg, receiptsRows, leadershipPacInflows, individualMoney, dimeProfile] = await Promise.all([
+    contribAggPromise,
+    receiptsPromise,
+    getLegislatorLeadershipPacInflows(legislatorId),
+    getLegislatorIndividualMoney(legislatorId),
+    getLegislatorDimeProfile(legislatorId),
+  ]);
+
+  const totalReceipts = receiptsRows.length > 0 ? Number(receiptsRows[0].receipts) || 0 : 0;
+
+  // ─── Derive moneyTrail (mirrors getLegislatorMoneyTrail) ────────────────
+  const byClass: Record<string, number> = {};
+  let countsAgainstTier1 = 0;
+  let countsAgainstIeSupport = 0;
+  let totalInfluence = 0;
+  let ieOpposeTotal = 0;
+  let ieSupportTotal = 0;
+  let jfcPassThroughTotal = 0;
+  let beneficiaryCountsAgainst = 0;
+
+  // ─── Derive cycle-scoped 2022+2024 PAC influence (DIRECT + IE_SUPPORT) ──
+  let pacInfluence2022_2024 = 0;
+
+  // ─── Per-(committee, kind) totals for topDonors / opposedBy / outsideMoney ──
+  interface CommitteeKindSum {
+    committeeId: string;
+    name: string;
+    class: string;
+    direct: number;
+    ieSupport: number;
+    jfcPassThrough: number;
+    ieOppose: number;
+    ieOpposeBeneficiary: number;
+  }
+  const byCommittee = new Map<string, CommitteeKindSum>();
+
+  // ─── Per-class outside-money aggregation ────────────────────────────────
+  interface OutsideClassSum {
+    class: string;
+    ieSupport: number;
+    ieOpposeBeneficiary: number;
+  }
+  const outsideByClass = new Map<string, OutsideClassSum>();
+
+  for (const r of contribAgg) {
+    const amt = Number(r.amount);
+    if (!Number.isFinite(amt)) continue;
+
+    // Track per-committee per-kind totals for topDonors / opposedBy / outsideMoney.
+    let cd = byCommittee.get(r.committeeId);
+    if (!cd) {
+      cd = {
+        committeeId: r.committeeId,
+        name: r.name,
+        class: r.class,
+        direct: 0,
+        ieSupport: 0,
+        jfcPassThrough: 0,
+        ieOppose: 0,
+        ieOpposeBeneficiary: 0,
+      };
+      byCommittee.set(r.committeeId, cd);
+    }
+
+    if (r.kind === 'IE_OPPOSE') {
+      ieOpposeTotal += amt;
+      cd.ieOppose += amt;
+      continue;
+    }
+    if (r.kind === 'IE_OPPOSE_BENEFICIARY') {
+      // v1.9.1 — Tier 3, transparency-only.
+      if ((COUNTS_AGAINST_CLASSES as readonly string[]).includes(r.class)) {
+        beneficiaryCountsAgainst += amt;
+      }
+      cd.ieOpposeBeneficiary += amt;
+      // Also add to outside-money per-class.
+      let osc = outsideByClass.get(r.class);
+      if (!osc) {
+        osc = { class: r.class, ieSupport: 0, ieOpposeBeneficiary: 0 };
+        outsideByClass.set(r.class, osc);
+      }
+      osc.ieOpposeBeneficiary += amt;
+      continue;
+    }
+
+    // DIRECT / IE_SUPPORT / JFC_PASS_THROUGH live here.
+    if (r.kind === 'IE_SUPPORT') {
+      ieSupportTotal += amt;
+      cd.ieSupport += amt;
+      // Outside-money per-class.
+      let osc = outsideByClass.get(r.class);
+      if (!osc) {
+        osc = { class: r.class, ieSupport: 0, ieOpposeBeneficiary: 0 };
+        outsideByClass.set(r.class, osc);
+      }
+      osc.ieSupport += amt;
+    } else if (r.kind === 'JFC_PASS_THROUGH') {
+      jfcPassThroughTotal += amt;
+      cd.jfcPassThrough += amt;
+    } else if (r.kind === 'DIRECT') {
+      cd.direct += amt;
+    }
+
+    byClass[r.class] = (byClass[r.class] ?? 0) + amt;
+    totalInfluence += amt;
+    if ((COUNTS_AGAINST_CLASSES as readonly string[]).includes(r.class)) {
+      if (r.kind === 'IE_SUPPORT') countsAgainstIeSupport += amt;
+      else countsAgainstTier1 += amt;
+    }
+
+    // pacInfluence2022_2024: DIRECT + IE_SUPPORT only, cycles 2022 + 2024.
+    if ((r.cycleYear === 2022 || r.cycleYear === 2024) && (r.kind === 'DIRECT' || r.kind === 'IE_SUPPORT')) {
+      pacInfluence2022_2024 += amt;
+    }
+  }
+
+  // v1.9.1 weighting (mirrors getLegislatorMoneyTrail).
+  const countsAgainst = countsAgainstTier1 + countsAgainstIeSupport * OUTSIDE_MONEY_WEIGHTS.IE_SUPPORT;
+  const denominator = totalReceipts + ieSupportTotal * OUTSIDE_MONEY_WEIGHTS.IE_SUPPORT;
+  const noReceiptsData = totalReceipts <= 0 && countsAgainst > 0;
+  const pacScore =
+    !noReceiptsData && denominator > 0
+      ? Math.max(0, Math.min(100, Math.round((1 - countsAgainst / denominator) * 100)))
+      : null;
+  const beneficiaryDenominator = denominator + beneficiaryCountsAgainst;
+  const beneficiaryPacScore =
+    !noReceiptsData && beneficiaryDenominator > 0
+      ? Math.max(
+          0,
+          Math.min(100, Math.round((1 - (countsAgainst + beneficiaryCountsAgainst) / beneficiaryDenominator) * 100)),
+        )
+      : null;
+
+  const moneyTrail: PacMoneyTrail = {
+    countsAgainst,
+    totalInfluence,
+    totalReceipts,
+    denominator,
+    pacScore,
+    byClass,
+    ieOpposeTotal,
+    ieSupportTotal,
+    jfcPassThroughTotal,
+    beneficiaryCountsAgainst,
+    beneficiaryPacScore,
+  };
+
+  // ─── topDonors: total = DIRECT + IE_SUPPORT + JFC_PASS_THROUGH, top 15 ──
+  // Match getTopDonorsForLegislator: filter to committees with total > 0,
+  // sort by total desc, slice to 15.
+  const topDonors: TopDonor[] = [...byCommittee.values()]
+    .map((cd) => ({
+      committeeId: cd.committeeId,
+      name: cd.name,
+      class: cd.class,
+      total: cd.direct + cd.ieSupport + cd.jfcPassThrough,
+      ieOppose: cd.ieOppose,
+    }))
+    .filter((d) => d.total > 0)
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 15);
+
+  // ─── opposedBy: IE_OPPOSE > 0, sort by IE_OPPOSE desc, slice to 10 ──────
+  // Matches getOpposedByPacs: total field is 0 there too.
+  const opposedBy: TopDonor[] = [...byCommittee.values()]
+    .filter((cd) => cd.ieOppose > 0)
+    .sort((a, b) => b.ieOppose - a.ieOppose)
+    .slice(0, 10)
+    .map((cd) => ({
+      committeeId: cd.committeeId,
+      name: cd.name,
+      class: cd.class,
+      total: 0,
+      ieOppose: cd.ieOppose,
+    }));
+
+  // ─── outsideMoney: per-class + top 15 spenders by combined outside ─────
+  // Matches getOutsideMoneyForLegislator: byClass sorted by total desc; top
+  // spenders ranked by combined IE_SUPPORT + IE_OPPOSE_BENEFICIARY.
+  let osIeSupportTotal = 0;
+  let osIeOpposeBeneficiaryTotal = 0;
+  const outsideByClassRows: OutsideMoneyClassRow[] = [...outsideByClass.values()]
+    .map((osc) => {
+      osIeSupportTotal += osc.ieSupport;
+      osIeOpposeBeneficiaryTotal += osc.ieOpposeBeneficiary;
+      return {
+        class: osc.class,
+        ieSupport: osc.ieSupport,
+        ieOpposeBeneficiary: osc.ieOpposeBeneficiary,
+        total: osc.ieSupport + osc.ieOpposeBeneficiary,
+      };
+    })
+    .sort((a, b) => b.total - a.total);
+
+  const topSpenders: OutsideMoneySpender[] = [...byCommittee.values()]
+    .map((cd) => ({
+      committeeId: cd.committeeId,
+      name: cd.name,
+      class: cd.class,
+      ieSupport: cd.ieSupport,
+      ieOpposeBeneficiary: cd.ieOpposeBeneficiary,
+      total: cd.ieSupport + cd.ieOpposeBeneficiary,
+    }))
+    .filter((s) => s.total > 0)
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 15);
+
+  const outsideMoney: OutsideMoneySummary = {
+    ieSupportTotal: osIeSupportTotal,
+    ieOpposeBeneficiaryTotal: osIeOpposeBeneficiaryTotal,
+    byClass: outsideByClassRows,
+    topSpenders,
+  };
+
+  return {
+    moneyTrail,
+    topDonors,
+    opposedBy,
+    outsideMoney,
+    pacInfluence2022_2024,
+    leadershipPacInflows,
+    individualMoney,
+    dimeProfile,
+  };
+}
+
 // ─── v1.7.2 Leadership PAC inflows ──────────────────────────────────────────
 //
 // Many federal legislators sponsor a "leadership PAC" (cm.txt CMTE_DSGN='D'):

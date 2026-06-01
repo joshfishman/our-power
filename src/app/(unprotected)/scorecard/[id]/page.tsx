@@ -10,14 +10,7 @@ import {
   getLegislatorPacScore,
   computeTwoScoreAverage,
   getLegislatorBillBreakdown,
-  getLegislatorMoneyTrail,
-  getTopDonorsForLegislator,
-  getOpposedByPacs,
-  getLegislatorLeadershipPacInflows,
-  getLegislatorIndividualMoney,
-  getLegislatorPacInfluence20222024,
-  getLegislatorDimeProfile,
-  getOutsideMoneyForLegislator,
+  getLegislatorPacDetailRollup,
 } from '@/lib/scorecard/queries';
 import type {
   BillBreakdownRow,
@@ -76,44 +69,27 @@ export default async function LegislatorScorecardPage(props: Props) {
   // For CA legislators we don't have PacContribution data — fall back to the
   // legacy v1.7 PAC score from PacMoneyData.
   const votingScore = computePublishedTotal(legislator.scores);
-  const [
-    moneyTrail,
-    topDonors,
-    opposedBy,
-    legacyPacScore,
-    leadershipPacInflows,
-    individualMoney,
-    pacInfluence2Cyc,
-    dimeProfile,
-    outsideMoney,
-  ] = await Promise.all([
-    jurisdiction === 'FEDERAL' ? getLegislatorMoneyTrail(legislator.id) : Promise.resolve(null as PacMoneyTrail | null),
-    jurisdiction === 'FEDERAL' ? getTopDonorsForLegislator(legislator.id, 15) : Promise.resolve([] as TopDonor[]),
-    jurisdiction === 'FEDERAL' ? getOpposedByPacs(legislator.id, 10) : Promise.resolve([] as TopDonor[]),
+  // v1.9.1 perf — for FEDERAL legislators all 8 PacContribution-backed views
+  // collapse into ONE rollup query (5 round-trips down from 8, with the heavy
+  // PacContribution scans deduplicated). For CA legislators we still need only
+  // the legacy PacMoneyData-derived score since none of the PacContribution
+  // views apply.
+  const [rollup, legacyPacScore] = await Promise.all([
+    jurisdiction === 'FEDERAL' ? getLegislatorPacDetailRollup(legislator.id) : Promise.resolve(null),
     // CA only — the v1.7.1 PAC Score from PacContribution doesn't apply to
     // California (we don't have an FEC-equivalent contribution dataset). For
-    // federal legislators we use moneyTrail.pacScore exclusively (V171); for
+    // federal legislators we use rollup.moneyTrail.pacScore exclusively; for
     // CA we use the legacy PacMoneyData-derived score.
     jurisdiction === 'CA' ? getLegislatorPacScore(legislator.id) : Promise.resolve(null),
-    jurisdiction === 'FEDERAL'
-      ? getLegislatorLeadershipPacInflows(legislator.id)
-      : Promise.resolve(null as LeadershipPacInflows | null),
-    jurisdiction === 'FEDERAL'
-      ? getLegislatorIndividualMoney(legislator.id)
-      : Promise.resolve(null as IndividualMoney | null),
-    // v1.8.2 — cycle-matched PAC influence so the Individual vs PAC % isn't
-    // structurally PAC-biased (individual data is 2022 + 2024 only).
-    jurisdiction === 'FEDERAL' ? getLegislatorPacInfluence20222024(legislator.id) : Promise.resolve(0),
-    jurisdiction === 'FEDERAL' ? getLegislatorDimeProfile(legislator.id) : Promise.resolve(null as DimeProfile | null),
-    // v1.9.1 — outside-money surface (IE_SUPPORT + IE_OPPOSE_BENEFICIARY).
-    // Transparency on dark-money flows that shaped this leg's races. Under
-    // v1.9.1 two-tier weighting, IE_SUPPORT counts at FULL weight in the PAC
-    // Score (supported is supported); IE_OPPOSE_BENEFICIARY is zero-weight,
-    // surfaced here for transparency only.
-    jurisdiction === 'FEDERAL'
-      ? getOutsideMoneyForLegislator(legislator.id, 15)
-      : Promise.resolve(null as OutsideMoneySummary | null),
   ]);
+  const moneyTrail: PacMoneyTrail | null = rollup?.moneyTrail ?? null;
+  const topDonors: TopDonor[] = rollup?.topDonors ?? [];
+  const opposedBy: TopDonor[] = rollup?.opposedBy ?? [];
+  const leadershipPacInflows: LeadershipPacInflows | null = rollup?.leadershipPacInflows ?? null;
+  const individualMoney: IndividualMoney | null = rollup?.individualMoney ?? null;
+  const pacInfluence2Cyc: number = rollup?.pacInfluence2022_2024 ?? 0;
+  const dimeProfile: DimeProfile | null = rollup?.dimeProfile ?? null;
+  const outsideMoney: OutsideMoneySummary | null = rollup?.outsideMoney ?? null;
   // v1.8.6 — explicit jurisdiction split so the detail page can never disagree
   // with the index page:
   //   FEDERAL → v1.7.1 PAC Score from moneyTrail (null when the v1.8.1 safety
