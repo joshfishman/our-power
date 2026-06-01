@@ -211,9 +211,12 @@ export async function getPacScoresByLegislator(legislatorIds: string[]): Promise
 // in PacContribution joined to the donor's class in PacClassification.
 //
 //   counts_against  = Σ amount where class ∈ {CORPORATE, DARK_MONEY,
-//                       FOREIGN_POLICY} AND kind ∈ {DIRECT, IE_SUPPORT}
+//                       FOREIGN_POLICY} AND kind ∈ {DIRECT, JFC_PASS_THROUGH}
+//                     + 0.5 × Σ amount where class ∈ counts-against classes
+//                       AND kind = IE_SUPPORT      (v1.9.1 half-weight)
 //   denominator     = principal-committee multi-cycle receipts
-//                     (PacMoneyData.totalReceipts summed) + Σ IE_SUPPORT
+//                     (PacMoneyData.totalReceipts summed)
+//                     + 0.5 × Σ IE_SUPPORT          (v1.9.1 half-weight)
 //                     This matches the v1.7.1 spike: the denominator is the
 //                     legislator's total fundraising universe, not just PAC
 //                     dollars. Using a PAC-only denominator produced
@@ -221,6 +224,19 @@ export async function getPacScoresByLegislator(legislatorIds: string[]): Promise
 //                     because incumbents raise most of their money from
 //                     individuals.
 //   PAC Score       = (1 − counts_against / denominator) × 100
+//
+// v1.9.1 — Three-tier outside-money weighting (2026-05-31). Outside spending
+// is no longer all-or-nothing in the PAC Score. Tier 1 — money the legislator
+// could refuse (DIRECT, JFC_PASS_THROUGH; LEADERSHIP_PASS_THROUGH if/when
+// modelled) — counts at 100%. Tier 2 — IE_SUPPORT (outside groups spending
+// FOR them; the legislator could publicly disclaim it) — counts at 50%, in
+// both numerator and denominator. Tier 3 — IE_OPPOSE_BENEFICIARY (outside
+// groups spending AGAINST their opponent; the legislator cannot refuse it) —
+// counts at 0%, transparency-only. Senators in competitive seats had hundreds
+// of millions of IE_OPPOSE_BENEFICIARY washing through their races at full
+// weight (Warnock $277M, Fetterman $88M); the prior weighting wrongly read
+// that as legislator corruption. Tiers 2 and 3 remain fully surfaced on the
+// legislator page so readers see what shaped the race.
 //
 // denominator = 0 → score is null (no PAC data, render "no data" badge).
 //
@@ -241,6 +257,19 @@ export async function getPacScoresByLegislator(legislatorIds: string[]): Promise
 // the legislator doesn't change their score either way.
 
 const COUNTS_AGAINST_CLASSES = ['CORPORATE', 'DARK_MONEY', 'FOREIGN_POLICY'] as const;
+
+// v1.9.1 outside-money weights. Single source of truth — every surface that
+// computes PAC Score reads from here.
+export const OUTSIDE_MONEY_WEIGHTS = {
+  /** Tier 1 — money the legislator could refuse. */
+  DIRECT: 1.0,
+  /** Tier 1 — corp PAC → JFC → candidate apportionment, refusable. */
+  JFC_PASS_THROUGH: 1.0,
+  /** Tier 2 — outside group IE FOR the legislator. Could be disclaimed. */
+  IE_SUPPORT: 0.5,
+  /** Tier 3 — outside group IE AGAINST their opponent. Cannot be refused. */
+  IE_OPPOSE_BENEFICIARY: 0.0,
+} as const;
 
 export interface PacMoneyTrail {
   countsAgainst: number; // $ from CORPORATE+DARK_MONEY+FOREIGN_POLICY (counted)
@@ -270,15 +299,27 @@ export async function getPacScoresByLegislatorV171(legislatorIds: string[]): Pro
   //   contribAgg  — counts-against and IE_SUPPORT from PacContribution
   //   receiptsAgg — multi-cycle principal-committee receipts from PacMoneyData
   // The denominator is receipts + IE_SUPPORT — matching the v1.7.1 spike.
-  const contribAgg = await prisma.$queryRaw<Array<{ legislatorId: string; countsAgainst: string; ieSupport: string }>>`
+  // v1.9.1 split the counts-against numerator into Tier 1 (DIRECT +
+  // JFC_PASS_THROUGH, full weight) and Tier 2 (IE_SUPPORT, half weight). The
+  // ieSupport-all column (every class) feeds the denominator at half weight.
+  // IE_OPPOSE_BENEFICIARY is intentionally absent — Tier 3, zero weight.
+  const contribAgg = await prisma.$queryRaw<
+    Array<{ legislatorId: string; countsAgainstTier1: string; countsAgainstIeSupport: string; ieSupport: string }>
+  >`
     SELECT
       pcontrib."legislatorId" AS "legislatorId",
       COALESCE(SUM(CASE
         WHEN pc.class IN ('CORPORATE', 'DARK_MONEY', 'FOREIGN_POLICY')
-         AND pcontrib.kind IN ('DIRECT', 'IE_SUPPORT', 'JFC_PASS_THROUGH')
+         AND pcontrib.kind IN ('DIRECT', 'JFC_PASS_THROUGH')
         THEN pcontrib.amount::numeric
         ELSE 0
-      END), 0)::text AS "countsAgainst",
+      END), 0)::text AS "countsAgainstTier1",
+      COALESCE(SUM(CASE
+        WHEN pc.class IN ('CORPORATE', 'DARK_MONEY', 'FOREIGN_POLICY')
+         AND pcontrib.kind = 'IE_SUPPORT'
+        THEN pcontrib.amount::numeric
+        ELSE 0
+      END), 0)::text AS "countsAgainstIeSupport",
       COALESCE(SUM(CASE
         WHEN pcontrib.kind = 'IE_SUPPORT'
         THEN pcontrib.amount::numeric
@@ -305,16 +346,21 @@ export async function getPacScoresByLegislatorV171(legislatorIds: string[]): Pro
   const out = new Map<string, number | null>();
   for (const id of legislatorIds) out.set(id, null);
   for (const r of contribAgg) {
-    const ca = Number(r.countsAgainst);
+    const caTier1 = Number(r.countsAgainstTier1);
+    const caIe = Number(r.countsAgainstIeSupport);
     const ie = Number(r.ieSupport);
     const receipts = receiptsByLeg.get(r.legislatorId) ?? 0;
+    // v1.9.1 — apply IE_SUPPORT weight (0.5) to both numerator and denominator.
+    // Tier 1 stays at 100%. IE_OPPOSE_BENEFICIARY is excluded (Tier 3, 0%).
+    const ca = caTier1 + caIe * OUTSIDE_MONEY_WEIGHTS.IE_SUPPORT;
+    const weightedIe = (Number.isFinite(ie) ? ie : 0) * OUTSIDE_MONEY_WEIGHTS.IE_SUPPORT;
     // v1.7.7 safety guard: if there are no principal-committee receipts on
     // record AND there is meaningful counts-against activity, the IE-only
     // denominator produces a misleading score (e.g. McCormick's $14.86M IE
     // alone collapsed to "6"). Treat as no data instead. Leaves the score
     // valid for cases where the leg legitimately has both receipts and IE.
     if (receipts <= 0 && ca > 0) continue;
-    const denom = receipts + (Number.isFinite(ie) ? ie : 0);
+    const denom = receipts + weightedIe;
     if (!Number.isFinite(denom) || denom <= 0) continue;
     const ratio = ca / denom;
     out.set(r.legislatorId, Math.max(0, Math.min(100, Math.round((1 - ratio) * 100))));
@@ -343,7 +389,8 @@ export async function getLegislatorMoneyTrail(legislatorId: string): Promise<Pac
   const totalReceipts = receiptsRows.length > 0 ? Number(receiptsRows[0].receipts) || 0 : 0;
 
   const byClass: Record<string, number> = {};
-  let countsAgainst = 0;
+  let countsAgainstTier1 = 0; // DIRECT + JFC_PASS_THROUGH in counts-against classes
+  let countsAgainstIeSupport = 0; // IE_SUPPORT in counts-against classes (Tier 2)
   let totalInfluence = 0;
   let ieOpposeTotal = 0;
   let ieSupportTotal = 0;
@@ -357,8 +404,8 @@ export async function getLegislatorMoneyTrail(legislatorId: string): Promise<Pac
       continue;
     }
     if (r.kind === 'IE_OPPOSE_BENEFICIARY') {
-      // Derived attribution — only included in the alt "Beneficiary PAC Score"
-      // view. Doesn't go into the per-target byClass / totalInfluence buckets.
+      // v1.9.1 — Tier 3. Surfaced for transparency on the page but zero weight
+      // in the PAC Score (legislator could not refuse it).
       if ((COUNTS_AGAINST_CLASSES as readonly string[]).includes(r.class)) {
         beneficiaryCountsAgainst += amt;
       }
@@ -370,14 +417,18 @@ export async function getLegislatorMoneyTrail(legislatorId: string): Promise<Pac
     byClass[r.class] = (byClass[r.class] ?? 0) + amt;
     totalInfluence += amt;
     if ((COUNTS_AGAINST_CLASSES as readonly string[]).includes(r.class)) {
-      countsAgainst += amt;
+      if (r.kind === 'IE_SUPPORT') countsAgainstIeSupport += amt;
+      else countsAgainstTier1 += amt;
     }
   }
-  // Denominator matches the spike: receipts + IE_SUPPORT. JFC pass-through
-  // dollars are double-counted-free because they're already reflected in
-  // totalReceipts on the principal committee side; we only add them to the
-  // countsAgainst numerator (when the original donor was corp/dark/foreign).
-  const denominator = totalReceipts + ieSupportTotal;
+  // v1.9.1 — Tier 1 at full weight, Tier 2 (IE_SUPPORT) at 50% in both
+  // numerator and denominator. JFC pass-through dollars are already in the
+  // principal-committee receipts on the denominator side; we add their
+  // counts-against share to the numerator (when the original donor was
+  // corp/dark/foreign). Tier 3 (IE_OPPOSE_BENEFICIARY) does not enter either
+  // total.
+  const countsAgainst = countsAgainstTier1 + countsAgainstIeSupport * OUTSIDE_MONEY_WEIGHTS.IE_SUPPORT;
+  const denominator = totalReceipts + ieSupportTotal * OUTSIDE_MONEY_WEIGHTS.IE_SUPPORT;
   // v1.7.7 safety guard (mirrors getPacScoresByLegislatorV171): when there
   // are zero principal-committee receipts on record but real counts-against
   // activity exists, the resulting score is driven entirely by IE_SUPPORT
@@ -510,6 +561,106 @@ export async function getOpposedByPacs(legislatorId: string, limit = 10): Promis
     total: 0,
     ieOppose: Number(r.ieOppose),
   }));
+}
+
+// ─── v1.9.1 Outside-money surface (IE_SUPPORT + IE_OPPOSE_BENEFICIARY) ──────
+//
+// Independent expenditures from outside groups in a legislator's races. Two
+// halves: money spent FOR the legislator (IE_SUPPORT) and money spent AGAINST
+// their opponents (IE_OPPOSE_BENEFICIARY, credited to the seat winner via
+// `attribute-ie-beneficiary.ts`). Under v1.9.1 weighting, IE_SUPPORT counts at
+// half-weight in the PAC Score; IE_OPPOSE_BENEFICIARY is transparency-only.
+// The Money Trail tile shows IE_SUPPORT already; this surface adds an explicit
+// "outside money in your races" section with class breakdown and top spenders,
+// because dark-money flows like Warnock's $277M and Fetterman's $88M are
+// material context for any honest reading of the race even at zero/half weight.
+
+export interface OutsideMoneyClassRow {
+  class: string;
+  ieSupport: number;
+  ieOpposeBeneficiary: number;
+  total: number;
+}
+
+export interface OutsideMoneySpender {
+  committeeId: string;
+  name: string;
+  class: string;
+  ieSupport: number;
+  ieOpposeBeneficiary: number;
+  total: number;
+}
+
+export interface OutsideMoneySummary {
+  ieSupportTotal: number;
+  ieOpposeBeneficiaryTotal: number;
+  byClass: OutsideMoneyClassRow[];
+  topSpenders: OutsideMoneySpender[];
+}
+
+export async function getOutsideMoneyForLegislator(legislatorId: string, topLimit = 15): Promise<OutsideMoneySummary> {
+  // Per-class roll-up for the headline tiles.
+  const classRows = await prisma.$queryRaw<Array<{ class: string; ieSupport: string; ieOpposeBeneficiary: string }>>`
+    SELECT
+      pc.class::text AS class,
+      COALESCE(SUM(CASE WHEN pcontrib.kind = 'IE_SUPPORT'
+                        THEN pcontrib.amount::numeric ELSE 0 END), 0)::text AS "ieSupport",
+      COALESCE(SUM(CASE WHEN pcontrib.kind = 'IE_OPPOSE_BENEFICIARY'
+                        THEN pcontrib.amount::numeric ELSE 0 END), 0)::text AS "ieOpposeBeneficiary"
+    FROM "PacContribution" pcontrib
+    JOIN "PacClassification" pc ON pc."committeeId" = pcontrib."donorCommitteeId"
+    WHERE pcontrib."legislatorId" = ${legislatorId}
+      AND pcontrib.kind IN ('IE_SUPPORT', 'IE_OPPOSE_BENEFICIARY')
+    GROUP BY pc.class
+  `;
+
+  // Top spenders ranked by combined outside spend in this leg's races.
+  const spenderRows = await prisma.$queryRaw<
+    Array<{ committeeId: string; name: string; class: string; ieSupport: string; ieOpposeBeneficiary: string }>
+  >`
+    SELECT
+      pc."committeeId" AS "committeeId",
+      pc.name AS name,
+      pc.class::text AS class,
+      COALESCE(SUM(CASE WHEN pcontrib.kind = 'IE_SUPPORT'
+                        THEN pcontrib.amount::numeric ELSE 0 END), 0)::text AS "ieSupport",
+      COALESCE(SUM(CASE WHEN pcontrib.kind = 'IE_OPPOSE_BENEFICIARY'
+                        THEN pcontrib.amount::numeric ELSE 0 END), 0)::text AS "ieOpposeBeneficiary"
+    FROM "PacContribution" pcontrib
+    JOIN "PacClassification" pc ON pc."committeeId" = pcontrib."donorCommitteeId"
+    WHERE pcontrib."legislatorId" = ${legislatorId}
+      AND pcontrib.kind IN ('IE_SUPPORT', 'IE_OPPOSE_BENEFICIARY')
+    GROUP BY pc."committeeId", pc.name, pc.class
+    HAVING COALESCE(SUM(pcontrib.amount::numeric), 0) > 0
+    ORDER BY COALESCE(SUM(pcontrib.amount::numeric), 0) DESC
+    LIMIT ${topLimit}
+  `;
+
+  let ieSupportTotal = 0;
+  let ieOpposeBeneficiaryTotal = 0;
+  const byClass: OutsideMoneyClassRow[] = classRows.map((r) => {
+    const ies = Number(r.ieSupport);
+    const ieob = Number(r.ieOpposeBeneficiary);
+    ieSupportTotal += ies;
+    ieOpposeBeneficiaryTotal += ieob;
+    return { class: r.class, ieSupport: ies, ieOpposeBeneficiary: ieob, total: ies + ieob };
+  });
+  byClass.sort((a, b) => b.total - a.total);
+
+  const topSpenders: OutsideMoneySpender[] = spenderRows.map((r) => {
+    const ies = Number(r.ieSupport);
+    const ieob = Number(r.ieOpposeBeneficiary);
+    return {
+      committeeId: r.committeeId,
+      name: r.name,
+      class: r.class,
+      ieSupport: ies,
+      ieOpposeBeneficiary: ieob,
+      total: ies + ieob,
+    };
+  });
+
+  return { ieSupportTotal, ieOpposeBeneficiaryTotal, byClass, topSpenders };
 }
 
 // ─── v1.7.2 Leadership PAC inflows ──────────────────────────────────────────

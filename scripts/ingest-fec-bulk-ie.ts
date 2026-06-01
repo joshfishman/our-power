@@ -258,8 +258,15 @@ async function main(): Promise<void> {
 
   // 6. Update PacMoneyData IE columns. We update only the IE fields; the
   // existing direct-PAC fields stay as the regular FEC ingest set them.
-  // Recompute combinedCorporateRatio = (corporatePacAmount + selfSupport + oppOppose)
-  //                                    / (totalReceipts + selfSupport + oppOppose).
+  // v1.9.1 three-tier weighting:
+  //   combinedCorporateRatio = (corporatePacAmount + 0.5 * selfSupport)
+  //                            / (totalReceipts + 0.5 * selfSupport)
+  // selfSupport (IE_SUPPORT) counts at 50% in both numerator and denominator
+  // (Tier 2 — disclaimable but not refusable). oppOppose
+  // (IE_OPPOSE_BENEFICIARY) drops to 0% weight (Tier 3 — legislator could not
+  // refuse spending against their opponent). The IE columns themselves are
+  // still stored at the raw dollar figure so the legislator detail page can
+  // surface the gross flow for transparency.
   // Single SQL UPDATE per row keeps each transaction small.
   let written = 0;
   for (const b of buckets) {
@@ -270,9 +277,9 @@ async function main(): Promise<void> {
         "corporateIeAgainstOpponentAmount" = ${b.oppOppose},
         "corporateIeAgainstSelfAmount" = ${b.selfOppose},
         "combinedCorporateRatio" = CASE
-          WHEN ("totalReceipts" + ${b.selfSupport} + ${b.oppOppose}) > 0
-          THEN LEAST(1.0, ("corporatePacAmount" + ${b.selfSupport} + ${b.oppOppose})
-                       / NULLIF("totalReceipts" + ${b.selfSupport} + ${b.oppOppose}, 0))
+          WHEN ("totalReceipts" + 0.5 * ${b.selfSupport}) > 0
+          THEN LEAST(1.0, ("corporatePacAmount" + 0.5 * ${b.selfSupport})
+                       / NULLIF("totalReceipts" + 0.5 * ${b.selfSupport}, 0))
           ELSE NULL
         END,
         "updatedAt" = NOW()
