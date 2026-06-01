@@ -11,17 +11,12 @@ import type { SeedPlank } from './types';
 // Pre-119th historical bills (CHIPS Act H.R.4346 / IIJA H.R.3684 / PACT
 // Act S.3373) were activated 2026-05-30 (v1.8.15) after downloading the
 // 117th Congress LegiScan dataset (session_id=1823, dataset_date
-// 2023-01-04) into data/US/2021-2022_117th_Congress/. Each carries a
-// pinned legiscanBillId from that dataset.
-//
-// ROLLED BACK 2026-05-31 (v1.8.15-rollback): isProvisional flipped
-// back to true for all three. The sync resolver only looks up voters
-// by Legislator.legiscanPeopleId, which we backfilled from the 119th
-// session — 117th uses a different people-ID namespace, so ~88% of
-// Senate voters silently dropped from those roll calls and the
-// remaining ~12% produced FOR<->AGAINST contradictions. legiscanBillId
-// stays pinned so re-activation is a one-flag flip once the
-// bioguide-fallback sync patch lands.
+// 2023-01-04) into data/US/2021-2022_117th_Congress/. v1.8.15 was rolled
+// back same day because the sync resolver only looked up voters by
+// Legislator.legiscanPeopleId (119th IDs), so 117th roll-call voters
+// silently dropped. PR #52 (bioguide-id fallback) adds a per-session
+// peopleId→bioguideId lookup; v1.8.15-v2 re-activates with correct
+// cross-session attribution.
 
 export const FEDERAL_PLANKS: SeedPlank[] = [
   {
@@ -189,9 +184,9 @@ export const FEDERAL_PLANKS: SeedPlank[] = [
             billTitle: 'CHIPS and Science Act',
             actionType: 'VOTE_YES',
             legiscanBillId: 1518388,
-            isProvisional: true,
+            isProvisional: false,
             notes:
-              'TEMPORARILY ROLLED BACK 2026-05-31: v1.8.15 sync wrote only ~12% of expected Senate roll-call coverage because LegiScan 117th-session people IDs differ from 119th and the sync resolver only looks up by stored legiscanPeopleId. Will be re-activated once the bioguide-fallback patch lands.',
+              'Signed into law 2022-08-09. CHIPS and Science. Senate cloture 64-32 on 2022-07-27. Final passage House 243-187 on 2022-07-28 (rc 1222482). v1.8.15-v2: re-activated after PR #52 (bioguide-id fallback) corrects cross-session people-ID resolution. https://legiscan.com/US/bill/HB4346/2021',
           },
           {
             congressNumber: 117,
@@ -200,9 +195,9 @@ export const FEDERAL_PLANKS: SeedPlank[] = [
             billTitle: 'Infrastructure Investment and Jobs Act',
             actionType: 'VOTE_YES',
             legiscanBillId: 1514715,
-            isProvisional: true,
+            isProvisional: false,
             notes:
-              'TEMPORARILY ROLLED BACK 2026-05-31: v1.8.15 sync wrote only ~12% of expected Senate roll-call coverage because LegiScan 117th-session people IDs differ from 119th and the sync resolver only looks up by stored legiscanPeopleId. Will be re-activated once the bioguide-fallback patch lands.',
+              'Signed into law 2021-11-15. Bipartisan Infrastructure Law. Senate passed 69-30 on 2021-08-10 (rc 1105920); House agreed to Senate amendment 228-206 on 2021-11-05 (rc 1115607). v1.8.15-v2: re-activated after PR #52 (bioguide-id fallback) corrects cross-session people-ID resolution. https://legiscan.com/US/bill/HB3684/2021',
           },
         ],
       },
@@ -520,9 +515,9 @@ export const FEDERAL_PLANKS: SeedPlank[] = [
             billTitle: 'Honoring our PACT Act',
             actionType: 'VOTE_YES',
             legiscanBillId: 1537975,
-            isProvisional: true,
+            isProvisional: false,
             notes:
-              'TEMPORARILY ROLLED BACK 2026-05-31: v1.8.15 sync wrote only ~12% of expected Senate roll-call coverage because LegiScan 117th-session people IDs differ from 119th and the sync resolver only looks up by stored legiscanPeopleId. Will be re-activated once the bioguide-fallback patch lands.',
+              'Signed into law 2022-08-10. Sergeant First Class Heath Robinson Honoring our Promise to Address Comprehensive Toxics Act. House passed 342-88 on 2022-07-13 (rc 1222095); Senate agreed to House amendment 86-11 on 2022-08-02 (rc 1222937). v1.8.15-v2: re-activated after PR #52 (bioguide-id fallback) corrects cross-session people-ID resolution. https://legiscan.com/US/bill/SB3373/2021',
           },
         ],
       },
