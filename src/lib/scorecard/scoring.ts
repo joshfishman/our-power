@@ -1,4 +1,8 @@
-// Phase 4 scoring engine — methodology v1.2.
+// Phase 4 scoring engine — methodology v1.9.1 (see METHODOLOGY_VERSION
+// below for the runtime source of truth, and docs/scorecard-methodology.md
+// for the full version history). This file documents the +1/−1 point
+// model introduced in v1.2; later weight tables (v1.3 sponsor tier, v1.4
+// continuous PAC gradient) layer on top.
 //
 // Simple +1 / -1 point model:
 //   ACTED_FOR     → +1
