@@ -1066,7 +1066,6 @@ enum ContributionKind {
   IE_SUPPORT // 24E — Super PAC IE supporting THIS candidate
   IE_OPPOSE // 24A — Super PAC IE OPPOSING this candidate (info only)
   IE_OPPOSE_BENEFICIARY // v1.7.4: derived attribution — IE_OPPOSE against a defeated opponent, credited to the eventual winner. Used only by the "Beneficiary PAC Score" view; does NOT affect the per-target PAC Score.
-  LEADERSHIP_PASS_THROUGH // v1.9.0 — corp PAC → legislator's leadership PAC → some other candidate. Reserved for future surfacing on the donor side; not currently used in PAC Score (sponsor's leadership PAC is informational, not their campaign money).
 }
 
 model PacContribution {
