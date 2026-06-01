@@ -258,15 +258,13 @@ async function main(): Promise<void> {
 
   // 6. Update PacMoneyData IE columns. We update only the IE fields; the
   // existing direct-PAC fields stay as the regular FEC ingest set them.
-  // v1.9.1 three-tier weighting:
-  //   combinedCorporateRatio = (corporatePacAmount + 0.5 * selfSupport)
-  //                            / (totalReceipts + 0.5 * selfSupport)
-  // selfSupport (IE_SUPPORT) counts at 50% in both numerator and denominator
-  // (Tier 2 — disclaimable but not refusable). oppOppose
-  // (IE_OPPOSE_BENEFICIARY) drops to 0% weight (Tier 3 — legislator could not
-  // refuse spending against their opponent). The IE columns themselves are
-  // still stored at the raw dollar figure so the legislator detail page can
-  // surface the gross flow for transparency.
+  // v1.9.1 two-tier weighting:
+  //   combinedCorporateRatio = (corporatePacAmount + selfSupport)
+  //                            / (totalReceipts + selfSupport)
+  // selfSupport (IE_SUPPORT) counts at FULL weight in both numerator and
+  // denominator — supported is supported. oppOppose (IE_OPPOSE_BENEFICIARY)
+  // is zero-weight (money spent against the opponent, not on the legislator's
+  // behalf); stored on the row for transparency but absent from the ratio.
   // Single SQL UPDATE per row keeps each transaction small.
   let written = 0;
   for (const b of buckets) {
@@ -277,9 +275,9 @@ async function main(): Promise<void> {
         "corporateIeAgainstOpponentAmount" = ${b.oppOppose},
         "corporateIeAgainstSelfAmount" = ${b.selfOppose},
         "combinedCorporateRatio" = CASE
-          WHEN ("totalReceipts" + 0.5 * ${b.selfSupport}) > 0
-          THEN LEAST(1.0, ("corporatePacAmount" + 0.5 * ${b.selfSupport})
-                       / NULLIF("totalReceipts" + 0.5 * ${b.selfSupport}, 0))
+          WHEN ("totalReceipts" + ${b.selfSupport}) > 0
+          THEN LEAST(1.0, ("corporatePacAmount" + ${b.selfSupport})
+                       / NULLIF("totalReceipts" + ${b.selfSupport}, 0))
           ELSE NULL
         END,
         "updatedAt" = NOW()
