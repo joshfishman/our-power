@@ -12,7 +12,16 @@ import type { SeedPlank } from './types';
 // Act S.3373) were activated 2026-05-30 (v1.8.15) after downloading the
 // 117th Congress LegiScan dataset (session_id=1823, dataset_date
 // 2023-01-04) into data/US/2021-2022_117th_Congress/. Each carries a
-// pinned legiscanBillId from that dataset and isProvisional=false.
+// pinned legiscanBillId from that dataset.
+//
+// ROLLED BACK 2026-05-31 (v1.8.15-rollback): isProvisional flipped
+// back to true for all three. The sync resolver only looks up voters
+// by Legislator.legiscanPeopleId, which we backfilled from the 119th
+// session — 117th uses a different people-ID namespace, so ~88% of
+// Senate voters silently dropped from those roll calls and the
+// remaining ~12% produced FOR<->AGAINST contradictions. legiscanBillId
+// stays pinned so re-activation is a one-flag flip once the
+// bioguide-fallback sync patch lands.
 
 export const FEDERAL_PLANKS: SeedPlank[] = [
   {
