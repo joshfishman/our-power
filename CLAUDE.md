@@ -145,10 +145,10 @@ A cross-partisan rating system for every member of Congress and every California
 - `prisma/seed-scorecard.ts` — seeds planks + markers + bills + legislators. Idempotent; nulls publicSlugs and prunes orphan MarkerBill rows before each upsert pass to safely handle bill renumbering across re-seeds.
 - `scripts/sync-marker-bills.ts` — manual CLI sync via LegiScan, `--source=api|bulk`, `--bill=…`, `--jurisdiction=…`, `--dry-run`. Refuses provisional bills.
 - `scripts/backfill-legiscan-people.ts` — one-time pass that maps `Legislator.legiscanPeopleId` from the bulk dataset's `people/*.json`. Required because LegiScan roll-call vote payloads carry only `people_id` (no names), so unmapped legislators get dropped as `unmappedVoters`. Run once after seeding new legislators.
-- `scripts/compute-scores.ts` — turns verified `MarkerAchievement` rows into `RepresentativeScore` rows. `--auto-verify` flag is a TEMPORARY stand-in for the unbuilt Phase 6 admin verification UI; it bulk-flips `verifiedAt` with `verifiedBy='auto-verify-temp'` and logs a warning. `--publish` sets `publishedAt`. Also computes corporate-pac-refusal achievements from PacMoneyData (`verifiedBy='pac-engine'`, auto-verified at write time since FEC/Cal-Access filings are already public).
+- `scripts/compute-scores.ts` — turns verified `MarkerAchievement` rows into `RepresentativeScore` rows. `--auto-verify` flag is a TEMPORARY stand-in for the unbuilt Phase 6 admin verification UI (spec'd in PR #50 draft, implementation pending); it bulk-flips `verifiedAt` with `verifiedBy='auto-verify-temp'` and logs a warning. `--publish` sets `publishedAt`. Also computes corporate-pac-refusal achievements from PacMoneyData (`verifiedBy='pac-engine'`, auto-verified at write time since FEC/Cal-Access filings are already public).
 - `scripts/ingest-fec.ts` — federal PAC totals via api.open.fec.gov. One call per legislator (sorted -cycle). Caveat: counts ALL non-party PAC contributions, not strictly corporate-classified — until `CommitteeClassification` is populated, FEC_DIRECT is a broad proxy.
 - `scripts/ingest-pac-data.ts` — OpenSecrets bulk path (federal). Pre-classified corporate vs labor via RealCode taxonomy.
-- `scripts/ingest-cal-access.ts` — CA Cal-Access PAC. Curated-CSV path live; CCDC bulk path is a SKELETON pending a downloaded snapshot + classification table.
+- `scripts/ingest-cal-access.ts` — CA Cal-Access PAC. Curated-CSV path and CCDC bulk path both LIVE since v1.4. CA classifications populated (29,695 committees: 15,778 CORPORATE / 5,929 TRADE_ASSOCIATION / 4,608 LABOR / 2,748 IDEOLOGICAL / 632 PARTY) via `scripts/ingest-ca-classifications.ts`; CA PacMoneyData covers ~119 active CA legislators across 2024 + 2026 cycles with `dataSource='CAL_ACCESS_CCDC'`.
 
 ### Common Ground scorecard — external data sources
 
@@ -168,13 +168,13 @@ If a future session sees only `LEGISCAN_API_KEY` in `.env.local`, that's intenti
 
 - Phase 1 (data model + seed) ✅ shipped, applied via `prisma db push` (see migration-drift note below).
 - Phase 2 (LegiScan sync, both API and bulk modes) ✅ shipped, smoke-tested end-to-end against AB-2200 / AB-1900.
-- Phase 3 (PAC ingestion) — federal FEC + OpenSecrets paths shipped; CA curated path shipped, CA CCDC bulk path is a skeleton with TODOs pending a Cal-Access download.
+- Phase 3 (PAC ingestion) ✅ shipped — federal FEC + OpenSecrets paths + CA curated CSV path + CA CCDC bulk path all live. CA CCDC bulk shipped in v1.4 with full classification coverage (29,695 committees).
 - Phase 4 (scoring engine) ✅ shipped with full rubric tests.
 - Phase 5 (score challenges + leaderboard) — not started.
-- Phase 6 (admin verification UI) — not started; `--auto-verify` flag and `verifiedBy='pac-engine'` are temporary stand-ins. **For a real public launch this needs a proper UI; the methodology promises every published score traces to human-verified evidence.**
+- Phase 6 (admin verification UI) — **spec complete in PR #50 (draft); implementation pending.** `--auto-verify` flag and `verifiedBy='pac-engine'` remain the temporary stand-ins until the UI ships. **For a real public launch this needs the spec'd UI built out; the methodology promises every published score traces to human-verified evidence.**
 - Phase 7 (scheduled pipeline / cron) — explicitly deferred; runs are manual via npm scripts.
 
-Pre-119th historical bills (CHIPS H.R.4346, IIJA H.R.3684, PACT S.3373) remain `isProvisional: true` because the 119th-only LegiScan dataset on disk doesn't include them. Activate by downloading the 117th Congress dataset, pinning `legiscanBillId`, and flipping `isProvisional: false`.
+Pre-119th historical bills (CHIPS H.R.4346, IIJA H.R.3684, PACT S.3373) were activated in v1.8.15-v2 with the bioguide-fallback patch (PR #52 + PR #54). The 117th Congress LegiScan bulk dataset lives in `data/US/2021-2022_117th_Congress/` (session_id 1823) and is picked up by the same `LEGISCAN_DATASET_DIR` recursive walker as the 119th dataset. Cross-session `people_id` namespace mismatch is handled by the sync resolver's bioguide-id fallback against the dataset's `people/*.json` snapshot.
 
 ### Scorecard visual theme
 
