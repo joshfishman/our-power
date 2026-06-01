@@ -969,6 +969,11 @@ model PacClassification {
   @@index([class])
   @@index([source])
   @@index([affiliatedLegislatorId])
+  // v1.9.2 perf: covering index for the PacContribution→PacClassification
+  // join used in getPacScoresByLegislatorV171 + getLegislatorMoneyTrail. Lets
+  // Postgres serve (committeeId, class) lookups index-only instead of hashing
+  // all 22k+ classification rows on every page load.
+  @@index([committeeId, class])
 }
 
 /// v1.7.2 — money flowing INTO a leadership PAC from another committee.
@@ -1020,6 +1025,7 @@ model LegislatorIndividualMoney {
 
   @@unique([legislatorId, cycleYear])
   @@index([legislatorId])
+  @@index([cycleYear])
 }
 
 /// v1.7.6 — per-(legislator, cycle) DIME profile from Adam Bonica's Database
@@ -1050,6 +1056,7 @@ model LegislatorDimeProfile {
 
   @@unique([legislatorId, cycleYear])
   @@index([legislatorId])
+  @@index([cycleYear])
 }
 
 enum ContributionKind {
@@ -1087,6 +1094,10 @@ model PacContribution {
   @@unique([legislatorId, donorCommitteeId, cycleYear, kind])
   @@index([legislatorId, cycleYear])
   @@index([donorCommitteeId])
+  // v1.9.2 perf: covering index for the per-(legislator, kind) aggregates that
+  // drive PAC Score across 1.7M+ rows. Matches the GROUP BY hot path in
+  // getPacScoresByLegislatorV171's CASE-on-kind SUMs and the money-trail join.
+  @@index([legislatorId, kind, donorCommitteeId])
 }
 
 model PacMoneyData {
