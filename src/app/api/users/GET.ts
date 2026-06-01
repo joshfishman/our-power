@@ -9,7 +9,8 @@ import prisma from '@/lib/prisma/prisma';
 import { searchUser } from '@/lib/prisma/searchUser';
 import { toGetUser } from '@/lib/prisma/toGetUser';
 import { Gender, RelationshipStatus } from '@/generated/prisma/client';
-import { snakeCase, toUpper } from 'lodash';
+// Replaced `from 'lodash'` import; see src/lib/utils/native.ts (chore/deps-and-bundle-hygiene).
+import { snakeCase, toUpper } from '@/lib/utils/native';
 import { NextResponse } from 'next/server';
 import { FindUserResult, GetUser } from '@/types/definitions';
 

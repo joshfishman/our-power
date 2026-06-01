@@ -11,7 +11,8 @@ import {
   WorldNet,
 } from '@/svg_components';
 import { format } from 'date-fns';
-import { capitalize, lowerCase } from 'lodash';
+// Replaced `from 'lodash'` import; see src/lib/utils/native.ts (chore/deps-and-bundle-hygiene).
+import { capitalize, lowerCase } from '@/lib/utils/native';
 import { GetUser } from '@/types/definitions';
 import { AboutItem } from './AboutItem';
 

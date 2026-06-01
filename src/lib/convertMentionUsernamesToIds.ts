@@ -1,5 +1,6 @@
 import 'server-only';
-import { uniq } from 'lodash';
+// Replaced `from 'lodash'` import; see src/lib/utils/native.ts (chore/deps-and-bundle-hygiene).
+import { uniq } from './utils/native';
 import prisma from './prisma/prisma';
 
 /**

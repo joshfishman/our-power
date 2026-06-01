@@ -4,7 +4,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { GetVisualMedia } from '@/types/definitions';
 import { useWritePostMutations } from '@/hooks/mutations/useWritePostMutations';
 import { useDialogs } from '@/hooks/useDialogs';
-import { capitalize } from 'lodash';
+// Replaced `from 'lodash'` import; see src/lib/utils/native.ts (chore/deps-and-bundle-hygiene).
+import { capitalize } from '@/lib/utils/native';
 import { revokeVisualMediaObjectUrls } from '@/lib/revokeVisualMediaObjectUrls';
 import { ToEditValues } from '@/lib/createPost';
 import { TextAreaWithMentionsAndHashTags } from './TextAreaWithMentionsAndHashTags';

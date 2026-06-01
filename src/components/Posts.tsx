@@ -6,7 +6,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useOnScreen from '@/hooks/useOnScreen';
 import { AnimatePresence, motion } from 'framer-motion';
 import { NO_PREV_DATA_LOADED, POSTS_PER_PAGE } from '@/constants';
-import { chunk } from 'lodash';
+// Replaced `from 'lodash'` import; see src/lib/utils/native.ts (chore/deps-and-bundle-hygiene).
+import { chunk } from '@/lib/utils/native';
 import { useShouldAnimate } from '@/hooks/useShouldAnimate';
 import { deductLowerMultiple } from '@/lib/deductLowerMultiple';
 import SvgForwardArrow from '@/svg_components/ForwardArrow';

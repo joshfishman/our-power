@@ -1,5 +1,6 @@
 import { cn } from '@/lib/cn';
-import { capitalize } from 'lodash';
+// Replaced `from 'lodash'` import; see src/lib/utils/native.ts (chore/deps-and-bundle-hygiene).
+import { capitalize } from '@/lib/utils/native';
 import Link from 'next/link';
 
 export function TabButton({ isActive, title, href }: { isActive?: boolean; title: string; href: string }) {

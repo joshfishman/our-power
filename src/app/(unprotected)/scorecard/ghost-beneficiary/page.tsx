@@ -2,10 +2,32 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getAllGhostBeneficiaries, getGhostBeneficiaryTotals, type GhostBeneficiaryRow } from '@/lib/scorecard/queries';
 
+// Voice register: civic / Lincoln-Eisenhower-MLK. Keep OG copy plain
+// and accountability-focused; no "stakeholders / progressive / MAGA"
+// vocabulary. Social-share image is the standard scorecard mark.
+const OG_TITLE = 'Ghost beneficiary $ — We the People Scorecard';
+const OG_DESCRIPTION =
+  'Over $900M in Super PAC dollars were spent against candidates whose race winners are no longer in our active set. We surface every one of those dollars rather than let them disappear from the record.';
+
 export const metadata: Metadata = {
   title: 'Ghost beneficiary $ | We the People Scorecard',
-  description:
-    'Every dollar in the methodology must surface somewhere. These IE_OPPOSE dollars are spent but not yet attributable to any sitting legislator — the cycle winner is no longer in our active set. We surface them here rather than letting them disappear.',
+  description: OG_DESCRIPTION,
+  openGraph: {
+    title: OG_TITLE,
+    description: OG_DESCRIPTION,
+    url: 'https://op-pink.vercel.app/scorecard/ghost-beneficiary',
+    siteName: 'We the People Scorecard',
+    type: 'article',
+    locale: 'en_US',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: OG_TITLE,
+    description: OG_DESCRIPTION,
+  },
+  alternates: {
+    canonical: 'https://op-pink.vercel.app/scorecard/ghost-beneficiary',
+  },
 };
 
 export const dynamic = 'force-dynamic';

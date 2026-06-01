@@ -1,7 +1,8 @@
 'use client';
 
 import { InfiniteData, useMutation, useQueryClient } from '@tanstack/react-query';
-import { chunk } from 'lodash';
+// Replaced `from 'lodash'` import; see src/lib/utils/native.ts (chore/deps-and-bundle-hygiene).
+import { chunk } from '@/lib/utils/native';
 import { POSTS_PER_PAGE } from '@/constants';
 import { useSession } from 'next-auth/react';
 import { PostIds } from '@/types/definitions';
