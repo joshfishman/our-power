@@ -1,5 +1,6 @@
 import { InfiniteData, useMutation, useQueryClient } from '@tanstack/react-query';
-import { chunk } from 'lodash';
+// Replaced `from 'lodash'` import; see src/lib/utils/native.ts (chore/deps-and-bundle-hygiene).
+import { chunk } from '@/lib/utils/native';
 import { useSession } from 'next-auth/react';
 import { GetVisualMedia, GetPost, PostIds } from '@/types/definitions';
 import { POSTS_PER_PAGE } from '@/constants';

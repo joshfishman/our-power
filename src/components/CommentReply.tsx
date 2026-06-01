@@ -2,7 +2,8 @@
 
 import { GetComment } from '@/types/definitions';
 import { Key, memo, useCallback } from 'react';
-import { isEqual } from 'lodash';
+// Replaced `from 'lodash'` import; see src/lib/utils/native.ts (chore/deps-and-bundle-hygiene).
+import { isEqual } from '@/lib/utils/native';
 import SvgHeart from '@/svg_components/Heart';
 import { useSearchParams } from 'next/navigation';
 import { Item, Section } from 'react-stately';

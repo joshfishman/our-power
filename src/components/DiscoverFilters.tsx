@@ -2,7 +2,8 @@
 
 import { Select } from '@/components/ui/Select';
 import { Gender, RelationshipStatus } from '@/generated/prisma/client';
-import { kebabCase, lowerCase, snakeCase, startCase, toUpper } from 'lodash';
+// Replaced `from 'lodash'` import; see src/lib/utils/native.ts (chore/deps-and-bundle-hygiene).
+import { kebabCase, lowerCase, snakeCase, startCase, toUpper } from '@/lib/utils/native';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { Item } from 'react-stately';
 import { DiscoverFilterKeys, DiscoverFilters as TDiscoverFilters } from '@/types/definitions';
