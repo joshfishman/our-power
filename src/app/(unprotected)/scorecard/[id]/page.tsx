@@ -17,6 +17,7 @@ import {
   getLegislatorIndividualMoney,
   getLegislatorPacInfluence20222024,
   getLegislatorDimeProfile,
+  getOutsideMoneyForLegislator,
 } from '@/lib/scorecard/queries';
 import type {
   BillBreakdownRow,
@@ -25,6 +26,7 @@ import type {
   LeadershipPacInflows,
   IndividualMoney,
   DimeProfile,
+  OutsideMoneySummary,
 } from '@/lib/scorecard/queries';
 import { METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
 import { LegislatorAvatar } from '@/components/scorecard/LegislatorAvatar';
@@ -83,6 +85,7 @@ export default async function LegislatorScorecardPage(props: Props) {
     individualMoney,
     pacInfluence2Cyc,
     dimeProfile,
+    outsideMoney,
   ] = await Promise.all([
     jurisdiction === 'FEDERAL' ? getLegislatorMoneyTrail(legislator.id) : Promise.resolve(null as PacMoneyTrail | null),
     jurisdiction === 'FEDERAL' ? getTopDonorsForLegislator(legislator.id, 15) : Promise.resolve([] as TopDonor[]),
@@ -102,6 +105,13 @@ export default async function LegislatorScorecardPage(props: Props) {
     // structurally PAC-biased (individual data is 2022 + 2024 only).
     jurisdiction === 'FEDERAL' ? getLegislatorPacInfluence20222024(legislator.id) : Promise.resolve(0),
     jurisdiction === 'FEDERAL' ? getLegislatorDimeProfile(legislator.id) : Promise.resolve(null as DimeProfile | null),
+    // v1.9.1 — outside-money surface (IE_SUPPORT + IE_OPPOSE_BENEFICIARY).
+    // Transparency on dark-money flows that shaped this leg's races, surfaced
+    // separately from the PAC Score because under v1.9.1 weighting IE_SUPPORT
+    // is half-weight and IE_OPPOSE_BENEFICIARY is zero-weight in scoring.
+    jurisdiction === 'FEDERAL'
+      ? getOutsideMoneyForLegislator(legislator.id, 15)
+      : Promise.resolve(null as OutsideMoneySummary | null),
   ]);
   // v1.8.6 — explicit jurisdiction split so the detail page can never disagree
   // with the index page:
@@ -203,6 +213,12 @@ export default async function LegislatorScorecardPage(props: Props) {
       {jurisdiction === 'FEDERAL' && moneyTrail && moneyTrail.totalInfluence > 0 && (
         <MoneyTrail moneyTrail={moneyTrail} topDonors={topDonors} opposedBy={opposedBy} />
       )}
+
+      {jurisdiction === 'FEDERAL' &&
+        outsideMoney &&
+        (outsideMoney.ieSupportTotal > 0 || outsideMoney.ieOpposeBeneficiaryTotal > 0) && (
+          <OutsideMoneySection summary={outsideMoney} />
+        )}
 
       {jurisdiction === 'FEDERAL' && leadershipPacInflows && leadershipPacInflows.pacCount > 0 && (
         <LeadershipPacInflowsSection inflows={leadershipPacInflows} />
@@ -752,7 +768,9 @@ function MoneyTrail({
         </p>
       </header>
       <p className="mt-1 text-sm text-[#2C4A5E]">
-        Where this legislator&apos;s PAC + Super PAC IE money came from across 2018–2024.{' '}
+        Where this legislator&apos;s PAC + Super PAC IE money came from across 2018–2024. Under v1.9.1, IE_SUPPORT
+        counts at half-weight; IE_OPPOSE_BENEFICIARY is broken out below in &ldquo;Outside money in your races&rdquo;
+        and does not enter this score.{' '}
         <Link href="/scorecard/methodology/pac-classes" className="underline hover:text-white">
           How classes work →
         </Link>
@@ -776,7 +794,7 @@ function MoneyTrail({
               : `${(denominator / 1000).toFixed(0)}K`}
           </p>
           <p className="mt-0.5 font-mono text-[10px] text-[#2C4A5E]/70">
-            Receipts ${(totalReceipts / 1000).toFixed(0)}K + IE support
+            Receipts ${(totalReceipts / 1000).toFixed(0)}K + ½ × IE support (v1.9.1)
           </p>
         </div>
         <div className="rounded bg-gray-50 p-3">
@@ -820,10 +838,10 @@ function MoneyTrail({
             </div>
           </div>
           <p className="mt-2 text-xs text-[#2C4A5E]/90">
-            Includes IE money corporate / dark-money / foreign-policy PACs spent against this legislator&apos;s defeated
-            primary or general-election opponents. View B from the methodology: the legislator materially benefited from
-            that spending even though it wasn&apos;t filed directly for them. The PAC Score above remains the official
-            per-FEC-target measure.
+            What the PAC Score would be if IE spent against a defeated opponent counted at FULL weight. Under v1.9.1
+            this is transparency only — the legislator could not refuse spending directed at someone else, so it does
+            not enter the official PAC Score. See &ldquo;Outside money in your races&rdquo; below for the same dollars
+            broken out by donor class.
           </p>
         </div>
       )}
@@ -941,6 +959,158 @@ function MoneyTrail({
               );
             })}
           </ul>
+        </div>
+      )}
+    </section>
+  );
+}
+
+// v1.9.1 — Outside money in your races. IE_SUPPORT (outside groups spending
+// FOR the legislator, half-weight under v1.9.1) and IE_OPPOSE_BENEFICIARY
+// (outside groups spending AGAINST the legislator's opponent, zero-weight —
+// the legislator could not refuse it). Surfaced for transparency even when
+// they contribute nothing to the PAC Score: dark-money flows like Warnock's
+// $277M and Fetterman's $88M shape the race and the public deserves to see
+// them, scored or not.
+function OutsideMoneySection({ summary }: { summary: OutsideMoneySummary }) {
+  const { ieSupportTotal, ieOpposeBeneficiaryTotal, byClass, topSpenders } = summary;
+  const fmtUsd = (n: number): string => {
+    if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
+    return `$${Math.round(n).toLocaleString()}`;
+  };
+  return (
+    <section className="mt-8 rounded border border-2 border-[#8B3A3A] border-gray-200 bg-white p-5 shadow-sm">
+      <header className="flex items-baseline justify-between gap-3">
+        <h2 className="font-serif text-2xl font-bold text-[#2C4A5E]">Outside money in your races</h2>
+        <p
+          title="Outside-money surface introduced in v1.9.1; PAC Score weighting shown at page top."
+          className="font-mono text-xs uppercase tracking-widest text-[#2C4A5E]/80">
+          v1.9.1 — three-tier weighting
+        </p>
+      </header>
+
+      <p className="mt-2 text-sm text-[#2C4A5E]">
+        Outside groups — Super PACs, dark-money 501(c)(4)s, ideological vehicles — spent{' '}
+        <span className="font-semibold">{fmtUsd(ieSupportTotal)}</span> to help elect this legislator and{' '}
+        <span className="font-semibold">{fmtUsd(ieOpposeBeneficiaryTotal)}</span> to defeat their opponents across
+        2018–2024. They did not raise this money. Under v1.9.1, IE_SUPPORT counts at half-weight in the PAC Score;
+        IE_OPPOSE_BENEFICIARY is transparency-only and does not affect the score — the legislator could not refuse
+        spending directed against an opponent.
+      </p>
+
+      {/* Headline tiles — navy / wheat civic register, brick-red accent border. */}
+      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="rounded border border-[#2C4A5E]/40 bg-[#2C4A5E]/60 p-4 text-[#F5DEB3]">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/80">Spent FOR this legislator</p>
+          <p className="mt-1 font-serif text-3xl font-bold tabular-nums">{fmtUsd(ieSupportTotal)}</p>
+          <p className="mt-1 font-mono text-[11px] text-[#F5DEB3]/80">
+            IE_SUPPORT — outside-group independent expenditures filed for this candidate.{' '}
+            <span className="font-semibold">Half-weight</span> in the PAC Score (Tier 2).
+          </p>
+        </div>
+        <div className="rounded border border-[#2C4A5E]/40 bg-[#2C4A5E]/60 p-4 text-[#F5DEB3]">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/80">
+            Spent AGAINST their opponents
+          </p>
+          <p className="mt-1 font-serif text-3xl font-bold tabular-nums">{fmtUsd(ieOpposeBeneficiaryTotal)}</p>
+          <p className="mt-1 font-mono text-[11px] text-[#F5DEB3]/80">
+            IE_OPPOSE_BENEFICIARY — credited to the seat winner via the v1.7.4 attribution.{' '}
+            <span className="font-semibold">Zero weight</span> in the PAC Score (Tier 3, transparency only).
+          </p>
+        </div>
+      </div>
+
+      {/* Class breakdown — same PAC_CLASS_TONE palette as the Money Trail bars. */}
+      {byClass.length > 0 && (
+        <div className="mt-6">
+          <p className="font-mono text-xs uppercase tracking-widest text-[#2C4A5E]/70">Breakdown by donor class</p>
+          <table className="mt-2 w-full border-separate border-spacing-y-1 text-sm">
+            <thead>
+              <tr className="text-left font-mono text-[10px] uppercase tracking-wide text-[#2C4A5E]/60">
+                <th className="pl-2">Class</th>
+                <th className="text-right">Spent FOR</th>
+                <th className="text-right">Spent vs opponent</th>
+                <th className="pr-2 text-right">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {byClass.map((row) => {
+                const tone = PAC_CLASS_TONE[row.class] ?? PAC_CLASS_TONE.UNKNOWN;
+                return (
+                  <tr key={row.class} className="text-[#2C4A5E]">
+                    <td className="rounded-l bg-gray-50 pl-2">
+                      <span
+                        className={`inline-flex w-32 justify-center rounded px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide ${tone.bg}`}>
+                        {tone.label}
+                      </span>
+                    </td>
+                    <td className="bg-gray-50 text-right font-mono tabular-nums">
+                      {row.ieSupport > 0 ? fmtUsd(row.ieSupport) : '—'}
+                    </td>
+                    <td className="bg-gray-50 text-right font-mono tabular-nums">
+                      {row.ieOpposeBeneficiary > 0 ? fmtUsd(row.ieOpposeBeneficiary) : '—'}
+                    </td>
+                    <td className="rounded-r bg-gray-50 pr-2 text-right font-mono font-semibold tabular-nums">
+                      {fmtUsd(row.total)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Top outside spenders — sortable feel via column headers; rendered as a
+          static rank since the page is server-rendered and we don't want a
+          client-side bundle just for sorting a 15-row table. Highest-total first. */}
+      {topSpenders.length > 0 && (
+        <div className="mt-6">
+          <p className="font-mono text-xs uppercase tracking-widest text-[#2C4A5E]/70">Top outside-money spenders</p>
+          <ul className="mt-2 divide-y divide-[#F5DEB3]/10 rounded border border-gray-200">
+            {topSpenders.map((s) => {
+              const tone = PAC_CLASS_TONE[s.class] ?? PAC_CLASS_TONE.UNKNOWN;
+              return (
+                <li key={s.committeeId} className="flex flex-wrap items-center gap-2 px-3 py-1.5 text-sm">
+                  <Link
+                    href={`/scorecard/pac/${s.committeeId.toLowerCase()}`}
+                    className="min-w-[14rem] flex-1 truncate text-[#2C4A5E] hover:underline">
+                    {s.name}
+                  </Link>
+                  <span
+                    className={`shrink-0 rounded px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide ${tone.bg}`}>
+                    {tone.label}
+                  </span>
+                  {s.ieSupport > 0 && (
+                    <span
+                      title="IE supporting this legislator (half-weight in PAC Score)"
+                      className="w-20 shrink-0 text-right font-mono text-xs tabular-nums text-[#2C4A5E]">
+                      FOR {fmtUsd(s.ieSupport)}
+                    </span>
+                  )}
+                  {s.ieOpposeBeneficiary > 0 && (
+                    <span
+                      title="IE against their opponent (zero weight, transparency only)"
+                      className="w-24 shrink-0 text-right font-mono text-xs tabular-nums text-[#8B3A3A]">
+                      vs OPP {fmtUsd(s.ieOpposeBeneficiary)}
+                    </span>
+                  )}
+                  <span className="w-20 shrink-0 text-right font-mono text-xs font-semibold tabular-nums text-[#2C4A5E]">
+                    {fmtUsd(s.total)}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="mt-2 font-mono text-[11px] text-[#2C4A5E]/70">
+            DARK_MONEY = undisclosed-donor 501(c)(4) vehicles · ACTIVIST = single-issue 501(c)(4)s · IDEOLOGICAL =
+            movement committees. See{' '}
+            <Link href="/scorecard/methodology/pac-classes" className="underline">
+              how classes work
+            </Link>
+            .
+          </p>
         </div>
       )}
     </section>
