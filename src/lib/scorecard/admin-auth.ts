@@ -2,6 +2,8 @@
 // admin queue. Single-source-of-truth for the email allowlist read from
 // SCORECARD_ADMIN_EMAILS env var.
 //
+// (CI trigger smoke test on PR #57 — no behavior change.)
+//
 // Why an env-var allowlist instead of a User.role column: keeps v1.6.1
 // minimal — no schema migration, no admin-role assignment UI, just a list
 // of trusted emails. Future expansion to role-based access is fine.
