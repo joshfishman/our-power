@@ -4,7 +4,6 @@
 import prisma from '@/lib/prisma/prisma';
 import { METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
 import { classifyEmployer, SECTOR_LABEL } from '@/lib/scorecard/employer-industry';
-import { isLegAlignedOnBill, MARKER_STORAGE_TYPE_MAP, stripBillNum } from '@/lib/scorecard/voting-alignment';
 
 export type ScorecardJurisdiction = 'FEDERAL' | 'CA';
 
@@ -118,19 +117,16 @@ export async function findLegislatorByAnyId(id: string) {
  * v1.5 and earlier: per-plank score is a signed integer; total = sum.
  * v1.6: per-plank score is a 0-100 alignment percentage; total is the
  *       MEAN across planks (not the sum, which would exceed 100).
- * v0.9 (current): per-plank score is a bill-level alignment percent
- *       (aligned ÷ eligible × 100), with cosponsorship + marker-sponsorship
- *       folded in, written ONLY for planks with ≥1 eligible bill. The "total"
- *       is the per-plank mean across the rows that exist — i.e. the
- *       legislator's Voting Record. Planks with insufficient data have no row
- *       and are therefore excluded from the mean. The Average of (PAC, Voting)
- *       is computed by `computeTwoScoreAverage` below, NOT by this helper.
+ * v1.7 (current): per-plank score is the same shape as v1.6 (bill-level
+ *       alignment percent, with cosponsorship folded in). The "total"
+ *       under v1.7 is just the per-plank mean — i.e. the legislator's
+ *       Voting Record. The Average of (PAC, Voting) is computed by
+ *       `computeTwoScoreAverage` below, NOT by this helper.
  *
- * Behavior: under v0.9 every score sits in [0, 100], so the percent-range
- * branch averages. The signed-sum fallback is dead under v0.9 but left
- * harmless for any lingering legacy rows.
+ * Behavior: when every score sits in [0, 100] we treat it as v1.6/v1.7-shaped
+ * (alignment percent) and average. Otherwise we fall back to v1.5 signed sum.
  *
- * Returns null when no scores exist (→ "insufficient data" / "pending").
+ * Returns null if no scores are published yet (used to render "pending").
  */
 export function computePublishedTotal(scores: Array<{ score: number }>): number | null {
   if (scores.length === 0) return null;
@@ -1007,9 +1003,20 @@ export async function getLegislatorBillBreakdown(
     },
   });
 
-  // Shared with the scorer (voting-alignment.ts) so the displayed
-  // "X aligned of Y bills" can never disagree with the computed score.
-  const STORAGE_TYPE_MAP = MARKER_STORAGE_TYPE_MAP;
+  const STORAGE_TYPE_MAP: Record<string, string> = {
+    HOUSE_BILL: 'HR',
+    SENATE_BILL: 'S',
+    HOUSE_JOINT_RES: 'HJRES',
+    SENATE_JOINT_RES: 'SJRES',
+    HOUSE_CONCURRENT_RES: 'HCONRES',
+    SENATE_CONCURRENT_RES: 'SCONRES',
+    HOUSE_RES: 'HRES',
+    SENATE_RES: 'SRES',
+    CA_ASSEMBLY_BILL: 'CA_BILL',
+    CA_SENATE_BILL: 'CA_BILL',
+    CA_HOUSE_BILL: 'CA_BILL',
+  };
+  const stripBillNum = (raw: string) => raw.match(/\d+/)?.[0] ?? null;
 
   const byPlank = new Map<number, PlankBreakdown>();
   // Use bill-level dedup keyed by (storage-form billType|billNumber). A bill
@@ -1073,7 +1080,7 @@ export async function getLegislatorBillBreakdown(
   // 4. Emit roll-call rows.
   for (const a of billAggs.values()) {
     const cosponsored = cosponsorKeys.has(`${a.billType}|${a.billNumber}`);
-    const isAligned = isLegAlignedOnBill(a.votedAligned, cosponsored);
+    const isAligned = a.votedAligned || cosponsored;
     for (const plankNum of a.plankNumbers) {
       pushRow(plankNum, {
         billType: a.billType,

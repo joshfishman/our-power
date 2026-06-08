@@ -1,174 +1,203 @@
 import { describe, expect, it } from 'vitest';
-import { METHODOLOGY_VERSION, pacScoreFromRatio } from '@/lib/scorecard/scoring';
 import {
-  billChamberMatchesLeg,
-  isLegAlignedOnBill,
-  computePlankTallies,
-  type AlignmentUniverse,
-  type BillState,
-  type LegForTally,
-} from '@/lib/scorecard/voting-alignment';
+  scoreLegislator,
+  scorePlank,
+  METHODOLOGY_VERSION,
+  weightForAchievement,
+  pacScoreFromRatio,
+  rawToPercent,
+} from '@/lib/scorecard/scoring';
+import type { ScoringPlank, AchievementForScoring } from '@/lib/scorecard/scoring';
 
-// v0.9 — the RATIO voting model. Per (legislator, plank):
-//   voting% = aligned ÷ total × 100
-// total (eligible) = chamber-gated scorable roll-call bills ∪ marker slots
-//                    (bill-level dedup)
-// aligned = voted-aligned ∪ cosponsored ∪ marker-sponsored
-// An absence / NO vote stays in the denominator (a drag), NEVER −1.
-// Insufficient-data planks (0 eligible) get NO row → excluded from the mean.
-// PAC is its own separate score and never enters a plank voting tally.
+// Methodology v1.3: weighted scoring via weightForAchievement.
+// Plank score = sum of weighted achievements. Total = sum of plank scores.
 
-describe('METHODOLOGY_VERSION', () => {
-  it('is v0.9 (intentionally sub-1.0: correct model, not yet finished)', () => {
-    expect(METHODOLOGY_VERSION).toBe('v0.9');
-  });
-});
+const plank: ScoringPlank = {
+  id: 'plank-1',
+  number: 1,
+  markers: [
+    { id: 'm1', markerType: 'PRIMARY' },
+    { id: 'm2', markerType: 'SECONDARY' },
+    { id: 'm3', markerType: 'SECONDARY' },
+    { id: 'm4', markerType: 'SECONDARY' },
+  ],
+};
 
-describe('billChamberMatchesLeg — chamber gating', () => {
-  it('House bill scores House members only', () => {
-    expect(billChamberMatchesLeg('HOUSE', 'FEDERAL', 'REP')).toBe(true);
-    expect(billChamberMatchesLeg('HOUSE', 'FEDERAL', 'SEN')).toBe(false);
-  });
-  it('Senate bill scores Senators only', () => {
-    expect(billChamberMatchesLeg('SENATE', 'FEDERAL', 'SEN')).toBe(true);
-    expect(billChamberMatchesLeg('SENATE', 'FEDERAL', 'REP')).toBe(false);
-  });
-  it('never matches across jurisdiction', () => {
-    expect(billChamberMatchesLeg('HOUSE', 'CA', 'REP')).toBe(false);
-    expect(billChamberMatchesLeg('CA_ASSEMBLY', 'FEDERAL', 'REP')).toBe(false);
-  });
-  it('CA chambers map Assembly→REP, Senate→SEN', () => {
-    expect(billChamberMatchesLeg('CA_ASSEMBLY', 'CA', 'REP')).toBe(true);
-    expect(billChamberMatchesLeg('CA_SENATE', 'CA', 'SEN')).toBe(true);
-    expect(billChamberMatchesLeg('CA_ASSEMBLY', 'CA', 'SEN')).toBe(false);
-  });
-});
-
-describe('isLegAlignedOnBill — aligned iff voted-aligned OR cosponsored', () => {
-  it('voted aligned → aligned', () => {
-    expect(isLegAlignedOnBill(true, false)).toBe(true);
-  });
-  it('cosponsored → aligned', () => {
-    expect(isLegAlignedOnBill(false, true)).toBe(true);
-  });
-  it('neither (absence / NO / no cosponsor) → NOT aligned (but never a penalty)', () => {
-    expect(isLegAlignedOnBill(false, false)).toBe(false);
-  });
-});
-
-// ─── computePlankTallies — the ratio model end-to-end (pure, hand-built) ────
-
-function bill(
-  chamber: BillState['chamber'],
-  billType: string,
-  billNumber: string,
-  planks: number[],
-  alignedLegIds: string[],
-): [string, BillState] {
-  return [
-    `${chamber}|${billType}|${billNumber}`,
-    {
-      chamber,
-      billType,
-      billNumber,
-      plankSet: new Set(planks),
-      legsAligned: new Set(alignedLegIds),
-    },
-  ];
+// Helpers for building test achievements.
+function ach(markerId: string, kind: 'for' | 'against' | 'norecord' = 'for'): AchievementForScoring {
+  return {
+    markerId,
+    achieved: kind === 'for',
+    actionTaken: kind === 'for' ? 'ACTED_FOR' : kind === 'against' ? 'ACTED_AGAINST' : 'NO_RECORD',
+    evidenceType: 'VOTE',
+    sponsorTier: null,
+    achievementScore: null,
+  };
 }
 
-const houseLeg: LegForTally = { id: 'leg-house', jurisdiction: 'FEDERAL', chamber: 'REP' };
+function authoredCosponsor(markerId: string, tier: AchievementForScoring['sponsorTier']): AchievementForScoring {
+  return {
+    markerId,
+    achieved: true,
+    actionTaken: 'ACTED_FOR',
+    evidenceType: 'COSPONSOR',
+    sponsorTier: tier,
+    achievementScore: null,
+  };
+}
 
-describe('computePlankTallies — ratio model', () => {
-  it('aligned ÷ total × 100 per plank, with absence as a denominator drag (not −1)', () => {
-    // Plank 1: bill A (voted aligned) + bill B (no vote, no cosponsor) →
-    //   aligned=1, total=2 → 50%. Bill B drags the denominator, doesn't go −1.
-    const universe: AlignmentUniverse = {
-      bills: new Map([
-        bill('HOUSE', 'HR', '1', [1], ['leg-house']), // aligned
-        bill('HOUSE', 'HR', '2', [1], []), // absent → drag
-      ]),
-      cosponsorsByBill: new Map(),
-      markerSlots: [],
-    };
-    const { perPlank, overall } = computePlankTallies(houseLeg, universe);
-    expect(perPlank.get(1)).toEqual({ aligned: 1, total: 2 });
-    expect(overall).toEqual({ aligned: 1, total: 2 });
+describe('scorePlank — v1.3 weighted-sum model', () => {
+  it('returns 0 when no achievements touch this plank', () => {
+    const r = scorePlank(plank, []);
+    expect(r.score).toBe(0);
+    expect(r.measuredMarkers).toBe(0);
   });
 
-  it('cosponsorship counts as aligned even with no vote', () => {
-    const universe: AlignmentUniverse = {
-      bills: new Map([bill('HOUSE', 'HR', '10', [2], [])]),
-      cosponsorsByBill: new Map([['FEDERAL|HR|10', new Set(['leg-house'])]]),
-      markerSlots: [],
-    };
-    const { perPlank } = computePlankTallies(houseLeg, universe);
-    expect(perPlank.get(2)).toEqual({ aligned: 1, total: 1 });
+  it('sums weights across markers', () => {
+    // +3 (Author) + +1 (vote yes) + -1 (vote no) = +3
+    const r = scorePlank(plank, [authoredCosponsor('m1', 'AUTHOR'), ach('m2', 'for'), ach('m3', 'against')]);
+    expect(r.score).toBe(3);
+    expect(r.forCount).toBe(2);
+    expect(r.againstCount).toBe(1);
+    expect(r.measuredMarkers).toBe(3);
   });
 
-  it('chamber gating: a Senate bill does not enter a House member tally', () => {
-    const universe: AlignmentUniverse = {
-      bills: new Map([
-        bill('HOUSE', 'HR', '1', [1], ['leg-house']),
-        bill('SENATE', 'S', '1', [1], []), // wrong chamber — skipped
-      ]),
-      cosponsorsByBill: new Map(),
-      markerSlots: [],
-    };
-    const { perPlank } = computePlankTallies(houseLeg, universe);
-    expect(perPlank.get(1)).toEqual({ aligned: 1, total: 1 });
+  it('ignores achievements for markers outside this plank', () => {
+    const r = scorePlank(plank, [ach('m1', 'for'), ach('not-on-this-plank', 'for')]);
+    expect(r.score).toBe(1);
+    expect(r.measuredMarkers).toBe(1);
   });
 
-  it('insufficient-data plank: a plank with 0 eligible bills gets NO entry', () => {
-    const universe: AlignmentUniverse = {
-      bills: new Map([bill('HOUSE', 'HR', '1', [1], ['leg-house'])]),
-      cosponsorsByBill: new Map(),
-      markerSlots: [],
-    };
-    const { perPlank } = computePlankTallies(houseLeg, universe);
-    expect(perPlank.has(1)).toBe(true);
-    expect(perPlank.has(2)).toBe(false); // no row → excluded from the average
-  });
-
-  it('genuinely-engaged-but-unaligned plank scores a real 0% (row exists)', () => {
-    const universe: AlignmentUniverse = {
-      bills: new Map([bill('HOUSE', 'HR', '5', [3], [])]), // eligible, not aligned
-      cosponsorsByBill: new Map(),
-      markerSlots: [],
-    };
-    const { perPlank } = computePlankTallies(houseLeg, universe);
-    expect(perPlank.get(3)).toEqual({ aligned: 0, total: 1 }); // 0% — a real row
-  });
-
-  it('marker slots are cross-chamber and add to total/aligned', () => {
-    const universe: AlignmentUniverse = {
-      bills: new Map(),
-      cosponsorsByBill: new Map(),
-      markerSlots: [
-        { markerId: 'm1', plankNumber: 4, jurisdiction: 'FEDERAL', alignedLegIds: new Set(['leg-house']) },
-        { markerId: 'm2', plankNumber: 4, jurisdiction: 'FEDERAL', alignedLegIds: new Set() },
-        { markerId: 'm3', plankNumber: 4, jurisdiction: 'CA', alignedLegIds: new Set(['leg-house']) }, // wrong juris
-      ],
-    };
-    const { perPlank } = computePlankTallies(houseLeg, universe);
-    expect(perPlank.get(4)).toEqual({ aligned: 1, total: 2 });
-  });
-
-  it('PAC marker is excluded by construction: bill-less markers never appear as slots', () => {
-    // loadMarkerSlots skips bill-less markers, so the universe a real run
-    // builds has NO slot for the corporate-PAC-refusal marker. Modelled here
-    // by the absence of any PAC slot — the tally is unaffected by PAC.
-    const universe: AlignmentUniverse = {
-      bills: new Map([bill('HOUSE', 'HR', '1', [1], ['leg-house'])]),
-      cosponsorsByBill: new Map(),
-      markerSlots: [], // PAC marker would have been dropped at load time
-    };
-    const { perPlank } = computePlankTallies(houseLeg, universe);
-    expect(perPlank.get(1)).toEqual({ aligned: 1, total: 1 }); // pure voting, no PAC
+  it('ignores NO_RECORD achievements', () => {
+    const r = scorePlank(plank, [ach('m1', 'for'), ach('m2', 'norecord')]);
+    expect(r.score).toBe(1);
+    expect(r.measuredMarkers).toBe(1);
   });
 });
 
-describe('pacScoreFromRatio — v1.4 continuous gradient (still LIVE for the separate PAC score)', () => {
+describe('scoreLegislator — v1.3', () => {
+  const planks: ScoringPlank[] = [
+    plank,
+    {
+      id: 'plank-2',
+      number: 2,
+      markers: [{ id: 'm10', markerType: 'PRIMARY' }],
+    },
+  ];
+
+  it('aggregates per-plank scores into a total', () => {
+    const result = scoreLegislator(planks, {
+      legislatorId: 'leg-1',
+      achievements: [authoredCosponsor('m1', 'AUTHOR'), ach('m10', 'against')],
+    });
+    expect(result.total).toBe(2); // +3 + -1
+    expect(result.perPlank).toHaveLength(2);
+  });
+
+  it('returns 0 for a legislator with no achievements', () => {
+    const result = scoreLegislator(planks, {
+      legislatorId: 'leg-1',
+      achievements: [],
+    });
+    expect(result.total).toBe(0);
+  });
+});
+
+describe('METHODOLOGY_VERSION', () => {
+  it('is v1.9.1', () => {
+    expect(METHODOLOGY_VERSION).toBe('v1.9.1');
+  });
+});
+
+describe('weightForAchievement — v1.3 weight table', () => {
+  const base = {
+    markerId: 'm',
+    achieved: true,
+    sponsorTier: null,
+    achievementScore: null,
+  } as const;
+
+  it('Author cosponsorship is +3', () => {
+    const a: AchievementForScoring = {
+      ...base,
+      evidenceType: 'COSPONSOR',
+      actionTaken: 'ACTED_FOR',
+      sponsorTier: 'AUTHOR',
+    };
+    expect(weightForAchievement(a)).toBe(3);
+  });
+
+  it('Sponsor cosponsorship is +3', () => {
+    const a: AchievementForScoring = {
+      ...base,
+      evidenceType: 'COSPONSOR',
+      actionTaken: 'ACTED_FOR',
+      sponsorTier: 'SPONSOR',
+    };
+    expect(weightForAchievement(a)).toBe(3);
+  });
+
+  it('Principal Coauthor cosponsorship is +2', () => {
+    const a: AchievementForScoring = {
+      ...base,
+      evidenceType: 'COSPONSOR',
+      actionTaken: 'ACTED_FOR',
+      sponsorTier: 'PRINCIPAL_COAUTHOR',
+    };
+    expect(weightForAchievement(a)).toBe(2);
+  });
+
+  it('Coauthor cosponsorship is +2', () => {
+    const a: AchievementForScoring = {
+      ...base,
+      evidenceType: 'COSPONSOR',
+      actionTaken: 'ACTED_FOR',
+      sponsorTier: 'COAUTHOR',
+    };
+    expect(weightForAchievement(a)).toBe(2);
+  });
+
+  it('Cosponsor cosponsorship is +1', () => {
+    const a: AchievementForScoring = {
+      ...base,
+      evidenceType: 'COSPONSOR',
+      actionTaken: 'ACTED_FOR',
+      sponsorTier: 'COSPONSOR',
+    };
+    expect(weightForAchievement(a)).toBe(1);
+  });
+
+  it('VOTE ACTED_FOR (yes) is +1', () => {
+    const a: AchievementForScoring = { ...base, evidenceType: 'VOTE', actionTaken: 'ACTED_FOR' };
+    expect(weightForAchievement(a)).toBe(1);
+  });
+
+  it('VOTE ACTED_AGAINST (no/absent/abstain/excused/present) is -1', () => {
+    const a: AchievementForScoring = { ...base, evidenceType: 'VOTE', actionTaken: 'ACTED_AGAINST' };
+    expect(weightForAchievement(a)).toBe(-1);
+  });
+
+  it('PAC FILING under threshold (ACTED_FOR) is +1', () => {
+    const a: AchievementForScoring = { ...base, evidenceType: 'FEC_FILING', actionTaken: 'ACTED_FOR' };
+    expect(weightForAchievement(a)).toBe(1);
+    const b: AchievementForScoring = { ...base, evidenceType: 'CAL_ACCESS_FILING', actionTaken: 'ACTED_FOR' };
+    expect(weightForAchievement(b)).toBe(1);
+  });
+
+  it('PAC FILING over threshold (ACTED_AGAINST) is -1', () => {
+    const a: AchievementForScoring = { ...base, evidenceType: 'FEC_FILING', actionTaken: 'ACTED_AGAINST' };
+    expect(weightForAchievement(a)).toBe(-1);
+    const b: AchievementForScoring = { ...base, evidenceType: 'CAL_ACCESS_FILING', actionTaken: 'ACTED_AGAINST' };
+    expect(weightForAchievement(b)).toBe(-1);
+  });
+
+  it('NO_RECORD contributes 0', () => {
+    const a: AchievementForScoring = { ...base, evidenceType: 'VOTE', actionTaken: 'NO_RECORD' };
+    expect(weightForAchievement(a)).toBe(0);
+  });
+});
+
+describe('pacScoreFromRatio — v1.4 continuous gradient', () => {
   it('returns +2 at zero corporate', () => {
     expect(pacScoreFromRatio(0)).toBeCloseTo(2);
   });
@@ -178,12 +207,62 @@ describe('pacScoreFromRatio — v1.4 continuous gradient (still LIVE for the sep
   it('returns 0 at 15%', () => {
     expect(pacScoreFromRatio(0.15)).toBeCloseTo(0);
   });
-  it('returns -3 at 85% and clamps below', () => {
+  it('returns -1 at 35%', () => {
+    expect(pacScoreFromRatio(0.35)).toBeCloseTo(-1);
+  });
+  it('returns -2 at 65%', () => {
+    expect(pacScoreFromRatio(0.65)).toBeCloseTo(-2);
+  });
+  it('returns -3 at 85%', () => {
     expect(pacScoreFromRatio(0.85)).toBeCloseTo(-3);
+  });
+  it('clamps to -3 above 85%', () => {
+    expect(pacScoreFromRatio(0.95)).toBeCloseTo(-3);
     expect(pacScoreFromRatio(1.0)).toBeCloseTo(-3);
   });
-  it('interpolates linearly between anchors', () => {
+  it('clamps to +2 below 0', () => {
+    // Shouldn't happen in practice but worth covering
+    expect(pacScoreFromRatio(-0.1)).toBeCloseTo(2);
+  });
+  it('interpolates linearly between anchors — 2.5% → +1.5', () => {
     expect(pacScoreFromRatio(0.025)).toBeCloseTo(1.5);
+  });
+  it('interpolates linearly between anchors — 10% → +0.5', () => {
+    expect(pacScoreFromRatio(0.1)).toBeCloseTo(0.5);
+  });
+  it('interpolates linearly between anchors — 50% → -1.5', () => {
     expect(pacScoreFromRatio(0.5)).toBeCloseTo(-1.5);
+  });
+});
+
+describe('rawToPercent — v1.4 anchored display', () => {
+  it('returns 0% at raw 0', () => {
+    expect(rawToPercent(0, 25, -10)).toBe(0);
+  });
+  it('returns 100% at positive anchor', () => {
+    expect(rawToPercent(25, 25, -10)).toBe(100);
+  });
+  it('returns -100% at negative anchor', () => {
+    expect(rawToPercent(-10, 25, -10)).toBe(-100);
+  });
+  it('returns 50% halfway up positive side', () => {
+    expect(rawToPercent(12.5, 25, -10)).toBe(50);
+  });
+  it('returns -50% halfway down negative side', () => {
+    expect(rawToPercent(-5, 25, -10)).toBe(-50);
+  });
+  it('clamps above positive anchor to +100', () => {
+    expect(rawToPercent(100, 25, -10)).toBe(100);
+  });
+  it('clamps below negative anchor to -100', () => {
+    expect(rawToPercent(-50, 25, -10)).toBe(-100);
+  });
+  it('handles asymmetric anchors correctly', () => {
+    // positive scale is +25, negative scale is -8
+    expect(rawToPercent(12.5, 25, -8)).toBe(50); // halfway up
+    expect(rawToPercent(-4, 25, -8)).toBe(-50); // halfway down
+  });
+  it('returns 0% when both anchors are 0 (defensive)', () => {
+    expect(rawToPercent(5, 0, 0)).toBe(0);
   });
 });

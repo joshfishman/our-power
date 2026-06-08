@@ -25,18 +25,7 @@
 // "+0 with full coverage" — the same evidence transparency goal as the
 // three-state rendering.
 
-// v0.9 — the ratio voting model (aligned ÷ eligible × 100), computed in
-// scripts/compute-scores.ts via src/lib/scorecard/voting-alignment.ts. The
-// version is intentionally BELOW 1.0: it signals "correct model, not yet
-// finished calibrating." It is a free-form string; every display surface
-// reads RepresentativeScore rows filtered by this exact value.
-//
-// The sum-model functions below (weightForAchievement / scorePlank /
-// scoreLegislator / rawToPercent) are NO LONGER on the live scoring path —
-// they're retained @deprecated for the legacy spot-check / calibration
-// scripts that still import them. pacScoreFromRatio is still LIVE
-// (computePacAchievements uses it for the separate PAC score).
-export const METHODOLOGY_VERSION = 'v0.9';
+export const METHODOLOGY_VERSION = 'v1.9.1';
 
 export type MarkerTypeForScoring = 'PRIMARY' | 'SECONDARY';
 export type AchievementStatus = 'ACTED_FOR' | 'ACTED_AGAINST' | 'NO_RECORD';
@@ -92,9 +81,6 @@ export interface AchievementForScoring {
  *   PAC FILING ACTED_FOR  (under 5%)  → +1
  *   PAC FILING ACTED_AGAINST          → -1
  *   NO_RECORD or absent row           →  0
- *
- * @deprecated Sum-model weight, off the live scoring path as of v0.9 (ratio
- * model). Retained for legacy scripts only.
  */
 export function weightForAchievement(a: AchievementForScoring): number {
   // v1.4: PAC marker uses continuous achievementScore when present
@@ -163,9 +149,6 @@ export function pacScoreFromRatio(ratio: number): number {
  * @param raw          The signed integer-or-decimal score.
  * @param posAnchor    Raw score that maps to +100%.
  * @param negAnchor    Raw score that maps to -100% (negative number).
- *
- * @deprecated Sum-model display mapping, off the live scoring path as of v0.9
- * (ratio scores are already 0–100 percentages). Retained for legacy scripts.
  */
 export function rawToPercent(raw: number, posAnchor: number, negAnchor: number): number {
   if (raw === 0 || (posAnchor === 0 && negAnchor === 0)) return 0;
@@ -177,10 +160,6 @@ export function rawToPercent(raw: number, posAnchor: number, negAnchor: number):
   return Math.max(-100, (raw / Math.abs(negAnchor)) * 100);
 }
 
-/**
- * @deprecated Sum-model per-plank scorer, off the live scoring path as of v0.9
- * (ratio model in voting-alignment.ts). Retained for legacy scripts/tests.
- */
 export function scorePlank(plank: ScoringPlank, achievements: readonly AchievementForScoring[]): PlankScoreResult {
   const markerIds = new Set(plank.markers.map((m) => m.id));
   let score = 0;
@@ -218,10 +197,6 @@ export interface LegislatorScoreResult {
   totalAgainst: number;
 }
 
-/**
- * @deprecated Sum-model legislator scorer, off the live scoring path as of v0.9
- * (ratio model in voting-alignment.ts). Retained for legacy scripts/tests.
- */
 export function scoreLegislator(planks: readonly ScoringPlank[], input: LegislatorScoreInput): LegislatorScoreResult {
   const perPlank = planks.map((p) => scorePlank(p, input.achievements));
   const total = perPlank.reduce((sum, p) => sum + p.score, 0);

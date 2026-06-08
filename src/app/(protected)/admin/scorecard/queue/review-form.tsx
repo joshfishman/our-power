@@ -48,9 +48,7 @@ export function ReviewForm({
               key={p}
               onClick={() => togglePlank(p)}
               className={`rounded border px-2 py-0.5 ${
-                planks.has(p)
-                  ? 'border-accent bg-accent font-bold text-white'
-                  : 'border-border bg-transparent'
+                planks.has(p) ? 'border-accent bg-accent font-bold text-white' : 'border-border bg-transparent'
               }`}>
               P{p}
             </button>
@@ -66,9 +64,7 @@ export function ReviewForm({
               key={v}
               onClick={() => setAligned(v)}
               className={`rounded border px-2 py-0.5 ${
-                aligned === v
-                  ? 'border-accent bg-accent font-bold text-white'
-                  : 'border-border bg-transparent'
+                aligned === v ? 'border-accent bg-accent font-bold text-white' : 'border-border bg-transparent'
               }`}>
               {v}
             </button>
