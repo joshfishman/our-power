@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import Button from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { TextInput } from '@/components/ui/TextInput';
+import ThemePlayground from './ThemePlayground';
 
 export const metadata = {
   title: 'Style Guide — Our Power',
@@ -194,6 +195,10 @@ export default function StyleGuidePage() {
           analysis.
         </p>
       </header>
+
+      <div className="mb-8">
+        <ThemePlayground />
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Light theme (the default). `.light` forces light even if the visitor's saved theme is dark. */}

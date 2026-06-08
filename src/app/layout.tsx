@@ -47,6 +47,12 @@ export default async function Layout({ children }: { children: React.ReactNode }
             __html: `(function(){var t=localStorage.getItem('theme');if(t==='dark'){document.documentElement.classList.add('dark')}else if(t==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches){document.documentElement.classList.add('dark')}})();`,
           }}
         />
+        {/* Re-apply a theme saved from /styleguide's Theme Playground (this browser only). */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var c=localStorage.getItem('op-theme-css');if(c){var s=document.getElementById('op-theme-overrides')||document.createElement('style');s.id='op-theme-overrides';s.textContent=c;document.head.appendChild(s);}}catch(e){}})();`,
+          }}
+        />
       </head>
       <body className={cn('bg-background text-foreground', poppins.className)}>
         <Providers session={session}>{children}</Providers>
