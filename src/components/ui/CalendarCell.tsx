@@ -43,7 +43,7 @@ export function CalendarCell({ state, date }: CalendarCellProps) {
         } ${isSelected ? (isInvalid ? 'bg-destructive' : 'bg-primary') : ''} ${isDisabled ? 'disabled' : ''}`}>
         <div
           className={`flex h-full w-full items-center justify-center rounded-full text-sm font-semibold ${
-            isDisabled && !isInvalid ? 'text-gray-400' : ''
+            isDisabled && !isInvalid ? 'text-subtle-foreground' : ''
           } ${
             // Focus ring, visible while the cell has keyboard focus.
             isFocusVisible ? 'group-focus:z-2 ring-2 ring-sky-600 ring-offset-2' : ''

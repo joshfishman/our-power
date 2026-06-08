@@ -178,14 +178,16 @@ export default async function PacClassesMethodologyPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
-      <Link href="/scorecard/methodology" className="text-sm text-gray-600 hover:text-gray-900">
+      <Link href="/scorecard/methodology" className="text-sm text-muted-foreground hover:text-foreground">
         ← Back to methodology
       </Link>
 
-      <header className="mt-4 border-b-2 border-gray-900 pb-6">
-        <p className="font-mono text-xs uppercase tracking-widest text-gray-500">Methodology · {METHODOLOGY_VERSION}</p>
-        <h1 className="mt-1 font-serif text-4xl font-bold text-gray-900">How we classify PACs</h1>
-        <p className="mt-3 max-w-2xl text-base text-gray-700">
+      <header className="mt-4 border-b-2 border-border pb-6">
+        <p className="font-mono text-xs uppercase tracking-widest text-subtle-foreground">
+          Methodology · {METHODOLOGY_VERSION}
+        </p>
+        <h1 className="mt-1 font-serif text-4xl font-bold text-foreground">How we classify PACs</h1>
+        <p className="mt-3 max-w-2xl text-base text-muted-foreground">
           Every federal PAC sits in one of eight classes. Three count <strong>against</strong> the legislator&apos;s PAC
           Score (influence-buying signals). Five do not count — they&apos;re labor money, single-issue advocacy,
           politician-to-politician transfers, broad partisan grassroots, or pass-through conduits. The same
@@ -201,33 +203,33 @@ export default async function PacClassesMethodologyPage() {
             <article
               key={c.key}
               className={`rounded border-l-4 p-5 ${
-                c.countsAgainst ? 'border-red-700 bg-red-50' : 'border-gray-400 bg-white'
+                c.countsAgainst ? 'border-destructive bg-destructive/10' : 'border-border bg-surface'
               }`}>
               <header className="flex flex-wrap items-baseline gap-3">
-                <h2 className="font-serif text-2xl font-bold text-gray-900">{c.name}</h2>
+                <h2 className="font-serif text-2xl font-bold text-foreground">{c.name}</h2>
                 <span
                   className={`rounded px-2 py-0.5 font-mono text-xs uppercase tracking-wide ${
-                    c.countsAgainst ? 'bg-red-700 text-white' : 'bg-gray-200 text-gray-700'
+                    c.countsAgainst ? 'bg-destructive text-destructive-foreground' : 'bg-muted text-muted-foreground'
                   }`}>
                   {c.countsAgainst ? '⚠ Counts against' : "Doesn't count"}
                 </span>
-                <span className="font-mono text-xs text-gray-500">
+                <span className="font-mono text-xs text-subtle-foreground">
                   {count.toLocaleString()} PACs · ${(dollars / 1_000_000).toFixed(1)}M tracked
                 </span>
               </header>
 
-              <p className="mt-3 text-gray-700">{c.description}</p>
+              <p className="mt-3 text-muted-foreground">{c.description}</p>
 
               {c.examples.length > 0 && (
                 <div className="mt-3">
-                  <p className="font-mono text-xs uppercase tracking-widest text-gray-500">Examples</p>
-                  <p className="mt-1 text-sm text-gray-700">{c.examples.join(' · ')}</p>
+                  <p className="font-mono text-xs uppercase tracking-widest text-subtle-foreground">Examples</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{c.examples.join(' · ')}</p>
                 </div>
               )}
 
               <div className="mt-3">
-                <p className="font-mono text-xs uppercase tracking-widest text-gray-500">Rationale</p>
-                <p className="mt-1 text-sm text-gray-700">{c.rationale}</p>
+                <p className="font-mono text-xs uppercase tracking-widest text-subtle-foreground">Rationale</p>
+                <p className="mt-1 text-sm text-muted-foreground">{c.rationale}</p>
               </div>
 
               {c.edgeCase && (
@@ -241,17 +243,17 @@ export default async function PacClassesMethodologyPage() {
         })}
       </section>
 
-      <section className="mt-12 rounded border border-2 border-[#8B3A3A] border-gray-200 bg-white p-5 shadow-sm">
-        <h2 className="font-mono text-xs uppercase tracking-widest text-[#2C4A5E]">Audit & accountability</h2>
-        <p className="mt-2 text-sm text-[#2C4A5E]">
+      <section className="mt-12 rounded border border-2 border-accent bg-surface p-5 shadow-sm">
+        <h2 className="font-mono text-xs uppercase tracking-widest text-foreground">Audit & accountability</h2>
+        <p className="mt-2 text-sm text-foreground">
           The full classification list is in our public repository at{' '}
-          <code className="rounded bg-gray-50 px-1 font-mono text-xs">data/pac-candidates.csv</code> — every committee
-          ID, name, class assignment, and reason. If you disagree with a classification, open an issue or send us a note
-          and we&apos;ll review.
+          <code className="rounded bg-muted px-1 font-mono text-xs">data/pac-candidates.csv</code> — every committee ID,
+          name, class assignment, and reason. If you disagree with a classification, open an issue or send us a note and
+          we&apos;ll review.
         </p>
       </section>
 
-      <footer className="mt-12 border-t-2 border-gray-900 pt-4 text-xs text-gray-500">
+      <footer className="mt-12 border-t-2 border-border pt-4 text-xs text-subtle-foreground">
         <p>
           Source: FEC bulk filings 2018 + 2020 + 2022 + 2024 cycles. Classifications by Common Ground methodology team,
           reviewable in repo.

@@ -107,15 +107,15 @@ export default async function ScorecardIndexPage(props: { searchParams: Promise<
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <header className="border-b-2 border-gray-900 pb-4">
-        <p className="font-mono text-xs uppercase tracking-widest text-gray-500">The Scorecard</p>
-        <h1 className="mt-1 font-serif text-4xl font-bold text-gray-900">We the People</h1>
-        <p className="mt-2 max-w-2xl text-base text-gray-700">
+      <header className="border-b-2 border-border pb-4">
+        <p className="font-mono text-xs uppercase tracking-widest text-subtle-foreground">The Scorecard</p>
+        <h1 className="mt-1 font-serif text-4xl font-bold text-foreground">We the People</h1>
+        <p className="mt-2 max-w-2xl text-base text-muted-foreground">
           Two scores per legislator, each 0&ndash;100%: <strong>PAC</strong> measures freedom from corporate-PAC money,{' '}
           <strong>Voting</strong> measures alignment across every plank-relevant bill in this Congress (vote +
           cosponsorship). The <strong>Average</strong> of the two is the headline number. Same rubric for everyone,
           every score backed by a public source.{' '}
-          <Link href="/scorecard/methodology" className="underline hover:text-[#8B3A3A]">
+          <Link href="/scorecard/methodology" className="underline hover:text-accent">
             Read the full methodology →
           </Link>
         </p>
@@ -124,25 +124,25 @@ export default async function ScorecardIndexPage(props: { searchParams: Promise<
       <nav className="mt-6 flex flex-wrap items-center gap-2 text-sm">
         <Link
           href={buildHref({ jurisdiction: 'FEDERAL', state: undefined })}
-          className={`rounded border px-3 py-1 text-[#2C4A5E] transition-colors ${
+          className={`rounded border px-3 py-1 text-foreground transition-colors ${
             jurisdiction === 'FEDERAL'
-              ? 'border-[#8B3A3A] bg-[#2C4A5E]/80 font-semibold'
-              : 'border border-[#2C4A5E] border-gray-200 bg-white shadow-sm hover:bg-[#2C4A5E]/80'
+              ? 'border-accent bg-secondary font-semibold'
+              : 'border border-border bg-surface shadow-sm hover:bg-secondary-accent'
           }`}>
           U.S. Congress
         </Link>
         <Link
           href={buildHref({ jurisdiction: 'CA', state: 'CA' })}
-          className={`rounded border px-3 py-1 text-[#2C4A5E] transition-colors ${
+          className={`rounded border px-3 py-1 text-foreground transition-colors ${
             jurisdiction === 'CA'
-              ? 'border-[#8B3A3A] bg-[#2C4A5E]/80 font-semibold'
-              : 'border border-[#2C4A5E] border-gray-200 bg-white shadow-sm hover:bg-[#2C4A5E]/80'
+              ? 'border-accent bg-secondary font-semibold'
+              : 'border border-border bg-surface shadow-sm hover:bg-secondary-accent'
           }`}>
           California
         </Link>
         <Link
           href="/scorecard/methodology"
-          className="ml-auto rounded border border-[#2C4A5E] border-gray-200 bg-transparent px-3 py-1 text-[#2C4A5E]/90 shadow-sm transition-colors hover:bg-white hover:text-[#2C4A5E]">
+          className="ml-auto rounded border border-border bg-transparent px-3 py-1 text-muted-foreground shadow-sm transition-colors hover:bg-surface-elevated hover:text-foreground">
           Methodology →
         </Link>
       </nav>
@@ -159,36 +159,36 @@ export default async function ScorecardIndexPage(props: { searchParams: Promise<
           active={chamber === 'REP'}
           href={buildHref({ chamber: 'REP' })}
         />
-        <span className="ml-2 border-l border-gray-300 pl-2" />
+        <span className="ml-2 border-l border-border pl-2" />
         <FilterChip label="All parties" active={!party} href={buildHref({ party: undefined })} />
         <FilterChip label="D" active={party === 'D'} href={buildHref({ party: 'D' })} />
         <FilterChip label="R" active={party === 'R'} href={buildHref({ party: 'R' })} />
         <FilterChip label="I" active={party === 'I'} href={buildHref({ party: 'I' })} />
       </div>
 
-      <section className="mt-8 rounded border border-[#2C4A5E] border-gray-200 bg-white p-5 shadow-sm">
-        <h2 className="font-mono text-xs uppercase tracking-widest text-[#2C4A5E]">PAC Score — full ranking</h2>
-        <p className="mt-2 text-sm text-[#2C4A5E]">
+      <section className="mt-8 rounded border border-border bg-surface p-5 shadow-sm">
+        <h2 className="font-mono text-xs uppercase tracking-widest text-foreground">PAC Score — full ranking</h2>
+        <p className="mt-2 text-sm text-foreground">
           Every legislator, ranked by corporate-PAC share of campaign receipts.{' '}
           <Link
             href="/scorecard/pac"
-            className="font-medium text-[#FFE9B8] underline underline-offset-2 hover:no-underline">
+            className="font-medium text-foreground underline underline-offset-2 hover:no-underline">
             Open the corporate PAC scorecard →
           </Link>
         </p>
       </section>
 
       {featuredBills.length > 0 && (
-        <section className="mt-8 rounded border border-2 border-[#8B3A3A] border-gray-200 bg-white p-5 shadow-sm">
-          <h2 className="font-mono text-xs uppercase tracking-widest text-[#2C4A5E]">Featured Issues</h2>
+        <section className="mt-8 rounded border border-2 border-accent bg-surface p-5 shadow-sm">
+          <h2 className="font-mono text-xs uppercase tracking-widest text-foreground">Featured Issues</h2>
           <ul className="mt-3 space-y-3">
             {featuredBills.map((bill) => {
               const idForUrl = bill.publicSlug ?? bill.id;
               return (
                 <li key={bill.id}>
                   <Link href={`/scorecard/bills/${encodeURIComponent(idForUrl)}`} className="block hover:underline">
-                    <p className="font-serif text-lg font-semibold text-[#2C4A5E]">{bill.billTitle}</p>
-                    <p className="text-xs text-[#2C4A5E]/90">
+                    <p className="font-serif text-lg font-semibold text-foreground">{bill.billTitle}</p>
+                    <p className="text-xs text-muted-foreground">
                       Plank {bill.marker.plank.number}. {bill.marker.plank.name} · {bill.billNumber}
                       {bill.statusNote ? ` · ${bill.statusNote.split('.')[0]}` : ''}
                     </p>
@@ -201,16 +201,16 @@ export default async function ScorecardIndexPage(props: { searchParams: Promise<
       )}
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted-foreground">
           Showing {legislators.length} {jurisdiction === 'FEDERAL' ? 'federal' : 'California'} legislators.
         </p>
-        <div className="inline-flex rounded-md border border-[#2C4A5E] bg-white p-1">
+        <div className="inline-flex rounded-md border border-border bg-surface p-1">
           <Link
             href={buildHref({ sort: undefined })}
             className={
               sortOrder === 'best'
-                ? 'rounded bg-[#8B3A3A] px-3 py-1 font-mono text-xs uppercase tracking-wide text-[#2C4A5E]'
-                : 'rounded border border-gray-200 px-3 py-1 font-mono text-xs uppercase tracking-wide text-[#2C4A5E] shadow-sm hover:bg-white hover:text-[#2C4A5E]'
+                ? 'rounded bg-accent px-3 py-1 font-mono text-xs uppercase tracking-wide text-accent-foreground'
+                : 'rounded border border-border px-3 py-1 font-mono text-xs uppercase tracking-wide text-foreground shadow-sm hover:bg-surface-elevated hover:text-foreground'
             }>
             Best first
           </Link>
@@ -218,15 +218,15 @@ export default async function ScorecardIndexPage(props: { searchParams: Promise<
             href={buildHref({ sort: 'worst' })}
             className={
               sortOrder === 'worst'
-                ? 'rounded bg-[#8B3A3A] px-3 py-1 font-mono text-xs uppercase tracking-wide text-[#2C4A5E]'
-                : 'rounded border border-gray-200 px-3 py-1 font-mono text-xs uppercase tracking-wide text-[#2C4A5E] shadow-sm hover:bg-white hover:text-[#2C4A5E]'
+                ? 'rounded bg-accent px-3 py-1 font-mono text-xs uppercase tracking-wide text-accent-foreground'
+                : 'rounded border border-border px-3 py-1 font-mono text-xs uppercase tracking-wide text-foreground shadow-sm hover:bg-surface-elevated hover:text-foreground'
             }>
             Worst first
           </Link>
         </div>
       </div>
 
-      <ul className="mt-4 divide-y divide-gray-200 border border-gray-200">
+      <ul className="mt-4 divide-y divide-border border border-border">
         {legislators
           .map((leg) => {
             // v1.7 — two-score model. Voting Record is the mean of per-plank
@@ -254,14 +254,14 @@ export default async function ScorecardIndexPage(props: { searchParams: Promise<
             return (
               <li
                 key={leg.id}
-                className="group flex items-center justify-between gap-3 border border-gray-200 px-4 py-3 shadow-sm transition-colors hover:bg-white">
+                className="group flex items-center justify-between gap-3 border border-border px-4 py-3 shadow-sm transition-colors hover:bg-surface-elevated">
                 <Link
                   href={`/scorecard/${encodeURIComponent(idForUrl)}`}
                   className="flex min-w-0 flex-1 items-center gap-3">
                   <LegislatorAvatar fullName={leg.fullName} photoUrl={leg.photoUrl} size={44} />
                   <div className="min-w-0 flex-1">
-                    <p className="font-serif text-lg font-semibold text-gray-900">{leg.fullName}</p>
-                    <p className="text-sm text-gray-600">
+                    <p className="font-serif text-lg font-semibold text-foreground">{leg.fullName}</p>
+                    <p className="text-sm text-muted-foreground">
                       {PARTY_LABEL[leg.party] ?? leg.party} ·{' '}
                       {chamberLabel(leg.jurisdiction as 'FEDERAL' | 'CA', leg.chamber as 'SEN' | 'REP')}
                       {leg.district != null && leg.chamber === 'REP' ? `, District ${leg.district}` : ''}
@@ -281,12 +281,12 @@ export default async function ScorecardIndexPage(props: { searchParams: Promise<
       </ul>
 
       {legislators.length === 0 && (
-        <p className="mt-8 text-center text-gray-500">No legislators match these filters.</p>
+        <p className="mt-8 text-center text-subtle-foreground">No legislators match these filters.</p>
       )}
 
-      <footer className="mt-12 border-t-2 border-gray-900 pt-4 text-xs text-gray-500">
+      <footer className="mt-12 border-t-2 border-border pt-4 text-xs text-subtle-foreground">
         <p>
-          <Link href="/scorecard/methodology" className="underline hover:text-[#8B3A3A]">
+          <Link href="/scorecard/methodology" className="underline hover:text-accent">
             Methodology {METHODOLOGY_VERSION} →
           </Link>{' '}
           Same rubric applies to every legislator regardless of party. Every score traces to a public source.
@@ -302,14 +302,14 @@ export default async function ScorecardIndexPage(props: { searchParams: Promise<
 // v1.7 — color band for a 0-100 score. Steep grading inside the natural
 // 30-70% band where most legislators sit; deep colors for the extremes.
 function colorClassFor(percent: number): string {
-  if (percent >= 80) return 'text-green-700';
-  if (percent >= 70) return 'text-green-600';
-  if (percent >= 60) return 'text-lime-600';
-  if (percent >= 50) return 'text-yellow-600';
-  if (percent >= 40) return 'text-amber-600';
-  if (percent >= 30) return 'text-orange-600';
-  if (percent >= 20) return 'text-red-500';
-  return 'text-red-700';
+  if (percent >= 80) return 'text-score-7';
+  if (percent >= 70) return 'text-score-6';
+  if (percent >= 60) return 'text-score-5';
+  if (percent >= 50) return 'text-score-4';
+  if (percent >= 40) return 'text-score-3';
+  if (percent >= 30) return 'text-score-2';
+  if (percent >= 20) return 'text-score-1';
+  return 'text-score-1';
 }
 
 function ScoreCell({
@@ -331,29 +331,29 @@ function ScoreCell({
   if (value === null) {
     return (
       <div className="w-14">
-        <p className="font-mono text-[9px] uppercase tracking-wide text-gray-500">{label}</p>
-        <p className={`font-serif font-bold tabular-nums text-gray-400 ${sizeClass}`}>—</p>
+        <p className="font-mono text-[9px] uppercase tracking-wide text-subtle-foreground">{label}</p>
+        <p className={`font-serif font-bold tabular-nums text-subtle-foreground ${sizeClass}`}>—</p>
       </div>
     );
   }
   return (
     <div className="w-14">
-      <p className="font-mono text-[9px] uppercase tracking-wide text-gray-500">{label}</p>
+      <p className="font-mono text-[9px] uppercase tracking-wide text-subtle-foreground">{label}</p>
       <p className={`font-serif font-bold tabular-nums ${colorClassFor(value)} ${sizeClass}`}>{value}%</p>
     </div>
   );
 }
 
 function FilterChip({ label, active, href }: { label: string; active: boolean; href: string }) {
-  // All chips sit on the navy/60 background with wheat text. Active state
-  // is signaled by the brick-red brand border + a slightly darker navy bg.
+  // Chips use semantic tokens so text + surface adapt to the active theme.
+  // Active state is signaled by the accent (brick) border + a secondary bg.
   return (
     <Link
       href={href}
-      className={`rounded border px-2 py-1 text-[#2C4A5E] transition-colors ${
+      className={`rounded border px-2 py-1 text-foreground transition-colors ${
         active
-          ? 'border-[#8B3A3A] bg-[#2C4A5E]/80 font-semibold'
-          : 'border border-[#2C4A5E] border-gray-200 bg-white shadow-sm hover:bg-[#2C4A5E]/80'
+          ? 'border-accent bg-secondary font-semibold'
+          : 'border border-border bg-surface shadow-sm hover:bg-secondary-accent'
       }`}>
       {label}
     </Link>

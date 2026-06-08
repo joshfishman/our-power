@@ -83,19 +83,21 @@ export default async function PacScorecardPage(props: { searchParams: Promise<Se
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <Link href="/scorecard" className="text-sm text-gray-600 hover:text-gray-900">
+      <Link href="/scorecard" className="text-sm text-muted-foreground hover:text-foreground">
         ← Back to scorecard
       </Link>
 
-      <header className="mt-4 border-b-2 border-gray-900 pb-6">
-        <p className="font-mono text-xs uppercase tracking-widest text-gray-500">Plank 1 — Honest Government</p>
-        <h1 className="mt-1 font-serif text-4xl font-bold text-gray-900">Corporate PAC Money</h1>
-        <p className="mt-2 max-w-2xl text-base text-gray-700">
+      <header className="mt-4 border-b-2 border-border pb-6">
+        <p className="font-mono text-xs uppercase tracking-widest text-subtle-foreground">
+          Plank 1 — Honest Government
+        </p>
+        <h1 className="mt-1 font-serif text-4xl font-bold text-foreground">Corporate PAC Money</h1>
+        <p className="mt-2 max-w-2xl text-base text-muted-foreground">
           Every legislator, ranked by the share of their current-cycle campaign receipts that came from corporate PACs.
-          Members under <span className="font-semibold text-[#8B3A3A]">5%</span> earn the Plank 1 primary marker. Same
+          Members under <span className="font-semibold text-accent">5%</span> earn the Plank 1 primary marker. Same
           threshold applied to every legislator regardless of party.
         </p>
-        <p className="mt-2 text-xs text-gray-500">
+        <p className="mt-2 text-xs text-subtle-foreground">
           Current cycle data · sources: FEC + Cal-Access via CCDC. Combined % includes corporate IE spending FOR this
           legislator and AGAINST their same-cycle opponents. Corporate IE attacking is disclosed but not scored.
         </p>
@@ -108,10 +110,10 @@ export default async function PacScorecardPage(props: { searchParams: Promise<Se
       ) : (
         <>
           <div className="mt-6 flex flex-wrap items-center gap-4 text-sm">
-            <span className="rounded bg-[#8B3A3A] px-2 py-1 font-mono text-xs uppercase tracking-wide text-white">
+            <span className="rounded bg-accent px-2 py-1 font-mono text-xs uppercase tracking-wide text-white">
               {refuserCount} refusing corporate PACs
             </span>
-            <span className="text-gray-600">
+            <span className="text-muted-foreground">
               of {ranked.length} legislator{ranked.length === 1 ? '' : 's'} with data
             </span>
             <FilterChips searchParams={searchParams} />
@@ -141,10 +143,10 @@ export default async function PacScorecardPage(props: { searchParams: Promise<Se
         </>
       )}
 
-      <footer className="mt-12 border-t-2 border-gray-900 pt-4 text-xs text-gray-500">
+      <footer className="mt-12 border-t-2 border-border pt-4 text-xs text-subtle-foreground">
         <p>
           Same threshold applied to every legislator. Ranked low-to-high.{' '}
-          <Link href="/scorecard/methodology" className="underline hover:text-[#8B3A3A]">
+          <Link href="/scorecard/methodology" className="underline hover:text-accent">
             Methodology {METHODOLOGY_VERSION} →
           </Link>{' '}
           <Link href="/scorecard" className="underline">
@@ -175,7 +177,7 @@ function JurisdictionToggle({ active, searchParams }: { active: string | undefin
     { key: 'CA', label: 'California' },
   ];
   return (
-    <div className="mt-6 inline-flex rounded-md border border-[#2C4A5E] bg-white p-1">
+    <div className="mt-6 inline-flex rounded-md border border-border bg-surface p-1">
       {options.map((opt) => {
         const isActive = (active ?? undefined) === opt.key;
         return (
@@ -184,8 +186,8 @@ function JurisdictionToggle({ active, searchParams }: { active: string | undefin
             href={buildPacUrl(searchParams, opt.key)}
             className={
               isActive
-                ? 'rounded bg-[#8B3A3A] px-4 py-1.5 font-mono text-xs uppercase tracking-wide text-white'
-                : 'rounded border border-gray-200 px-4 py-1.5 font-mono text-xs uppercase tracking-wide text-[#2C4A5E] shadow-sm hover:bg-white'
+                ? 'rounded bg-accent px-4 py-1.5 font-mono text-xs uppercase tracking-wide text-white'
+                : 'rounded border border-border px-4 py-1.5 font-mono text-xs uppercase tracking-wide text-foreground shadow-sm hover:bg-surface-elevated'
             }>
             {opt.label}
           </Link>
@@ -203,7 +205,7 @@ function FilterChips({ searchParams }: { searchParams: SearchParams }) {
   if (searchParams.state) chips.push(['State', searchParams.state.toUpperCase()]);
   if (chips.length === 0) return null;
   return (
-    <span className="text-gray-500">
+    <span className="text-subtle-foreground">
       {chips.map(([k, v], i) => (
         <span key={k}>
           {i > 0 && ' · '}
@@ -222,9 +224,9 @@ function FilterChips({ searchParams }: { searchParams: SearchParams }) {
 function EmptyState({ jurisdiction }: { jurisdiction?: string }) {
   if (jurisdiction === 'CA') {
     return (
-      <div className="mt-8 rounded border border-2 border-dashed border-[#2C4A5E] border-gray-200 bg-white px-6 py-12 shadow-sm">
-        <p className="text-center font-serif text-2xl font-bold text-[#2C4A5E]">No California PAC data ingested yet</p>
-        <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-[#2C4A5E]">
+      <div className="mt-8 rounded border border-2 border-dashed border-border bg-surface px-6 py-12 shadow-sm">
+        <p className="text-center font-serif text-2xl font-bold text-foreground">No California PAC data ingested yet</p>
+        <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-foreground">
           California campaign finance lives in <strong>Cal-Access</strong>. Two paths to populate: a curated CSV
           (fastest, transparent) or the{' '}
           <a
@@ -238,13 +240,13 @@ function EmptyState({ jurisdiction }: { jurisdiction?: string }) {
         </p>
 
         <div className="mx-auto mt-6 grid max-w-3xl gap-4 md:grid-cols-2">
-          <div className="rounded border border-[#2C4A5E] bg-white p-4 text-left">
-            <p className="font-mono text-xs uppercase tracking-widest text-[#2C4A5E]">Curated CSV (fastest)</p>
-            <p className="mt-2 text-sm text-gray-700">
+          <div className="rounded border border-border bg-surface p-4 text-left">
+            <p className="font-mono text-xs uppercase tracking-widest text-foreground">Curated CSV (fastest)</p>
+            <p className="mt-2 text-sm text-muted-foreground">
               Hand-pick CA legislators using publicly-published Cal-Access committee summaries. Each row cites its
               source URL — auditable line by line.
             </p>
-            <pre className="mt-3 overflow-auto rounded bg-gray-900 px-3 py-2 text-left text-[11px] text-gray-100">
+            <pre className="mt-3 overflow-auto rounded bg-muted px-3 py-2 text-left text-[11px] text-foreground">
               {`# Header:
 openStatesId,cycleYear,corporatePacAmount,\\
 totalReceipts,sourceUrl
@@ -256,14 +258,14 @@ npm run scorecard:compute -- \\
             </pre>
           </div>
 
-          <div className="rounded border border-[#2C4A5E] bg-white p-4 text-left">
-            <p className="font-mono text-xs uppercase tracking-widest text-[#2C4A5E]">CCDC bulk (full coverage)</p>
-            <p className="mt-2 text-sm text-gray-700">
+          <div className="rounded border border-border bg-surface p-4 text-left">
+            <p className="font-mono text-xs uppercase tracking-widest text-foreground">CCDC bulk (full coverage)</p>
+            <p className="mt-2 text-sm text-muted-foreground">
               Skeleton wired up; needs a CCDC snapshot on disk and the{' '}
               <code className="font-mono">CommitteeClassification</code> table populated for the top ~500 CA committees
               so &ldquo;corporate&rdquo; can be distinguished from labor / ideological / candidate.
             </p>
-            <pre className="mt-3 overflow-auto rounded bg-gray-900 px-3 py-2 text-left text-[11px] text-gray-100">
+            <pre className="mt-3 overflow-auto rounded bg-muted px-3 py-2 text-left text-[11px] text-foreground">
               {`# Download CCDC processed CSVs to:
 #   ./data/calaccess/{cycle}/
 npm run scorecard:ingest-ca-pac -- \\
@@ -273,7 +275,7 @@ npm run scorecard:ingest-ca-pac -- \\
           </div>
         </div>
 
-        <p className="mt-6 text-center text-xs text-[#2C4A5E]/90">
+        <p className="mt-6 text-center text-xs text-muted-foreground">
           Or switch to{' '}
           <Link href="/scorecard/pac?jurisdiction=FEDERAL" className="underline">
             Federal
@@ -284,25 +286,25 @@ npm run scorecard:ingest-ca-pac -- \\
     );
   }
   return (
-    <div className="mt-8 rounded border border-2 border-dashed border-[#2C4A5E] border-gray-200 bg-white px-6 py-12 shadow-sm">
-      <p className="text-center font-serif text-2xl font-bold text-[#2C4A5E]">No PAC data ingested yet</p>
-      <p className="mt-2 text-center text-sm text-[#2C4A5E]">
-        This page is wired up but <code className="rounded bg-white px-1 py-0.5 font-mono text-xs">PacMoneyData</code>{' '}
+    <div className="mt-8 rounded border border-2 border-dashed border-border bg-surface px-6 py-12 shadow-sm">
+      <p className="text-center font-serif text-2xl font-bold text-foreground">No PAC data ingested yet</p>
+      <p className="mt-2 text-center text-sm text-foreground">
+        This page is wired up but <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">PacMoneyData</code>{' '}
         is empty. PAC data lives in a different system from legislation — your LegiScan API key does not cover it. Three
         paths to populate it, in order of recommended fastest-to-real-data:
       </p>
 
       <div className="mt-6 grid gap-4 md:grid-cols-3">
-        <div className="rounded border-2 border-[#8B3A3A] bg-white p-4">
-          <p className="font-mono text-xs uppercase tracking-widest text-[#8B3A3A]">Path A · FEC.gov API (fastest)</p>
-          <p className="mt-2 text-sm text-gray-700">
+        <div className="rounded border-2 border-accent bg-surface p-4">
+          <p className="font-mono text-xs uppercase tracking-widest text-accent">Path A · FEC.gov API (fastest)</p>
+          <p className="mt-2 text-sm text-muted-foreground">
             Pulls per-candidate cycle totals straight from FEC. Free instant key from{' '}
             <a href="https://api.data.gov/signup/" target="_blank" rel="noopener noreferrer" className="underline">
               api.data.gov
             </a>
             . Caveat: counts ALL non-party PAC dollars, not strictly corporate-classified — see footnote.
           </p>
-          <pre className="mt-3 overflow-auto rounded bg-gray-900 px-3 py-2 text-left text-[11px] text-gray-100">
+          <pre className="mt-3 overflow-auto rounded bg-muted px-3 py-2 text-left text-[11px] text-foreground">
             {`# Add to .env.local:
 #   FEC_API_KEY=<your_key>
 npm run scorecard:ingest-fec -- \\
@@ -312,15 +314,15 @@ npm run scorecard:compute -- \\
           </pre>
         </div>
 
-        <div className="rounded border border-[#2C4A5E] bg-white p-4">
-          <p className="font-mono text-xs uppercase tracking-widest text-[#2C4A5E]">
+        <div className="rounded border border-border bg-surface p-4">
+          <p className="font-mono text-xs uppercase tracking-widest text-foreground">
             Path B · OpenSecrets bulk (highest fidelity)
           </p>
-          <p className="mt-2 text-sm text-gray-700">
+          <p className="mt-2 text-sm text-muted-foreground">
             Free login, manual download, then ingest. OpenSecrets pre-classifies PACs as corporate / labor / ideological
             — strictly methodology-compliant.
           </p>
-          <pre className="mt-3 overflow-auto rounded bg-gray-900 px-3 py-2 text-left text-[11px] text-gray-100">
+          <pre className="mt-3 overflow-auto rounded bg-muted px-3 py-2 text-left text-[11px] text-foreground">
             {`# Download to ./data/opensecrets/2026/
 #   cands26.txt cmtes26.txt pacs262.txt
 npm run scorecard:ingest-pac -- \\
@@ -328,7 +330,7 @@ npm run scorecard:ingest-pac -- \\
 npm run scorecard:compute -- \\
   --auto-verify --publish`}
           </pre>
-          <p className="mt-2 text-xs text-gray-500">
+          <p className="mt-2 text-xs text-subtle-foreground">
             <a
               href="https://www.opensecrets.org/bulk-data"
               target="_blank"
@@ -339,15 +341,15 @@ npm run scorecard:compute -- \\
           </p>
         </div>
 
-        <div className="rounded border border-[#2C4A5E] bg-white p-4">
-          <p className="font-mono text-xs uppercase tracking-widest text-[#2C4A5E]">
+        <div className="rounded border border-border bg-surface p-4">
+          <p className="font-mono text-xs uppercase tracking-widest text-foreground">
             Path C · Curated CSV (transparent)
           </p>
-          <p className="mt-2 text-sm text-gray-700">
+          <p className="mt-2 text-sm text-muted-foreground">
             Hand-pick a few legislators using publicly-published OpenSecrets numbers. Each row cites its source URL —
             auditable line by line, slow to scale.
           </p>
-          <pre className="mt-3 overflow-auto rounded bg-gray-900 px-3 py-2 text-left text-[11px] text-gray-100">
+          <pre className="mt-3 overflow-auto rounded bg-muted px-3 py-2 text-left text-[11px] text-foreground">
             {`# CSV header:
 bioguideId,cycleYear,corporatePacAmount,\\
 totalReceipts,sourceUrl
@@ -360,7 +362,7 @@ npm run scorecard:compute -- \\
         </div>
       </div>
 
-      <p className="mt-6 text-center text-xs text-gray-500">
+      <p className="mt-6 text-center text-xs text-subtle-foreground">
         Why FEC counts &ldquo;all non-party PAC&rdquo; instead of strictly corporate: FEC publishes raw filings without
         the corporate / labor / ideological classification. OpenSecrets does that classification on top of FEC data. To
         get strict corporate-only from FEC alone, the schema&rsquo;s{' '}

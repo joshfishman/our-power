@@ -111,7 +111,7 @@ export function PacSortableTable({ rows, hideStateColumn = false }: Props) {
   }
 
   const arrow = (key: SortKey) => {
-    if (sortKey !== key) return <span className="text-gray-400"> ⇅</span>;
+    if (sortKey !== key) return <span className="text-subtle-foreground"> ⇅</span>;
     return <span> {sortDir === 'asc' ? '↑' : '↓'}</span>;
   };
 
@@ -120,7 +120,7 @@ export function PacSortableTable({ rows, hideStateColumn = false }: Props) {
   return (
     <table className="mt-6 w-full border-collapse text-sm">
       <thead>
-        <tr className="border-b-2 border-gray-900 text-left">
+        <tr className="border-b-2 border-border text-left">
           <Th onClick={() => handleClick('rank')}>#{arrow('rank')}</Th>
           <Th onClick={() => handleClick('name')}>Legislator{arrow('name')}</Th>
           <Th onClick={() => handleClick('party')}>
@@ -155,50 +155,54 @@ export function PacSortableTable({ rows, hideStateColumn = false }: Props) {
           const passes = l.pct < CORPORATE_PAC_THRESHOLD;
           const idForLink = l.bioguideId ?? l.openStatesId ?? l.id;
           return (
-            <tr key={l.id} className="border-b border-gray-200">
-              <td className="py-2 pr-4 font-mono text-xs text-gray-500">{i + 1}</td>
+            <tr key={l.id} className="border-b border-border">
+              <td className="py-2 pr-4 font-mono text-xs text-subtle-foreground">{i + 1}</td>
               <td className="py-2 pr-4">
                 <Link
                   href={`/scorecard/${encodeURIComponent(idForLink)}`}
-                  className="flex items-center gap-2 font-medium text-gray-900 hover:text-[#8B3A3A] hover:underline">
+                  className="flex items-center gap-2 font-medium text-foreground hover:text-accent hover:underline">
                   <LegislatorAvatar fullName={l.fullName} photoUrl={l.photoUrl} size={32} />
                   <span className="min-w-0">
                     {l.fullName}
                     {l.chamber === 'REP' && l.district != null && (
-                      <span className="ml-1 text-xs text-gray-500">CD-{l.district}</span>
+                      <span className="ml-1 text-xs text-subtle-foreground">CD-{l.district}</span>
                     )}
                   </span>
                 </Link>
               </td>
-              <td className="py-2 pr-4 text-gray-700">
+              <td className="py-2 pr-4 text-muted-foreground">
                 {PARTY_LABEL[l.party] ?? l.party}
                 {!hideStateColumn && <> · {l.state}</>}
               </td>
               {/* Direct corporate (v1.3 contextual) */}
-              <td className="py-2 pr-4 text-right font-mono text-xs text-gray-600">{fmt$(l.corpAmount)}</td>
+              <td className="py-2 pr-4 text-right font-mono text-xs text-muted-foreground">{fmt$(l.corpAmount)}</td>
               {/* Corp IE Supporting — prominent */}
-              <td className="py-2 pr-4 text-right font-mono text-sm font-bold text-[#8B3A3A]">{fmt$(l.ieSupport)}</td>
+              <td className="py-2 pr-4 text-right font-mono text-sm font-bold text-accent">{fmt$(l.ieSupport)}</td>
               {/* Corp IE vs opponents */}
-              <td className="py-2 pr-4 text-right font-mono text-xs text-gray-600">{fmt$(l.ieAgainstOpponent)}</td>
+              <td className="py-2 pr-4 text-right font-mono text-xs text-muted-foreground">
+                {fmt$(l.ieAgainstOpponent)}
+              </td>
               {/* Corp IE attacking — disclosure only, muted italic */}
-              <td className="py-2 pr-4 text-right font-mono text-xs italic text-gray-400">{fmt$(l.ieAttacking)}</td>
+              <td className="py-2 pr-4 text-right font-mono text-xs italic text-subtle-foreground">
+                {fmt$(l.ieAttacking)}
+              </td>
               {/* % Corporate Donations — primary */}
               <td className="py-2 pr-4 text-right">
                 <span
                   className={
                     passes
-                      ? 'font-serif text-base font-bold text-[#8B3A3A]'
-                      : 'font-serif text-base font-bold text-gray-900'
+                      ? 'font-serif text-base font-bold text-accent'
+                      : 'font-serif text-base font-bold text-foreground'
                   }>
                   {(l.pct * 100).toFixed(1)}%
                 </span>
                 {passes && (
-                  <span className="ml-2 rounded bg-[#8B3A3A] px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-white">
+                  <span className="ml-2 rounded bg-accent px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-white">
                     ✓
                   </span>
                 )}
               </td>
-              <td className="py-2 text-right font-mono text-xs text-gray-600">
+              <td className="py-2 text-right font-mono text-xs text-muted-foreground">
                 ${l.totalReceipts.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </td>
             </tr>
@@ -230,10 +234,16 @@ function Th({
   /** Muted label — lighter gray */
   muted?: boolean;
 }) {
-  const colorCls = accent ? 'text-[#8B3A3A]' : muted ? 'text-gray-400' : bold ? 'text-gray-900' : 'text-gray-500';
+  const colorCls = accent
+    ? 'text-accent'
+    : muted
+    ? 'text-subtle-foreground'
+    : bold
+    ? 'text-foreground'
+    : 'text-subtle-foreground';
   return (
     <th
-      className={`cursor-pointer select-none py-2 pr-4 font-mono text-xs uppercase tracking-wide transition-colors hover:text-[#8B3A3A] ${
+      className={`cursor-pointer select-none py-2 pr-4 font-mono text-xs uppercase tracking-wide transition-colors hover:text-accent ${
         align === 'right' ? 'text-right' : 'text-left'
       } ${bold ? 'font-bold' : ''} ${italic ? 'italic' : ''} ${colorCls}`}
       onClick={onClick}>

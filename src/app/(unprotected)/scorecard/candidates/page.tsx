@@ -85,14 +85,14 @@ export default async function CandidatesIndexPage(props: { searchParams: Promise
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
-      <Link href="/scorecard" className="text-sm text-gray-600 hover:text-[#2C4A5E]">
+      <Link href="/scorecard" className="text-sm text-muted-foreground hover:text-foreground">
         ← Back to scorecard
       </Link>
 
-      <header className="mt-4 border-b-2 border-gray-900 pb-6">
-        <p className="font-mono text-xs uppercase tracking-widest text-gray-500">2026 election</p>
-        <h1 className="mt-1 font-serif text-3xl font-bold text-[#2C4A5E]">All federal candidates</h1>
-        <p className="mt-2 text-sm text-gray-700">
+      <header className="mt-4 border-b-2 border-border pb-6">
+        <p className="font-mono text-xs uppercase tracking-widest text-subtle-foreground">2026 election</p>
+        <h1 className="mt-1 font-serif text-3xl font-bold text-foreground">All federal candidates</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
           {totalCands.toLocaleString()} candidates filed across {totalSeats} seats — {byParty.D ?? 0} D ·{' '}
           {byParty.R ?? 0} R ·{' '}
           {(byParty.I ?? 0) + (totalCands - (byParty.D ?? 0) - (byParty.R ?? 0) - (byParty.I ?? 0))} other. Click a seat
@@ -108,7 +108,7 @@ export default async function CandidatesIndexPage(props: { searchParams: Promise
           <FilterLink href="/scorecard/candidates?chamber=REP" current={searchParams.chamber === 'REP'}>
             House
           </FilterLink>
-          <span className="px-1 text-gray-400">|</span>
+          <span className="px-1 text-subtle-foreground">|</span>
           <FilterLink href={paramsWith(searchParams, { party: undefined })} current={!searchParams.party}>
             All parties
           </FilterLink>
@@ -124,16 +124,16 @@ export default async function CandidatesIndexPage(props: { searchParams: Promise
         </div>
       </header>
 
-      <ul className="mt-6 divide-y divide-gray-200 rounded border border-gray-200">
+      <ul className="mt-6 divide-y divide-border rounded border border-border">
         {seatList.map((s) => (
           <li key={s.slug} className="px-4 py-2.5">
             <Link
               href={`/scorecard/race/${s.slug}`}
-              className="flex items-baseline justify-between gap-3 hover:text-[#8B3A3A]">
-              <span className="font-mono text-sm font-semibold text-[#2C4A5E]">
+              className="flex items-baseline justify-between gap-3 hover:text-accent">
+              <span className="font-mono text-sm font-semibold text-foreground">
                 {s.chamber === 'SEN' ? `${s.state} — U.S. Senate` : `${s.state}-${s.district} (House)`}
                 {s.cands.some((c) => c.isActive) ? (
-                  <span className="ml-2 rounded bg-gray-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-white">
+                  <span className="ml-2 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
                     Incumbent running
                   </span>
                 ) : (
@@ -142,7 +142,7 @@ export default async function CandidatesIndexPage(props: { searchParams: Promise
                   </span>
                 )}
               </span>
-              <span className="font-mono text-xs text-gray-500">
+              <span className="font-mono text-xs text-subtle-foreground">
                 {s.cands.length} candidate{s.cands.length === 1 ? '' : 's'} · D{' '}
                 {s.cands.filter((c) => c.party === 'D').length} · R {s.cands.filter((c) => c.party === 'R').length} · I{' '}
                 {s.cands.filter((c) => c.party === 'I').length}
@@ -152,7 +152,7 @@ export default async function CandidatesIndexPage(props: { searchParams: Promise
         ))}
       </ul>
 
-      <footer className="mt-8 text-xs text-gray-600">
+      <footer className="mt-8 text-xs text-muted-foreground">
         <p>
           Sourced from FEC <code>cn26.txt</code> (statutory candidates filed for 2026, status=&apos;C&apos;). Same
           five-plank rubric applied to every candidate; full money breakdown on the per-race page. Updated when FEC
@@ -177,8 +177,8 @@ function FilterLink({
       href={href}
       className={`rounded border px-2 py-0.5 font-mono text-xs uppercase tracking-wide ${
         current
-          ? 'border-[#8B3A3A] bg-[#8B3A3A] text-white'
-          : 'border-gray-300 bg-white text-gray-700 hover:border-[#8B3A3A] hover:text-[#8B3A3A]'
+          ? 'border-accent bg-accent text-white'
+          : 'border-border bg-surface text-muted-foreground hover:border-accent hover:text-accent'
       }`}>
       {children}
     </Link>

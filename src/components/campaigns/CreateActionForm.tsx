@@ -594,7 +594,7 @@ export function CreateActionForm({
                 />
                 <button
                   type="button"
-                  className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-xs text-white"
+                  className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-xs text-destructive-foreground"
                   onClick={() => {
                     setImageUrl('');
                     setShareImageFile(null);

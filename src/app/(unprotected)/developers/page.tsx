@@ -34,10 +34,10 @@ function Endpoint({
         </span>
         <code className="text-sm font-semibold">{path}</code>
       </div>
-      <p className="mb-3 text-sm text-neutral-600 dark:text-neutral-400">{description}</p>
+      <p className="mb-3 text-sm text-muted-foreground">{description}</p>
       {params && params.length > 0 && (
         <div className="mb-3">
-          <h4 className="mb-1 text-xs font-semibold uppercase text-neutral-500">Parameters</h4>
+          <h4 className="mb-1 text-xs font-semibold uppercase text-muted-foreground">Parameters</h4>
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-neutral-200 dark:border-neutral-700">
@@ -52,8 +52,8 @@ function Endpoint({
                   <td className="py-1">
                     <code className="text-xs">{p.name}</code>
                   </td>
-                  <td className="py-1 text-neutral-500">{p.type}</td>
-                  <td className="py-1 text-neutral-600 dark:text-neutral-400">{p.desc}</td>
+                  <td className="py-1 text-muted-foreground">{p.type}</td>
+                  <td className="py-1 text-muted-foreground">{p.desc}</td>
                 </tr>
               ))}
             </tbody>
@@ -62,7 +62,7 @@ function Endpoint({
       )}
       {example && (
         <div>
-          <h4 className="mb-1 text-xs font-semibold uppercase text-neutral-500">Example</h4>
+          <h4 className="mb-1 text-xs font-semibold uppercase text-muted-foreground">Example</h4>
           <CodeBlock>{example}</CodeBlock>
         </div>
       )}
@@ -74,7 +74,7 @@ export default function DevelopersPage() {
   return (
     <article className="mx-auto max-w-3xl px-4 py-10 sm:px-0">
       <h1 className="mb-2 text-3xl font-bold">Developer API</h1>
-      <p className="mb-8 text-neutral-600 dark:text-neutral-400">
+      <p className="mb-8 text-muted-foreground">
         Use Our Power&apos;s public API to integrate campaigns, actions, and causes into your own applications,
         websites, or tools. All public endpoints support CORS and require no authentication.
       </p>
@@ -157,7 +157,7 @@ export default function DevelopersPage() {
 
       {/* RSS Feeds */}
       <h2 className="mb-4 mt-10 text-2xl font-bold">RSS Feeds</h2>
-      <p className="mb-4 text-neutral-600 dark:text-neutral-400">
+      <p className="mb-4 text-muted-foreground">
         Subscribe to RSS feeds for real-time updates on campaigns and actions. All feeds return standard RSS 2.0 XML
         with custom <code>op:</code> namespace extensions for activism-specific data.
       </p>
@@ -192,7 +192,7 @@ export default function DevelopersPage() {
 
       {/* Embeddable Widgets */}
       <h2 className="mb-4 mt-10 text-2xl font-bold">Embeddable Widgets</h2>
-      <p className="mb-4 text-neutral-600 dark:text-neutral-400">
+      <p className="mb-4 text-muted-foreground">
         Embed campaign or action cards on your website with a simple script tag. Visit the{' '}
         <Link href="/embed" className="text-sky-600 underline hover:text-sky-700 dark:text-sky-400">
           Embed Generator

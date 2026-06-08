@@ -81,8 +81,8 @@ function SortableTh({ label, sortKey, current, dir, onClick, align = 'left', cla
         type="button"
         onClick={() => onClick(sortKey)}
         className={`font-mono text-xs uppercase tracking-wide ${
-          isActive ? 'text-[#8B3A3A]' : 'text-gray-600'
-        } hover:text-[#8B3A3A]`}>
+          isActive ? 'text-accent' : 'text-muted-foreground'
+        } hover:text-accent`}>
         {label}
         {arrow}
       </button>
@@ -106,8 +106,8 @@ function FilterPill({ label, active, onClick }: FilterPillProps) {
       onClick={onClick}
       className={`rounded border px-2.5 py-1 font-mono text-xs uppercase tracking-wide transition ${
         active
-          ? 'border-[#8B3A3A] bg-[#8B3A3A] text-white'
-          : 'border-gray-300 bg-white text-gray-700 hover:border-[#8B3A3A] hover:text-[#8B3A3A]'
+          ? 'border-accent bg-accent text-white'
+          : 'border-border bg-surface text-muted-foreground hover:border-accent hover:text-accent'
       }`}>
       {label}
     </button>
@@ -143,23 +143,23 @@ export function PacRecipientsTable({ rows }: { rows: RecipientRow[] }) {
   return (
     <>
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <span className="font-mono text-xs uppercase tracking-wide text-gray-500">Chamber:</span>
+        <span className="font-mono text-xs uppercase tracking-wide text-subtle-foreground">Chamber:</span>
         <FilterPill label={`All (${rows.length})`} active={chamber === 'ALL'} onClick={() => setChamber('ALL')} />
         <FilterPill label={`House (${houseCount})`} active={chamber === 'REP'} onClick={() => setChamber('REP')} />
         <FilterPill label={`Senate (${senateCount})`} active={chamber === 'SEN'} onClick={() => setChamber('SEN')} />
-        <span className="ml-3 font-mono text-xs uppercase tracking-wide text-gray-500">Party:</span>
+        <span className="ml-3 font-mono text-xs uppercase tracking-wide text-subtle-foreground">Party:</span>
         <FilterPill label="All" active={party === 'ALL'} onClick={() => setParty('ALL')} />
         <FilterPill label="D" active={party === 'D'} onClick={() => setParty('D')} />
         <FilterPill label="R" active={party === 'R'} onClick={() => setParty('R')} />
         <FilterPill label="I" active={party === 'I'} onClick={() => setParty('I')} />
       </div>
-      <p className="mt-2 font-mono text-xs text-gray-500">
+      <p className="mt-2 font-mono text-xs text-subtle-foreground">
         Showing {sorted.length.toLocaleString()} of {rows.length.toLocaleString()} recipients
       </p>
       <table className="mt-3 w-full border-collapse text-sm">
         <thead>
-          <tr className="border-b-2 border-gray-900">
-            <th className="py-2 pr-3 text-left font-mono text-xs uppercase tracking-wide text-gray-600">#</th>
+          <tr className="border-b-2 border-border">
+            <th className="py-2 pr-3 text-left font-mono text-xs uppercase tracking-wide text-muted-foreground">#</th>
             <SortableTh label="Legislator" sortKey="name" current={sortKey} dir={dir} onClick={handle} />
             <SortableTh label="Party" sortKey="party" current={sortKey} dir={dir} onClick={handle} />
             <SortableTh label="Chamber · State" sortKey="chamber" current={sortKey} dir={dir} onClick={handle} />
@@ -187,20 +187,20 @@ export function PacRecipientsTable({ rows }: { rows: RecipientRow[] }) {
           {sorted.map((l, idx) => {
             const slug = l.bioguideId ?? l.legislatorId;
             return (
-              <tr key={l.legislatorId} className="border-b border-gray-100 hover:bg-gray-50">
-                <td className="py-1.5 pr-3 font-mono text-xs text-gray-500">{idx + 1}</td>
+              <tr key={l.legislatorId} className="border-b border-border hover:bg-surface-elevated">
+                <td className="py-1.5 pr-3 font-mono text-xs text-subtle-foreground">{idx + 1}</td>
                 <td className="py-1.5 pr-3">
-                  <Link href={`/scorecard/${encodeURIComponent(slug)}`} className="text-gray-900 hover:underline">
+                  <Link href={`/scorecard/${encodeURIComponent(slug)}`} className="text-foreground hover:underline">
                     {l.fullName}
                   </Link>
                 </td>
-                <td className="py-1.5 pr-3 text-xs text-gray-600">{PARTY_LABEL[l.party] ?? l.party}</td>
-                <td className="py-1.5 pr-3 text-xs text-gray-600">
+                <td className="py-1.5 pr-3 text-xs text-muted-foreground">{PARTY_LABEL[l.party] ?? l.party}</td>
+                <td className="py-1.5 pr-3 text-xs text-muted-foreground">
                   {l.chamber} · {l.state}
                   {l.district != null && l.chamber === 'REP' ? `-${l.district}` : ''}
                 </td>
                 <td className="py-1.5 pr-3 text-right tabular-nums">${l.direct.toLocaleString()}</td>
-                <td className="py-1.5 pr-3 text-right tabular-nums text-gray-600">
+                <td className="py-1.5 pr-3 text-right tabular-nums text-muted-foreground">
                   {l.ieSupport > 0 ? `$${l.ieSupport.toLocaleString()}` : '—'}
                 </td>
                 <td
@@ -214,7 +214,9 @@ export function PacRecipientsTable({ rows }: { rows: RecipientRow[] }) {
           })}
         </tbody>
       </table>
-      {sorted.length === 0 && <p className="mt-3 text-sm text-gray-500">No recipients match the current filters.</p>}
+      {sorted.length === 0 && (
+        <p className="mt-3 text-sm text-subtle-foreground">No recipients match the current filters.</p>
+      )}
     </>
   );
 }
@@ -246,22 +248,22 @@ export function PacOpposedTable({ rows }: { rows: RecipientRow[] }) {
   return (
     <>
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <span className="font-mono text-xs uppercase tracking-wide text-gray-500">Chamber:</span>
+        <span className="font-mono text-xs uppercase tracking-wide text-subtle-foreground">Chamber:</span>
         <FilterPill label={`All (${rows.length})`} active={chamber === 'ALL'} onClick={() => setChamber('ALL')} />
         <FilterPill label={`House (${houseCount})`} active={chamber === 'REP'} onClick={() => setChamber('REP')} />
         <FilterPill label={`Senate (${senateCount})`} active={chamber === 'SEN'} onClick={() => setChamber('SEN')} />
-        <span className="ml-3 font-mono text-xs uppercase tracking-wide text-gray-500">Party:</span>
+        <span className="ml-3 font-mono text-xs uppercase tracking-wide text-subtle-foreground">Party:</span>
         <FilterPill label="All" active={party === 'ALL'} onClick={() => setParty('ALL')} />
         <FilterPill label="D" active={party === 'D'} onClick={() => setParty('D')} />
         <FilterPill label="R" active={party === 'R'} onClick={() => setParty('R')} />
         <FilterPill label="I" active={party === 'I'} onClick={() => setParty('I')} />
       </div>
-      <p className="mt-2 font-mono text-xs text-gray-500">
+      <p className="mt-2 font-mono text-xs text-subtle-foreground">
         Showing {sorted.length.toLocaleString()} of {rows.length.toLocaleString()} opposed
       </p>
       <table className="mt-3 w-full border-collapse text-sm">
         <thead>
-          <tr className="border-b-2 border-gray-900">
+          <tr className="border-b-2 border-border">
             <SortableTh label="Legislator" sortKey="name" current={sortKey} dir={dir} onClick={handle} />
             <SortableTh
               label="Party · Chamber · State"
@@ -284,13 +286,13 @@ export function PacOpposedTable({ rows }: { rows: RecipientRow[] }) {
           {sorted.map((l) => {
             const slug = l.bioguideId ?? l.legislatorId;
             return (
-              <tr key={l.legislatorId} className="border-b border-gray-100">
+              <tr key={l.legislatorId} className="border-b border-border">
                 <td className="py-1.5 pr-3">
-                  <Link href={`/scorecard/${encodeURIComponent(slug)}`} className="text-gray-900 hover:underline">
+                  <Link href={`/scorecard/${encodeURIComponent(slug)}`} className="text-foreground hover:underline">
                     {l.fullName}
                   </Link>
                 </td>
-                <td className="py-1.5 pr-3 text-xs text-gray-600">
+                <td className="py-1.5 pr-3 text-xs text-muted-foreground">
                   {l.party} · {l.chamber} · {l.state}
                 </td>
                 <td className="py-1.5 pr-3 text-right tabular-nums text-red-700">${l.ieOppose.toLocaleString()}</td>
@@ -299,7 +301,9 @@ export function PacOpposedTable({ rows }: { rows: RecipientRow[] }) {
           })}
         </tbody>
       </table>
-      {sorted.length === 0 && <p className="mt-3 text-sm text-gray-500">No matches for the current filters.</p>}
+      {sorted.length === 0 && (
+        <p className="mt-3 text-sm text-subtle-foreground">No matches for the current filters.</p>
+      )}
     </>
   );
 }

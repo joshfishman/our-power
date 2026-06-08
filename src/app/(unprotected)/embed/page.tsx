@@ -29,7 +29,7 @@ export default async function EmbedPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-0">
       <h1 className="mb-2 text-3xl font-bold">Embed Widgets</h1>
-      <p className="mb-8 text-neutral-600 dark:text-neutral-400">
+      <p className="mb-8 text-muted-foreground">
         Add Our Power campaign and action widgets to your website. Select a campaign or action below to generate an
         embed code you can copy and paste into your HTML.
       </p>

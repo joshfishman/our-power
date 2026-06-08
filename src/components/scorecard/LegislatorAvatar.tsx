@@ -27,7 +27,7 @@ export function LegislatorAvatar({ fullName, photoUrl, size = 40, className }: L
       <span
         style={imageStyle}
         className={cn(
-          'relative inline-block shrink-0 overflow-hidden rounded-full bg-gray-50 ring-1 ring-[#2C4A5E]/40',
+          'relative inline-block shrink-0 overflow-hidden rounded-full bg-surface-elevated ring-1 ring-border',
           className,
         )}>
         <Image
@@ -46,7 +46,7 @@ export function LegislatorAvatar({ fullName, photoUrl, size = 40, className }: L
     <span
       style={fallbackStyle}
       className={cn(
-        'inline-flex shrink-0 items-center justify-center rounded-full bg-[#2C4A5E] font-mono font-semibold uppercase text-[#2C4A5E] ring-1 ring-[#2C4A5E]',
+        'inline-flex shrink-0 items-center justify-center rounded-full bg-secondary font-mono font-semibold uppercase text-secondary-foreground ring-1 ring-border',
         className,
       )}
       aria-label={fullName}>

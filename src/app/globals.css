@@ -3,58 +3,94 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --background: 15 23 42;
+  /* LIGHT theme — the true default. Token triples are space-separated RGB,
+   * consumed by Tailwind as rgba(var(--token) / <alpha-value>).
+   * Every text-on-surface pairing here is WCAG AA verified (see
+   * docs/design/color-scheme.md).
+   * `.light` mirrors `:root` so a subtree can force the light theme even when
+   * a `.dark` ancestor is present (used by the /styleguide side-by-side). */
+  :root,
+  .light {
+    --background: 255 255 255;
+    --foreground: 30 41 59;
+    --surface: 248 250 252;
+    --surface-elevated: 241 245 249;
+    --overlay: 15 23 42;
+    --card: 255 255 255;
+    --card-foreground: 30 41 59;
+    --popover: 255 255 255;
+    --popover-foreground: 30 41 59;
+    --primary: 14 116 144;
+    --primary-foreground: 255 255 255;
+    --primary-accent: 8 145 178;
+    --secondary: 241 245 249;
+    --secondary-foreground: 30 41 59;
+    --secondary-accent: 226 232 240;
+    --muted: 241 245 249;
+    --muted-foreground: 71 85 105;
+    --subtle-foreground: 100 116 139;
+    --accent: 159 50 50;
+    --accent-foreground: 255 255 255;
+    --success: 21 128 61;
+    --success-foreground: 255 255 255;
+    --warning: 254 249 195;
+    --warning-foreground: 133 77 14;
+    --destructive: 185 28 28;
+    --destructive-foreground: 255 255 255;
+    --info: 14 116 144;
+    --info-foreground: 255 255 255;
+    --border: 226 232 240;
+    --input: 255 255 255;
+    --ring: 8 145 178;
+    /* Diverging score ramp — tuned so colored text clears AA 4.5:1 on white. */
+    --score-1: 185 28 28;
+    --score-2: 194 65 12;
+    --score-3: 161 98 7;
+    --score-4: 71 85 105;
+    --score-5: 77 124 15;
+    --score-6: 21 128 61;
+    --score-7: 22 101 52;
+  }
+  /* DARK theme — true dark, applied via .dark on <html>. */
+  .dark {
+    --background: 11 17 32;
     --foreground: 226 232 240;
-    --card: 22 33 62;
-    --card-foreground: 203 213 225;
-    --popover: 22 33 62;
+    --surface: 15 23 42;
+    --surface-elevated: 30 41 59;
+    --overlay: 0 0 0;
+    --card: 15 23 42;
+    --card-foreground: 226 232 240;
+    --popover: 15 23 42;
     --popover-foreground: 226 232 240;
     --primary: 56 189 248;
-    --primary-foreground: 8 15 30;
+    --primary-foreground: 11 17 32;
     --primary-accent: 14 165 233;
-    --secondary: 30 41 69;
-    --secondary-foreground: 170 180 200;
-    --secondary-accent: 38 50 80;
-    --muted: 51 65 95;
+    --secondary: 30 41 59;
+    --secondary-foreground: 226 232 240;
+    --secondary-accent: 51 65 85;
+    --muted: 30 41 59;
     --muted-foreground: 148 163 184;
-    --accent: 2 132 199;
-    --accent-foreground: 224 242 254;
-    --success: 20 60 50;
-    --success-foreground: 74 222 128;
-    --warning: 40 35 15;
-    --warning-foreground: 250 204 21;
-    --destructive: 50 20 25;
-    --destructive-foreground: 248 113 113;
-    --border: 40 52 82;
-    --input: 30 41 69;
-    --ring: 1rem;
-  }
-  .dark {
-    --background: 8 12 28;
-    --foreground: 226 232 240;
-    --card: 15 23 48;
-    --card-foreground: 203 213 225;
-    --popover: 15 23 48;
-    --popover-foreground: 226 232 240;
-    --primary: 96 205 255;
-    --primary-foreground: 5 10 22;
-    --primary-accent: 56 189 248;
-    --secondary: 22 30 55;
-    --secondary-foreground: 160 172 195;
-    --secondary-accent: 30 40 68;
-    --muted: 42 55 85;
-    --muted-foreground: 140 155 180;
-    --accent: 14 165 233;
-    --accent-foreground: 224 242 254;
-    --success: 15 50 40;
-    --success-foreground: 74 222 128;
+    --subtle-foreground: 100 116 139;
+    --accent: 248 113 113;
+    --accent-foreground: 11 17 32;
+    --success: 74 222 128;
+    --success-foreground: 11 17 32;
     --warning: 250 204 21;
-    --warning-foreground: 254 249 195;
+    --warning-foreground: 11 17 32;
     --destructive: 248 113 113;
-    --destructive-foreground: 254 226 226;
+    --destructive-foreground: 11 17 32;
+    --info: 56 189 248;
+    --info-foreground: 11 17 32;
     --border: 30 42 70;
-    --input: 22 30 55;
+    --input: 15 23 42;
+    --ring: 56 189 248;
+    --score-1: 252 165 165;
+    --score-2: 253 186 116;
+    --score-3: 252 211 77;
+    --score-4: 148 163 184;
+    --score-5: 190 242 100;
+    --score-6: 134 239 172;
+    --score-7: 74 222 128;
   }
 
   /* width */
@@ -84,6 +120,8 @@
   }
 }
 
-/* No global text-gray-900 override. The parchment-beige override was killing
- * readability on white pages; v1.8.1 switched the scorecard to a clean
- * light theme — bg-white, text-[#2C4A5E] navy, brick-red accents. */
+/* v1.9: unified token-driven theming. The app now has a true light theme
+ * (:root) and a true dark theme (.dark). The scorecard no longer hardcodes
+ * navy/brick/wheat hex — it consumes the same semantic tokens (foreground,
+ * muted-foreground, accent, surface, score-1..7) as the rest of the app.
+ * See docs/design/color-scheme.md for the palette and contrast ratios. */

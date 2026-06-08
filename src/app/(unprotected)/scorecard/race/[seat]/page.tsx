@@ -45,9 +45,9 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 
 const PARTY_LABEL: Record<string, string> = { D: 'Democrat', R: 'Republican', I: 'Independent' };
 const PARTY_TONE: Record<string, { bg: string; ring: string; text: string }> = {
-  D: { bg: 'bg-[#1d4ed8]/10', ring: 'ring-[#1d4ed8]/40', text: 'text-[#1d4ed8]' },
-  R: { bg: 'bg-[#b91c1c]/10', ring: 'ring-[#b91c1c]/40', text: 'text-[#b91c1c]' },
-  I: { bg: 'bg-gray-500/10', ring: 'ring-gray-500/40', text: 'text-gray-700' },
+  D: { bg: 'bg-info/10', ring: 'ring-info/40', text: 'text-info' },
+  R: { bg: 'bg-destructive/10', ring: 'ring-destructive/40', text: 'text-destructive' },
+  I: { bg: 'bg-muted', ring: 'ring-border', text: 'text-muted-foreground' },
 };
 
 export default async function RaceScorecardPage(props: Props) {
@@ -133,14 +133,14 @@ export default async function RaceScorecardPage(props: Props) {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <Link href="/scorecard" className="text-sm text-gray-600 hover:text-[#2C4A5E]">
+      <Link href="/scorecard" className="text-sm text-muted-foreground hover:text-foreground">
         ← Back to scorecard
       </Link>
 
-      <header className="mt-4 border-b-2 border-gray-900 pb-6">
-        <p className="font-mono text-xs uppercase tracking-widest text-gray-500">2026 race</p>
-        <h1 className="mt-1 font-serif text-3xl font-bold text-[#2C4A5E]">{seatLabel(seat)}</h1>
-        <p className="mt-2 text-sm text-gray-700">
+      <header className="mt-4 border-b-2 border-border pb-6">
+        <p className="font-mono text-xs uppercase tracking-widest text-subtle-foreground">2026 race</p>
+        <h1 className="mt-1 font-serif text-3xl font-bold text-foreground">{seatLabel(seat)}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
           {candidates.length} filed candidate{candidates.length === 1 ? '' : 's'} —{' '}
           {partyOrder
             .map((p) => {
@@ -154,8 +154,8 @@ export default async function RaceScorecardPage(props: Props) {
       </header>
 
       {ghostRows.length > 0 ? (
-        <section className="mt-6 rounded-lg border border-[#2C4A5E]/40 bg-[#2C4A5E]/60 p-4 text-[#F5DEB3]">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/80">
+        <section className="mt-6 rounded-lg border border-border bg-secondary p-4 text-foreground">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-foreground">
             Ghost beneficiary — prior cycles
           </p>
           <p className="mt-2 font-serif text-sm leading-relaxed">
@@ -179,7 +179,7 @@ export default async function RaceScorecardPage(props: Props) {
           <section key={party} className="mt-8">
             <h2 className={`font-serif text-2xl font-bold ${PARTY_TONE[party].text}`}>
               {list.length === 1 ? 'Independent / single' : `${PARTY_LABEL[party]} primary`}
-              <span className="ml-2 font-mono text-xs uppercase tracking-widest text-gray-500">
+              <span className="ml-2 font-mono text-xs uppercase tracking-widest text-subtle-foreground">
                 {list.length} candidate{list.length === 1 ? '' : 's'}
               </span>
             </h2>
@@ -194,16 +194,16 @@ export default async function RaceScorecardPage(props: Props) {
                       <div>
                         <Link
                           href={`/scorecard/${encodeURIComponent(slug)}`}
-                          className="font-serif text-lg font-bold text-[#2C4A5E] hover:underline">
+                          className="font-serif text-lg font-bold text-foreground hover:underline">
                           {c.fullName}
                         </Link>
                         {c.isActive ? (
-                          <span className="ml-2 rounded bg-gray-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-white">
+                          <span className="ml-2 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
                             Incumbent
                           </span>
                         ) : null}
                       </div>
-                      <span className="font-mono text-xs text-gray-500">
+                      <span className="font-mono text-xs text-subtle-foreground">
                         {PARTY_LABEL[c.party]} · {c.state}
                         {c.district != null && c.chamber === 'REP' ? `-${c.district}` : ''}
                       </span>
@@ -235,11 +235,13 @@ export default async function RaceScorecardPage(props: Props) {
                     </dl>
 
                     {(p.totalReceipts ?? 0) > 0 ? (
-                      <p className="mt-3 font-mono text-xs text-gray-600">
+                      <p className="mt-3 font-mono text-xs text-muted-foreground">
                         Receipts to date: ${Math.round(p.totalReceipts!).toLocaleString()}
                       </p>
                     ) : (
-                      <p className="mt-3 font-mono text-xs text-gray-500">No FEC receipts yet for this cycle.</p>
+                      <p className="mt-3 font-mono text-xs text-subtle-foreground">
+                        No FEC receipts yet for this cycle.
+                      </p>
                     )}
                   </li>
                 );
@@ -249,7 +251,7 @@ export default async function RaceScorecardPage(props: Props) {
         );
       })}
 
-      <footer className="mt-12 border-t-2 border-gray-900 pt-4 text-xs text-gray-600">
+      <footer className="mt-12 border-t-2 border-border pt-4 text-xs text-muted-foreground">
         <p>
           Same five-plank rubric applied to every candidate. Voting Score only computable for sitting members (no record
           for challengers). PAC Score, industry rollup, and donor-base ideology come from FEC filings + DIME and work
@@ -257,11 +259,11 @@ export default async function RaceScorecardPage(props: Props) {
           until they file enough receipts.
         </p>
         <p className="mt-2">
-          <Link href="/scorecard/methodology" className="underline hover:text-[#8B3A3A]">
+          <Link href="/scorecard/methodology" className="underline hover:text-accent">
             Methodology
           </Link>{' '}
           ·{' '}
-          <Link href="/scorecard/candidates" className="underline hover:text-[#8B3A3A]">
+          <Link href="/scorecard/candidates" className="underline hover:text-accent">
             All 2026 candidates
           </Link>
         </p>
@@ -272,10 +274,10 @@ export default async function RaceScorecardPage(props: Props) {
 
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="rounded bg-white p-2">
-      <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/70">{label}</p>
-      <p className="mt-0.5 font-serif text-base font-bold tabular-nums text-[#2C4A5E]">{value}</p>
-      {hint ? <p className="mt-0.5 font-mono text-[10px] text-[#2C4A5E]/60">{hint}</p> : null}
+    <div className="rounded bg-surface p-2">
+      <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{label}</p>
+      <p className="mt-0.5 font-serif text-base font-bold tabular-nums text-foreground">{value}</p>
+      {hint ? <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">{hint}</p> : null}
     </div>
   );
 }

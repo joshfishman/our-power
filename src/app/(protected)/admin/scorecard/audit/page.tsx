@@ -154,10 +154,10 @@ export default async function ScorecardAuditPage({ searchParams }: { searchParam
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
-      <header className="border-b-2 border-gray-900 pb-4">
-        <p className="font-mono text-xs uppercase tracking-widest text-gray-500">Scorecard Admin</p>
-        <h1 className="mt-1 font-serif text-3xl font-bold text-gray-900">Score audit · {currentVersion}</h1>
-        <p className="mt-2 text-sm text-gray-700">
+      <header className="border-b-2 border-border pb-4">
+        <p className="font-mono text-xs uppercase tracking-widest text-subtle-foreground">Scorecard Admin</p>
+        <h1 className="mt-1 font-serif text-3xl font-bold text-foreground">Score audit · {currentVersion}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
           Every published score under the current methodology, with the delta from the previous version (
           <strong>{prevVersion}</strong>). Sort by delta to spot anomalous shifts; click any row to see the bill-level
           breakdown on the public detail page.
@@ -165,65 +165,65 @@ export default async function ScorecardAuditPage({ searchParams }: { searchParam
       </header>
 
       <nav className="mt-6 flex flex-wrap items-center gap-2 text-sm">
-        <span className="font-mono text-xs uppercase tracking-widest text-gray-500">Sort:</span>
+        <span className="font-mono text-xs uppercase tracking-widest text-subtle-foreground">Sort:</span>
         {(['delta', 'avg', 'pac', 'voting'] as const).map((s) => (
           <Link
             key={s}
             href={buildHref({ sort: s })}
             className={`rounded border px-2 py-1 ${
               sort === s
-                ? 'border-[#8B3A3A] bg-[#2C4A5E]/80 font-semibold text-[#F5DEB3]'
-                : 'border-[#2C4A5E] bg-[#2C4A5E]/60 text-[#F5DEB3]'
+                ? 'border-accent bg-secondary font-semibold text-foreground'
+                : 'border-border bg-secondary text-foreground'
             }`}>
             {s === 'delta' ? '|Δ| biggest movers' : s === 'avg' ? 'Avg' : s === 'pac' ? 'PAC' : 'Voting'}
           </Link>
         ))}
-        <span className="ml-3 font-mono text-xs uppercase tracking-widest text-gray-500">Jurisdiction:</span>
+        <span className="ml-3 font-mono text-xs uppercase tracking-widest text-subtle-foreground">Jurisdiction:</span>
         {(['FEDERAL', 'CA'] as const).map((j) => (
           <Link
             key={j}
             href={buildHref({ jurisdiction: jurisdiction === j ? undefined : j })}
             className={`rounded border px-2 py-1 ${
               jurisdiction === j
-                ? 'border-[#8B3A3A] bg-[#2C4A5E]/80 font-semibold text-[#F5DEB3]'
-                : 'border-[#2C4A5E] bg-[#2C4A5E]/60 text-[#F5DEB3]'
+                ? 'border-accent bg-secondary font-semibold text-foreground'
+                : 'border-border bg-secondary text-foreground'
             }`}>
             {j}
           </Link>
         ))}
-        <span className="ml-3 font-mono text-xs uppercase tracking-widest text-gray-500">Chamber:</span>
+        <span className="ml-3 font-mono text-xs uppercase tracking-widest text-subtle-foreground">Chamber:</span>
         {(['SEN', 'REP'] as const).map((c) => (
           <Link
             key={c}
             href={buildHref({ chamber: chamber === c ? undefined : c })}
             className={`rounded border px-2 py-1 ${
               chamber === c
-                ? 'border-[#8B3A3A] bg-[#2C4A5E]/80 font-semibold text-[#F5DEB3]'
-                : 'border-[#2C4A5E] bg-[#2C4A5E]/60 text-[#F5DEB3]'
+                ? 'border-accent bg-secondary font-semibold text-foreground'
+                : 'border-border bg-secondary text-foreground'
             }`}>
             {c}
           </Link>
         ))}
-        <span className="ml-3 font-mono text-xs uppercase tracking-widest text-gray-500">Party:</span>
+        <span className="ml-3 font-mono text-xs uppercase tracking-widest text-subtle-foreground">Party:</span>
         {(['D', 'R', 'I'] as const).map((p) => (
           <Link
             key={p}
             href={buildHref({ party: party === p ? undefined : p })}
             className={`rounded border px-2 py-1 ${
               party === p
-                ? 'border-[#8B3A3A] bg-[#2C4A5E]/80 font-semibold text-[#F5DEB3]'
-                : 'border-[#2C4A5E] bg-[#2C4A5E]/60 text-[#F5DEB3]'
+                ? 'border-accent bg-secondary font-semibold text-foreground'
+                : 'border-border bg-secondary text-foreground'
             }`}>
             {p}
           </Link>
         ))}
       </nav>
 
-      <p className="mt-4 text-xs text-gray-500">{rows.length} legislators</p>
+      <p className="mt-4 text-xs text-subtle-foreground">{rows.length} legislators</p>
 
       <table className="mt-3 w-full border-collapse text-sm">
         <thead>
-          <tr className="border-b-2 border-gray-900 text-left font-mono text-xs uppercase tracking-wide text-gray-600">
+          <tr className="border-b-2 border-border text-left font-mono text-xs uppercase tracking-wide text-muted-foreground">
             <th className="py-2 pr-3">Legislator</th>
             <th className="py-2 pr-3">Party · Chamber</th>
             <th className="py-2 pr-3 text-right">PAC</th>
@@ -239,34 +239,34 @@ export default async function ScorecardAuditPage({ searchParams }: { searchParam
             const slug = r.bioguideId ?? r.openStatesId ?? r.legId;
             const deltaColor =
               r.delta === null
-                ? 'text-gray-400'
+                ? 'text-subtle-foreground'
                 : Math.abs(r.delta) >= 15
                 ? 'text-red-700 font-bold'
                 : Math.abs(r.delta) >= 8
                 ? 'text-orange-600'
-                : 'text-gray-700';
+                : 'text-muted-foreground';
             return (
-              <tr key={r.legId} className="border-b border-gray-100 hover:bg-[#2C4A5E]/10">
+              <tr key={r.legId} className="border-b border-border hover:bg-secondary-accent">
                 <td className="py-1.5 pr-3">
                   <Link
                     href={`/scorecard/${encodeURIComponent(slug)}`}
-                    className="text-gray-900 hover:underline"
+                    className="text-foreground hover:underline"
                     target="_blank"
                     rel="noopener noreferrer">
                     {r.fullName}
                   </Link>
                 </td>
-                <td className="py-1.5 pr-3 font-mono text-xs text-gray-600">
+                <td className="py-1.5 pr-3 font-mono text-xs text-muted-foreground">
                   {r.party} · {r.chamber} · {r.state}
                 </td>
                 <td className="py-1.5 pr-3 text-right tabular-nums">{r.pacScore ?? '—'}%</td>
                 <td className="py-1.5 pr-3 text-right tabular-nums">{r.voting ?? '—'}%</td>
                 <td className="py-1.5 pr-3 text-right font-semibold tabular-nums">{r.avg ?? '—'}%</td>
-                <td className="py-1.5 pr-3 text-right tabular-nums text-gray-500">{r.prevAvg ?? '—'}%</td>
+                <td className="py-1.5 pr-3 text-right tabular-nums text-subtle-foreground">{r.prevAvg ?? '—'}%</td>
                 <td className={`py-1.5 pr-3 text-right tabular-nums ${deltaColor}`}>
                   {r.delta === null ? '—' : r.delta > 0 ? `+${r.delta}` : r.delta}
                 </td>
-                <td className="py-1.5 pr-3 text-right font-mono text-xs tabular-nums text-gray-500">
+                <td className="py-1.5 pr-3 text-right font-mono text-xs tabular-nums text-subtle-foreground">
                   {r.voteCount.total > 0 ? `${r.voteCount.aligned}/${r.voteCount.total}` : '—'}
                 </td>
               </tr>

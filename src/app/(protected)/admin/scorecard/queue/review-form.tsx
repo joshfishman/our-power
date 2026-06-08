@@ -38,7 +38,7 @@ export function ReviewForm({
           saveReview(formData).then((r) => setStatus(r.ok ? 'saved' : 'error'));
         });
       }}
-      className="flex w-72 flex-col gap-2 rounded border border-[#8B3A3A] bg-[#2C4A5E]/60 p-3 text-xs text-[#F5DEB3]">
+      className="flex w-72 flex-col gap-2 rounded border border-accent bg-secondary p-3 text-xs text-foreground">
       <div>
         <p className="font-mono uppercase tracking-wide">Planks</p>
         <div className="mt-1 flex flex-wrap gap-1">
@@ -49,8 +49,8 @@ export function ReviewForm({
               onClick={() => togglePlank(p)}
               className={`rounded border px-2 py-0.5 ${
                 planks.has(p)
-                  ? 'border-[#8B3A3A] bg-[#8B3A3A] font-bold text-white'
-                  : 'border-[#F5DEB3]/40 bg-transparent'
+                  ? 'border-accent bg-accent font-bold text-white'
+                  : 'border-border bg-transparent'
               }`}>
               P{p}
             </button>
@@ -67,8 +67,8 @@ export function ReviewForm({
               onClick={() => setAligned(v)}
               className={`rounded border px-2 py-0.5 ${
                 aligned === v
-                  ? 'border-[#8B3A3A] bg-[#8B3A3A] font-bold text-white'
-                  : 'border-[#F5DEB3]/40 bg-transparent'
+                  ? 'border-accent bg-accent font-bold text-white'
+                  : 'border-border bg-transparent'
               }`}>
               {v}
             </button>
@@ -78,10 +78,10 @@ export function ReviewForm({
       <button
         type="submit"
         disabled={pending}
-        className="mt-1 rounded bg-[#8B3A3A] px-3 py-1 font-mono uppercase tracking-wide text-white disabled:opacity-50">
+        className="mt-1 rounded bg-accent px-3 py-1 font-mono uppercase tracking-wide text-white disabled:opacity-50">
         {pending ? 'Saving…' : status === 'saved' ? '✓ Saved' : 'Approve / save'}
       </button>
-      {status === 'error' && <p className="text-red-300">Failed to save</p>}
+      {status === 'error' && <p className="text-destructive">Failed to save</p>}
     </form>
   );
 }

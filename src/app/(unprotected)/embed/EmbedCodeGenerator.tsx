@@ -177,7 +177,7 @@ export function EmbedCodeGenerator({ campaigns, siteUrl }: { campaigns: Campaign
                 ),
               }}
             />
-            <p className="mt-3 text-center text-xs text-neutral-400">
+            <p className="mt-3 text-center text-xs text-subtle-foreground">
               Note: The widget preview requires the script to run. Copy the code to an external page to see the full
               widget.
             </p>
