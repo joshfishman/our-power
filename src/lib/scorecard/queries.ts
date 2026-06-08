@@ -255,7 +255,26 @@ export async function getPacScoresByLegislator(legislatorIds: string[]): Promise
 // IE_OPPOSE is tracked separately (info-only): a Super PAC spending against
 // the legislator doesn't change their score either way.
 
-const COUNTS_AGAINST_CLASSES = ['CORPORATE', 'DARK_MONEY', 'FOREIGN_POLICY'] as const;
+// v0.9 — the full MONEY bucket, per docs/scorecard-methodology.md ("The MONEY
+// bucket — counts against you"): corporate + trade-association PACs, party
+// committees, leadership PACs, donor-class ideological super PACs, dark money,
+// conduits, and — by the conservative-attribution rule — unclassified (UNKNOWN)
+// committees. The PEOPLE bucket (LABOR, ACTIVIST = grassroots/mass-membership)
+// never counts. Previously only CORPORATE/DARK_MONEY/FOREIGN_POLICY were counted,
+// which let party/leadership/conduit/ideological money escape the PAC Score.
+const COUNTS_AGAINST_CLASSES = [
+  'CORPORATE',
+  'DARK_MONEY',
+  'FOREIGN_POLICY',
+  'TRADE_ASSOCIATION',
+  'PARTY',
+  'LEADERSHIP',
+  'IDEOLOGICAL',
+  'CONDUIT',
+  'UNKNOWN',
+] as const;
+// Mutable copy for raw-SQL `= ANY(...)` interpolation — single source of truth.
+const COUNTS_AGAINST_CLASSES_SQL: string[] = [...COUNTS_AGAINST_CLASSES];
 
 // v1.9.1 outside-money weights. Single source of truth — every surface that
 // computes PAC Score reads from here.
@@ -323,15 +342,23 @@ export async function getPacScoresByLegislatorV171(legislatorIds: string[]): Pro
   // zero-weight class and is intentionally absent. The denominator is
   // receipts + total IE_SUPPORT (any class) so the ratio is bounded by the
   // full pool of money that landed on the candidate's side of the race.
-  const contribAgg = await prisma.$queryRaw<Array<{ legislatorId: string; countsAgainst: string; ieSupport: string }>>`
+  const contribAgg = await prisma.$queryRaw<
+    Array<{ legislatorId: string; countsAgainst: string; beneficiary: string; ieSupport: string }>
+  >`
     SELECT
       pcontrib."legislatorId" AS "legislatorId",
       COALESCE(SUM(CASE
-        WHEN pc.class IN ('CORPORATE', 'DARK_MONEY', 'FOREIGN_POLICY')
+        WHEN pc.class::text = ANY(${COUNTS_AGAINST_CLASSES_SQL})
          AND pcontrib.kind IN ('DIRECT', 'JFC_PASS_THROUGH', 'LEADERSHIP_PASS_THROUGH', 'IE_SUPPORT')
         THEN pcontrib.amount::numeric
         ELSE 0
       END), 0)::text AS "countsAgainst",
+      COALESCE(SUM(CASE
+        WHEN pc.class::text = ANY(${COUNTS_AGAINST_CLASSES_SQL})
+         AND pcontrib.kind = 'IE_OPPOSE_BENEFICIARY'
+        THEN pcontrib.amount::numeric
+        ELSE 0
+      END), 0)::text AS "beneficiary",
       COALESCE(SUM(CASE
         WHEN pcontrib.kind = 'IE_SUPPORT'
         THEN pcontrib.amount::numeric
@@ -358,7 +385,8 @@ export async function getPacScoresByLegislatorV171(legislatorIds: string[]): Pro
   const out = new Map<string, number | null>();
   for (const id of legislatorIds) out.set(id, null);
   for (const r of contribAgg) {
-    const ca = Number(r.countsAgainst);
+    const benef = Number(r.beneficiary) || 0; // v0.9 — MONEY IE spent against this leg's opponents
+    const ca = Number(r.countsAgainst) + benef;
     const ie = Number(r.ieSupport);
     const receipts = receiptsByLeg.get(r.legislatorId) ?? 0;
     // v1.7.7 safety guard: if there are no principal-committee receipts on
@@ -367,7 +395,8 @@ export async function getPacScoresByLegislatorV171(legislatorIds: string[]): Pro
     // alone collapsed to "6"). Treat as no data instead. Leaves the score
     // valid for cases where the leg legitimately has both receipts and IE.
     if (receipts <= 0 && ca > 0) continue;
-    const denom = receipts + (Number.isFinite(ie) ? ie : 0);
+    // Money against opponents sits in BOTH numerator and denominator (doc formula).
+    const denom = receipts + (Number.isFinite(ie) ? ie : 0) + benef;
     if (!Number.isFinite(denom) || denom <= 0) continue;
     const ratio = ca / denom;
     out.set(r.legislatorId, Math.max(0, Math.min(100, Math.round((1 - ratio) * 100))));
@@ -438,7 +467,11 @@ export async function getLegislatorMoneyTrail(legislatorId: string): Promise<Pac
   // committee receipts on the denominator side; we add their counts-against
   // share to the numerator (when the original donor was corp/dark/foreign).
   // IE_OPPOSE_BENEFICIARY does not enter either total.
-  const denominator = totalReceipts + ieSupportTotal;
+  // v0.9 — money spent against the legislator's opponents (IE_OPPOSE_BENEFICIARY,
+  // MONEY classes) counts on their behalf: it sits in BOTH numerator and
+  // denominator, per docs/scorecard-methodology.md ("MONEY IE against your
+  // opponents"). beneficiaryCountsAgainst is folded into both below.
+  const denominator = totalReceipts + ieSupportTotal + beneficiaryCountsAgainst;
   // v1.7.7 safety guard (mirrors getPacScoresByLegislatorV171): when there
   // are zero principal-committee receipts on record but real counts-against
   // activity exists, the resulting score is driven entirely by IE_SUPPORT
@@ -447,19 +480,14 @@ export async function getLegislatorMoneyTrail(legislatorId: string): Promise<Pac
   const noReceiptsData = totalReceipts <= 0 && countsAgainst > 0;
   const pacScore =
     !noReceiptsData && denominator > 0
-      ? Math.max(0, Math.min(100, Math.round((1 - countsAgainst / denominator) * 100)))
+      ? Math.max(0, Math.min(100, Math.round((1 - (countsAgainst + beneficiaryCountsAgainst) / denominator) * 100)))
       : null;
   // Beneficiary view: also count IE_OPPOSE-against-defeated-opponent as
   // counts-against. Denominator includes IE_OPPOSE_BENEFICIARY too so it
   // doesn't artificially inflate the ratio. Same no-receipts guard applies.
-  const beneficiaryDenominator = denominator + beneficiaryCountsAgainst;
-  const beneficiaryPacScore =
-    !noReceiptsData && beneficiaryDenominator > 0
-      ? Math.max(
-          0,
-          Math.min(100, Math.round((1 - (countsAgainst + beneficiaryCountsAgainst) / beneficiaryDenominator) * 100)),
-        )
-      : null;
+  // v0.9 — beneficiary IE is now folded into the headline pacScore above, so
+  // this alternate view equals it. Retained for existing consumers of the field.
+  const beneficiaryPacScore = pacScore;
   return {
     countsAgainst,
     totalInfluence,
@@ -715,7 +743,7 @@ export async function getLegislatorLeadershipPacInflows(legislatorId: string): P
   const perPac = await prisma.$queryRaw<Array<{ leadershipPacId: string; counted: string; all: string }>>`
     SELECT
       lpi."leadershipPacId" AS "leadershipPacId",
-      COALESCE(SUM(CASE WHEN pc.class IN ('CORPORATE','DARK_MONEY','FOREIGN_POLICY')
+      COALESCE(SUM(CASE WHEN pc.class::text = ANY(${COUNTS_AGAINST_CLASSES_SQL})
                         THEN lpi.amount::numeric ELSE 0 END), 0)::text AS counted,
       COALESCE(SUM(lpi.amount::numeric), 0)::text AS all
     FROM "LeadershipPacInflow" lpi

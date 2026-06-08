@@ -1,9 +1,20 @@
 // scripts/compute-scores.ts
 //
-// Phase 4 driver: turn verified MarkerAchievements into RepresentativeScore
-// rows, optionally publish them, and (with a temporary stand-in flag) flip
-// every unverified achievement to verified so we have something to show
-// before the Phase 6 admin UI exists.
+// The scorecard compute driver. Writes RepresentativeScore rows using the
+// RATIO voting model (per-(legislator, plank) aligned ÷ total × 100), via the
+// shared src/lib/scorecard/voting-alignment.ts module, then computes the
+// separate PAC achievements and (with a stand-in flag) auto-verifies.
+//
+//   Voting (per plank) = aligned ÷ eligible × 100
+//     eligible = scorable roll-call bills gated to the leg's chamber ∪ marker
+//                scoring-slots for that plank (bill-level dedup)
+//     aligned  = voted-aligned ∪ cosponsored ∪ marker-sponsored
+//     an absence / NO vote is a denominator drag, never −1
+//   Insufficient data is EXCLUDED, not zero: a plank with 0 eligible bills
+//     gets NO row (so it drops out of the average); a genuinely-unaligned
+//     plank still scores a real 0%.
+//   PAC is its OWN score (computePacAchievements) — the ratio scorer skips
+//     bill-less markers, so the PAC marker never enters a plank voting tally.
 //
 // Usage:
 //   npx tsx scripts/compute-scores.ts                          # compute only, don't publish
@@ -21,12 +32,13 @@ import './load-env';
 
 import { PrismaClient } from '../src/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { METHODOLOGY_VERSION, pacScoreFromRatio } from '../src/lib/scorecard/scoring';
 import {
-  METHODOLOGY_VERSION,
-  pacScoreFromRatio,
-  scoreLegislator,
-  type ScoringPlank,
-} from '../src/lib/scorecard/scoring';
+  loadAlignmentUniverse,
+  computePlankTallies,
+  type Jurisdiction,
+  type LegChamber,
+} from '../src/lib/scorecard/voting-alignment';
 
 const adapter = new PrismaPg({
   connectionString: process.env.DIRECT_URL || process.env.DATABASE_URL!,
@@ -207,29 +219,30 @@ async function main(): Promise<void> {
     await autoVerifyAll(flags.jurisdiction, flags.dryRun);
   }
 
-  // Load planks (with markers) for the jurisdictions in scope.
+  // Load plank UUIDs by (jurisdiction, number) — the ratio model tallies by
+  // plank NUMBER (from RollCallVote.plankNumbers / Marker.plank), so we map
+  // back to the plankId UUID for the RepresentativeScore row.
   const planks = await prisma.plank.findMany({
     where: flags.jurisdiction !== 'BOTH' ? { jurisdiction: flags.jurisdiction } : undefined,
-    orderBy: [{ jurisdiction: 'asc' }, { number: 'asc' }],
-    include: { markers: true },
+    select: { id: true, number: true, jurisdiction: true },
   });
-  console.log(`[compute-scores] loaded ${planks.length} plank(s) across markers`);
+  const plankIdByJurNum = new Map<string, string>();
+  for (const p of planks) plankIdByJurNum.set(`${p.jurisdiction}|${p.number}`, p.id);
+  console.log(`[compute-scores] loaded ${planks.length} plank(s)`);
 
-  // Group planks by jurisdiction so each legislator scores only against their own.
-  const planksByJurisdiction = new Map<'FEDERAL' | 'CA', ScoringPlank[]>();
-  for (const p of planks) {
-    const key = p.jurisdiction as 'FEDERAL' | 'CA';
-    const list = planksByJurisdiction.get(key) ?? [];
-    list.push({
-      id: p.id,
-      number: p.number,
-      markers: p.markers.map((m) => ({ id: m.id, markerType: m.markerType as 'PRIMARY' | 'SECONDARY' })),
-    });
-    planksByJurisdiction.set(key, list);
-  }
+  // Load the shared alignment universe (scorable roll-call bills, cosponsors,
+  // marker scoring-slots). This is the SAME source of truth the display layer
+  // (queries.ts getLegislatorBillBreakdown) uses, so the score and the
+  // "X aligned of Y bills" line can never disagree.
+  const universe = await loadAlignmentUniverse(prisma);
+  console.log(
+    `[compute-scores] universe: ${universe.bills.size} bills · ${universe.cosponsorsByBill.size} cosponsored bills · ${universe.markerSlots.length} marker slots (bill-less markers excluded)`,
+  );
 
-  // Load active legislators with their THREE-STATE achievements
-  // (we need actionTaken to apply +1 / -1).
+  // Load active legislators. The ratio model needs chamber + jurisdiction for
+  // gating; achievements are no longer used for voting tallies (PAC stays its
+  // own separate score via computePacAchievements above). `--changes-only`
+  // still filters on stale scores vs achievement updates.
   const legislators = await prisma.legislator.findMany({
     where: {
       isActive: true,
@@ -238,21 +251,17 @@ async function main(): Promise<void> {
     select: {
       id: true,
       jurisdiction: true,
+      chamber: true,
+      state: true,
       fullName: true,
-      achievements: {
-        where: { verifiedAt: { not: null }, actionTaken: { not: null } },
-        select: {
-          markerId: true,
-          actionTaken: true,
-          updatedAt: true,
-          achieved: true,
-          evidenceType: true,
-          sponsorTier: true,
-          achievementScore: true,
-        },
-      },
+      lastName: true,
+      party: true,
       ...(flags.changesOnly
         ? {
+            achievements: {
+              where: { verifiedAt: { not: null }, actionTaken: { not: null } },
+              select: { updatedAt: true },
+            },
             scores: {
               where: { methodologyVersion: METHODOLOGY_VERSION },
               orderBy: { computedAt: 'desc' },
@@ -267,7 +276,8 @@ async function main(): Promise<void> {
   let candidates = legislators;
   if (flags.changesOnly) {
     candidates = legislators.filter((l) => {
-      const lastAchievement = l.achievements.reduce<Date | null>(
+      const achievements = (l as unknown as { achievements?: Array<{ updatedAt: Date }> }).achievements ?? [];
+      const lastAchievement = achievements.reduce<Date | null>(
         (max, a) => (max === null || a.updatedAt > max ? a.updatedAt : max),
         null,
       );
@@ -287,49 +297,63 @@ async function main(): Promise<void> {
   // Prisma upsert in $transaction batches was ~30 seconds for 3,170 rows;
   // a 500-row parameterised VALUES insert collapses that to ~3 sec and
   // scales linearly as we add more legislators or methodology versions.
-  // Same pattern proven on CA classifications (29k rows in ~4 min).
   interface ScoreRow {
     legislatorId: string;
     plankId: string;
-    score: number;
-    forCount: number;
-    againstCount: number;
+    score: number; // round(aligned / total × 100)
+    forCount: number; // aligned
+    againstCount: number; // total - aligned (absence/NO drag, never -1)
     notes: string | null;
   }
   const pendingScores: ScoreRow[] = [];
   let totalScores = 0;
   let positiveScores = 0;
-  let negativeScores = 0;
+  let zeroScores = 0;
+  // Per-leg overall voting % for the dry-run distribution + marquee spot-check.
+  const overallByLeg = new Map<
+    string,
+    { aligned: number; total: number; name: string; lastName: string; party: string; juris: string }
+  >();
 
   for (const leg of candidates) {
-    const jurisdiction = leg.jurisdiction as 'FEDERAL' | 'CA';
-    const planksForJurisdiction = planksByJurisdiction.get(jurisdiction) ?? [];
-    if (planksForJurisdiction.length === 0) continue;
+    const jurisdiction = leg.jurisdiction as Jurisdiction;
+    const { perPlank, overall } = computePlankTallies(
+      { id: leg.id, jurisdiction, chamber: leg.chamber as LegChamber, state: leg.state },
+      universe,
+    );
 
-    const result = scoreLegislator(planksForJurisdiction, {
-      legislatorId: leg.id,
-      achievements: leg.achievements.map((a) => ({
-        markerId: a.markerId,
-        achieved: a.achieved,
-        actionTaken: a.actionTaken,
-        evidenceType: a.evidenceType,
-        sponsorTier: a.sponsorTier,
-        achievementScore: Number(a.achievementScore ?? 0) || null,
-      })),
-    });
-
-    for (const ps of result.perPlank) {
+    for (const [plankNum, tally] of perPlank) {
+      // Insufficient-data exclusion: only write a row where total ≥ 1. A plank
+      // with 0 eligible bills gets NO row (excluded from the average). A
+      // genuinely-engaged-but-unaligned plank still scores a real 0%.
+      if (tally.total < 1) continue;
+      const plankId = plankIdByJurNum.get(`${jurisdiction}|${plankNum}`);
+      if (!plankId) continue; // e.g. CA has no Plank 5
+      const percent = (tally.aligned / tally.total) * 100;
       totalScores += 1;
-      if (ps.score > 0) positiveScores += 1;
-      else if (ps.score < 0) negativeScores += 1;
+      if (percent > 0) positiveScores += 1;
+      else zeroScores += 1;
       if (flags.dryRun) continue;
       pendingScores.push({
         legislatorId: leg.id,
-        plankId: ps.plankId,
-        score: ps.score,
-        forCount: ps.forCount,
-        againstCount: ps.againstCount,
-        notes: ps.notes,
+        plankId,
+        score: Math.round(percent),
+        forCount: tally.aligned,
+        againstCount: tally.total - tally.aligned,
+        notes: `${METHODOLOGY_VERSION}: aligned=${tally.aligned}, total=${tally.total}, percent=${percent.toFixed(
+          2,
+        )} (bill-level: roll-call ∪ cosponsorship ∪ marker-sponsorship)`,
+      });
+    }
+
+    if (overall.total > 0) {
+      overallByLeg.set(leg.id, {
+        aligned: overall.aligned,
+        total: overall.total,
+        name: leg.fullName,
+        lastName: leg.lastName,
+        party: leg.party,
+        juris: leg.jurisdiction,
       });
     }
   }
@@ -344,13 +368,12 @@ async function main(): Promise<void> {
       const values = slice
         .map((row, idx) => {
           const base = idx * 8;
-          // score column is Int in schema. The continuous PAC gradient
-          // produces floats; Prisma's typed upsert silently rounded, raw SQL
-          // doesn't — so we round here for parity with prior behavior.
+          // score is already round(aligned / total × 100) — the Int column
+          // stores the integer percent directly.
           params.push(
             row.legislatorId,
             row.plankId,
-            Math.round(row.score),
+            row.score,
             row.forCount,
             row.againstCount,
             METHODOLOGY_VERSION,
@@ -383,54 +406,67 @@ async function main(): Promise<void> {
   }
 
   console.log(
-    `[compute-scores] summary: ${totalScores} score row(s) written · ${positiveScores} positive · ${negativeScores} negative · ${
-      totalScores - positiveScores - negativeScores
-    } zero` + (flags.publish ? ` — published` : ` — NOT published (rerun with --publish)`),
+    `[compute-scores] summary: ${totalScores} per-plank row(s) across ${overallByLeg.size} legislator(s) · ${positiveScores} > 0% · ${zeroScores} at 0%` +
+      (flags.dryRun ? '' : flags.publish ? ` — published` : ` — NOT published (rerun with --publish)`),
   );
-  if (flags.dryRun) console.log('[compute-scores] DRY RUN — no DB writes performed.');
 
-  // Compute ScoreCalibration anchors for the CURRENT methodology version,
-  // from the score rows we just wrote. Earlier hardcoded 'v1.4' refs were
-  // a bug — bumped here to track METHODOLOGY_VERSION so the anchors always
-  // belong to the version the engine just published.
-  console.log(`[compute-scores] computing ${METHODOLOGY_VERSION} percentile anchors...`);
-  const allScores = await prisma.representativeScore.findMany({
-    where: { methodologyVersion: METHODOLOGY_VERSION, publishedAt: { not: null } },
-    select: { legislatorId: true, score: true },
-  });
-  // Aggregate to per-legislator totals (sum across planks)
-  const totalsByLegislator = new Map<string, number>();
-  for (const s of allScores) {
-    totalsByLegislator.set(s.legislatorId, (totalsByLegislator.get(s.legislatorId) ?? 0) + s.score);
+  // ─── Dry-run MARQUEE — how the human verifies Bernie ───────────────────────
+  // Per-leg overall Voting distribution histogram + a spot-check list. Mirrors
+  // the v1.7 dry-run output exactly (same target names).
+  if (flags.dryRun) {
+    console.log(`\n[compute-scores] DRY RUN — no DB writes performed.`);
+    console.log(`\n[compute-scores] per-leg overall Voting distribution:`);
+    const buckets = new Array(10).fill(0);
+    for (const o of overallByLeg.values()) {
+      const pct = (o.aligned / o.total) * 100;
+      buckets[Math.min(9, Math.floor(pct / 10))] += 1;
+    }
+    for (let i = 9; i >= 0; i -= 1) {
+      console.log(
+        `  ${(i * 10).toString().padStart(3)}-${(i * 10 + 10).toString().padStart(3)}%: ${'█'.repeat(
+          Math.min(60, Math.round(buckets[i] / 3)),
+        )} ${buckets[i]}`,
+      );
+    }
+
+    // Marquee spot-check — overall voting % + aligned/total for known names.
+    const targets = ['Sanders', 'Ocasio-Cortez', 'Hawley', 'Cruz', 'Pelosi', 'Norman', 'Vargas'];
+    console.log(`\n[compute-scores] marquee:`);
+    for (const last of targets) {
+      const match = [...overallByLeg.values()].find((o) => o.lastName === last);
+      if (!match) {
+        console.log(`  (no match for ${last})`);
+        continue;
+      }
+      const pct = Math.round((match.aligned / match.total) * 100);
+      console.log(
+        `  ${match.party} ${match.name.padEnd(35)} ${match.juris.padEnd(6)}  Voting=${pct.toString().padStart(3)}%  (${
+          match.aligned
+        }/${match.total})`,
+      );
+    }
+    return;
   }
-  const totals = [...totalsByLegislator.values()].sort((a, b) => a - b);
-  // Anchor strategy: min/max. Earlier draft used 95th/5th percentiles —
-  // that crushed ≥35 top-scoring legislators (everyone at +11 and above)
-  // to indistinguishable +100% display, defeating the point of having a
-  // scaled view. With a bounded distribution (658 legislators, integer
-  // scores roughly in [-3, +17] for v1.4) there are no statistical
-  // outliers to protect against, so min/max gives every legislator a
-  // unique slot on the -100%..+100% scale.
-  const positiveAnchor = totals.length > 0 ? totals[totals.length - 1] : 0;
-  const negativeAnchor = totals.length > 0 ? totals[0] : 0;
+
+  // ScoreCalibration anchors. v0.9 scores are already 0–100 percentages, so the
+  // calibration is the identity: positiveAnchor=100 → +100%, negativeAnchor=0
+  // → 0%. (No percentile fitting — the percent scale is the display scale.)
   await prisma.scoreCalibration.upsert({
     where: { methodologyVersion: METHODOLOGY_VERSION },
     create: {
       methodologyVersion: METHODOLOGY_VERSION,
-      positiveAnchor,
-      negativeAnchor,
-      computedFromCount: totalsByLegislator.size,
+      positiveAnchor: 100,
+      negativeAnchor: 0,
+      computedFromCount: overallByLeg.size,
     },
     update: {
-      positiveAnchor,
-      negativeAnchor,
-      computedFromCount: totalsByLegislator.size,
+      positiveAnchor: 100,
+      negativeAnchor: 0,
+      computedFromCount: overallByLeg.size,
       computedAt: new Date(),
     },
   });
-  console.log(
-    `[compute-scores] ${METHODOLOGY_VERSION} anchors: +100% = ${positiveAnchor} raw, -100% = ${negativeAnchor} raw (from ${totalsByLegislator.size} legislators)`,
-  );
+  console.log(`[compute-scores] ${METHODOLOGY_VERSION} anchors: 100 → +100%, 0 → 0% (percent scale)`);
 }
 
 main()
