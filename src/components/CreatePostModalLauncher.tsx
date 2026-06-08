@@ -36,7 +36,7 @@ export function CreatePostModalLauncher() {
         </ButtonNaked>
         {/* <ButtonNaked className="group flex cursor-pointer flex-row items-center gap-4">
           <EmojiHappySmile stroke="black" width={24} height={24} />
-          <p className="text-base font-semibold text-gray-500 group-hover:text-black">
+          <p className="text-base font-semibold text-muted-foreground group-hover:text-foreground">
             Mood
           </p>
         </ButtonNaked> */}

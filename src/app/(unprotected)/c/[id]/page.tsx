@@ -95,7 +95,7 @@ export default async function PublicCampaignPage(props: Props) {
           style={{ backgroundColor: campaign.cause.color || '#0284c7' }}>
           {campaign.cause.icon} {campaign.cause.name}
         </span>
-        <span className="text-sm text-neutral-500">by {campaign.org.name}</span>
+        <span className="text-sm text-muted-foreground">by {campaign.org.name}</span>
       </div>
 
       {/* Campaign header */}
@@ -113,14 +113,14 @@ export default async function PublicCampaignPage(props: Props) {
 
       <h1 className="mb-3 text-3xl font-bold">{campaign.name}</h1>
 
-      <div className="mb-6 flex items-center gap-4 text-sm text-neutral-500">
+      <div className="mb-6 flex items-center gap-4 text-sm text-muted-foreground">
         <span>{campaign._count.members} members</span>
         <span>{campaign._count.actions} actions</span>
         <span className="capitalize">{campaign.type.toLowerCase().replace('_', ' ')}</span>
       </div>
 
       {/* Description */}
-      <div className="mb-8 whitespace-pre-wrap text-neutral-700 dark:text-neutral-300">{campaign.description}</div>
+      <div className="mb-8 whitespace-pre-wrap text-foreground">{campaign.description}</div>
 
       {/* CTA */}
       <div className="mb-10">
@@ -142,7 +142,7 @@ export default async function PublicCampaignPage(props: Props) {
                   <span className="text-lg">{ACTION_TYPE_ICONS[action.type] || '📋'}</span>
                   <h3 className="font-semibold">{action.title}</h3>
                 </div>
-                <div className="mb-2 flex flex-wrap items-center gap-3 text-sm text-neutral-500">
+                <div className="mb-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                   <span>{ACTION_TYPE_LABELS[action.type] || action.type}</span>
                   <span>{format(action.dueDate, 'MMM d, yyyy')}</span>
                   {action.eventTime && <span>at {format(action.eventTime, 'h:mm a')}</span>}
@@ -150,7 +150,7 @@ export default async function PublicCampaignPage(props: Props) {
                   <span>{action._count.participants} participants</span>
                 </div>
                 {action.description && (
-                  <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                  <p className="text-sm text-muted-foreground">
                     {action.description.slice(0, 200)}
                     {action.description.length > 200 ? '...' : ''}
                   </p>

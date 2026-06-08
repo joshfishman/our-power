@@ -233,11 +233,11 @@ export default async function PacScoreboardPage(props: Props) {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
-      <Link href="/scorecard" className="text-sm text-gray-600 hover:text-gray-900">
+      <Link href="/scorecard" className="text-sm text-muted-foreground hover:text-foreground">
         ← Back to scorecard
       </Link>
 
-      <header className="mt-4 border-b-2 border-gray-900 pb-6">
+      <header className="mt-4 border-b-2 border-border pb-6">
         <div className="flex flex-wrap items-center gap-3">
           <span
             className={`rounded ${tone.bg} px-2 py-1 font-mono text-xs uppercase tracking-wide text-white`}
@@ -250,26 +250,28 @@ export default async function PacScoreboardPage(props: Props) {
             {countsAgainst ? ' · counts against' : ''}
           </span>
           {isGroup ? (
-            <span className="font-mono text-xs text-gray-500">{orderedPacs.length} FEC committees aggregated</span>
+            <span className="font-mono text-xs text-subtle-foreground">
+              {orderedPacs.length} FEC committees aggregated
+            </span>
           ) : (
-            <span className="font-mono text-xs text-gray-500">FEC {pac.committeeId}</span>
+            <span className="font-mono text-xs text-subtle-foreground">FEC {pac.committeeId}</span>
           )}
         </div>
-        <h1 className="mt-2 font-serif text-3xl font-bold text-gray-900">{isGroup ? groupName : pac.name}</h1>
+        <h1 className="mt-2 font-serif text-3xl font-bold text-foreground">{isGroup ? groupName : pac.name}</h1>
         {isGroup && (
-          <ul className="mt-3 space-y-0.5 font-mono text-xs text-gray-600">
+          <ul className="mt-3 space-y-0.5 font-mono text-xs text-muted-foreground">
             {orderedPacs.map((p) => (
               <li key={p.committeeId}>
-                <span className="text-gray-400">{p.committeeId}</span> · {p.name}
+                <span className="text-subtle-foreground">{p.committeeId}</span> · {p.name}
               </li>
             ))}
           </ul>
         )}
         {!isGroup && pac.connectedOrg && pac.connectedOrg !== 'NONE' && (
-          <p className="mt-1 text-sm text-gray-700">Connected organization: {pac.connectedOrg}</p>
+          <p className="mt-1 text-sm text-muted-foreground">Connected organization: {pac.connectedOrg}</p>
         )}
         {!isGroup && pac.reason && (
-          <p className="mt-2 text-sm italic text-gray-600">Classification reason: {pac.reason}</p>
+          <p className="mt-2 text-sm italic text-muted-foreground">Classification reason: {pac.reason}</p>
         )}
       </header>
 
@@ -367,8 +369,8 @@ export default async function PacScoreboardPage(props: Props) {
       </section>
 
       <section className="mt-10">
-        <h2 className="font-serif text-2xl font-bold text-gray-900">Top recipients</h2>
-        <p className="mt-1 text-sm text-gray-600">
+        <h2 className="font-serif text-2xl font-bold text-foreground">Top recipients</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
           {countsAgainst
             ? 'These legislators received support from this PAC. Money from this class counts against their PAC Score.'
             : 'These legislators received support from this PAC. Money from this class does not count against their PAC Score.'}
@@ -378,8 +380,8 @@ export default async function PacScoreboardPage(props: Props) {
 
       {sortedOpposed.length > 0 && (
         <section className="mt-10">
-          <h2 className="font-serif text-2xl font-bold text-gray-900">Legislators opposed (IE against)</h2>
-          <p className="mt-1 text-sm text-gray-600">
+          <h2 className="font-serif text-2xl font-bold text-foreground">Legislators opposed (IE against)</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             This PAC spent independent expenditures AGAINST these legislators&apos; campaigns. This money is shown for
             transparency but does NOT count against the legislator&apos;s own PAC Score (it&apos;s against them).
           </p>
@@ -387,21 +389,21 @@ export default async function PacScoreboardPage(props: Props) {
         </section>
       )}
 
-      <footer className="mt-12 border-t-2 border-gray-900 pt-4 text-xs text-gray-500">
+      <footer className="mt-12 border-t-2 border-border pt-4 text-xs text-subtle-foreground">
         <p>
-          <Link href="/scorecard/methodology/pac-classes" className="underline hover:text-[#8B3A3A]">
+          <Link href="/scorecard/methodology/pac-classes" className="underline hover:text-accent">
             What does &quot;{tone.label}&quot; mean? →
           </Link>{' '}
           Same classification applied to every federal PAC, regardless of party.
         </p>
         <p className="mt-2">
-          <strong className="text-gray-700">Known coverage gap:</strong> totals reflect contributions and IE filings
-          where the recipient (or target) is a <em>sitting</em> federal legislator in our Legislator table. Super PACs
-          that spend heavily AGAINST primary challengers who then lose (e.g. AIPAC&apos;s United Democracy Project
-          spending against Bowman in 2024 or Levin / Donna Edwards in 2022) drop their losing-target dollars from our
-          totals, because the loser never enters our active-legislator roster. The real spending for high-IE PACs is
-          typically 30-60% larger than what&apos;s shown here. Closing the gap requires ingesting defeated challengers
-          as a separate roster.
+          <strong className="text-muted-foreground">Known coverage gap:</strong> totals reflect contributions and IE
+          filings where the recipient (or target) is a <em>sitting</em> federal legislator in our Legislator table.
+          Super PACs that spend heavily AGAINST primary challengers who then lose (e.g. AIPAC&apos;s United Democracy
+          Project spending against Bowman in 2024 or Levin / Donna Edwards in 2022) drop their losing-target dollars
+          from our totals, because the loser never enters our active-legislator roster. The real spending for high-IE
+          PACs is typically 30-60% larger than what&apos;s shown here. Closing the gap requires ingesting defeated
+          challengers as a separate roster.
         </p>
         <p className="mt-1">
           Source: FEC bulk files for 2018, 2020, 2022, 2024 cycles. Auto-classified + human-reviewed.

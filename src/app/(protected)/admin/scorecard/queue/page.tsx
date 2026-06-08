@@ -73,45 +73,45 @@ export default async function ScorecardAdminQueuePage({ searchParams }: { search
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
-      <header className="border-b-2 border-gray-900 pb-4">
-        <p className="font-mono text-xs uppercase tracking-widest text-gray-500">Scorecard Admin</p>
-        <h1 className="mt-1 font-serif text-3xl font-bold text-gray-900">Classification review queue</h1>
-        <p className="mt-2 text-sm text-gray-700">
+      <header className="border-b-2 border-border pb-4">
+        <p className="font-mono text-xs uppercase tracking-widest text-subtle-foreground">Scorecard Admin</p>
+        <h1 className="mt-1 font-serif text-3xl font-bold text-foreground">Classification review queue</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
           Roll-call votes whose plank classification is below 0.8 confidence (or not scorable yet). Approve or edit each
           to lock in the right classification. Reviewed rows feed into the next compute pass.
         </p>
       </header>
 
       <nav className="mt-6 flex flex-wrap items-center gap-2 text-sm">
-        <span className="font-mono text-xs uppercase tracking-widest text-gray-500">Filter:</span>
+        <span className="font-mono text-xs uppercase tracking-widest text-subtle-foreground">Filter:</span>
         {(['pending', 'lowConf', 'all'] as const).map((f) => (
           <Link
             key={f}
             href={{ pathname: '/admin/scorecard/queue', query: { ...params, filter: f } }}
             className={`rounded border px-2 py-1 ${
               filter === f
-                ? 'border-[#8B3A3A] bg-[#2C4A5E]/80 font-semibold text-[#F5DEB3]'
-                : 'border-[#2C4A5E] bg-[#2C4A5E]/60 text-[#F5DEB3]'
+                ? 'border-accent bg-secondary font-semibold text-foreground'
+                : 'border-border bg-secondary text-foreground'
             }`}>
             {f === 'pending' ? 'Pending review' : f === 'lowConf' ? 'Low confidence' : 'All'}
           </Link>
         ))}
-        <span className="ml-3 font-mono text-xs uppercase tracking-widest text-gray-500">Chamber:</span>
+        <span className="ml-3 font-mono text-xs uppercase tracking-widest text-subtle-foreground">Chamber:</span>
         {(['HOUSE', 'SENATE', 'CA_ASSEMBLY', 'CA_SENATE'] as const).map((c) => (
           <Link
             key={c}
             href={{ pathname: '/admin/scorecard/queue', query: { ...params, chamber: chamber === c ? undefined : c } }}
             className={`rounded border px-2 py-1 ${
               chamber === c
-                ? 'border-[#8B3A3A] bg-[#2C4A5E]/80 font-semibold text-[#F5DEB3]'
-                : 'border-[#2C4A5E] bg-[#2C4A5E]/60 text-[#F5DEB3]'
+                ? 'border-accent bg-secondary font-semibold text-foreground'
+                : 'border-border bg-secondary text-foreground'
             }`}>
             {c.replace('_', ' ')}
           </Link>
         ))}
       </nav>
 
-      <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-600">
+      <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
         <span>Pending across all chambers:</span>
         {counts.map((c) => (
           <span key={c.chamber} className="font-mono">
@@ -123,22 +123,22 @@ export default async function ScorecardAdminQueuePage({ searchParams }: { search
 
       <ul className="mt-6 space-y-3">
         {items.map((it) => (
-          <li key={it.id} className="rounded border border-[#2C4A5E] bg-[#2C4A5E]/40 p-4">
+          <li key={it.id} className="rounded border border-border bg-secondary p-4">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
-                <p className="font-mono text-xs uppercase tracking-wide text-[#F5DEB3]/70">
+                <p className="font-mono text-xs uppercase tracking-wide text-foreground">
                   {it.chamber} · roll {it.rollCallNumber} · {it.billType}/{it.billNumber} ·{' '}
                   {it.billPolicyArea ?? 'no area'} · {it.billSponsorParty ?? '?'}-sponsor
                 </p>
-                <p className="mt-1 font-serif text-lg font-bold text-[#F5DEB3]">{it.billTitle ?? '(no title)'}</p>
-                <p className="mt-1 text-sm italic text-[#F5DEB3]/80">{it.voteQuestion}</p>
-                <p className="mt-2 font-mono text-xs text-[#F5DEB3]/70">
+                <p className="mt-1 font-serif text-lg font-bold text-foreground">{it.billTitle ?? '(no title)'}</p>
+                <p className="mt-1 text-sm italic text-foreground">{it.voteQuestion}</p>
+                <p className="mt-2 font-mono text-xs text-foreground">
                   Current: planks=[{it.plankNumbers.join(',') || '—'}] aligned={it.alignedPosition ?? '—'} conf=
                   {it.classificationConfidence?.toFixed(2) ?? '—'} src={it.classifiedBy ?? '—'} scorable=
                   {String(it.isScorable)}
                 </p>
                 {it.classificationReasoning && (
-                  <p className="mt-1 text-xs text-[#F5DEB3]/60">{it.classificationReasoning}</p>
+                  <p className="mt-1 text-xs text-foreground">{it.classificationReasoning}</p>
                 )}
                 {it.sourceUrl && (
                   <p className="mt-1 text-xs">
@@ -146,7 +146,7 @@ export default async function ScorecardAdminQueuePage({ searchParams }: { search
                       href={it.sourceUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[#F5DEB3] underline">
+                      className="text-foreground underline">
                       View roll-call →
                     </a>
                   </p>
@@ -163,7 +163,7 @@ export default async function ScorecardAdminQueuePage({ searchParams }: { search
       </ul>
 
       {items.length === 0 && (
-        <p className="mt-8 text-center text-sm text-gray-500">No items in the queue for this filter.</p>
+        <p className="mt-8 text-center text-sm text-subtle-foreground">No items in the queue for this filter.</p>
       )}
     </div>
   );

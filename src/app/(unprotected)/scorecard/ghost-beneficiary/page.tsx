@@ -57,14 +57,16 @@ export default async function GhostBeneficiaryIndexPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <Link href="/scorecard" className="text-sm text-[#2C4A5E]/90 hover:text-[#2C4A5E]">
+      <Link href="/scorecard" className="text-sm text-muted-foreground hover:text-foreground">
         ← Back to scorecard
       </Link>
 
-      <header className="mt-4 border-b-2 border-gray-900 pb-6">
-        <p className="font-mono text-xs uppercase tracking-widest text-gray-500">Methodology surface — v1.8.14</p>
-        <h1 className="mt-1 font-serif text-3xl font-bold text-[#2C4A5E]">Ghost beneficiary $</h1>
-        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-gray-700">
+      <header className="mt-4 border-b-2 border-border pb-6">
+        <p className="font-mono text-xs uppercase tracking-widest text-subtle-foreground">
+          Methodology surface — v1.8.14
+        </p>
+        <h1 className="mt-1 font-serif text-3xl font-bold text-foreground">Ghost beneficiary $</h1>
+        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">
           Every dollar in the scorecard methodology must surface somewhere. These dollars are spent but not yet
           attributable to any active legislator — the cycle&rsquo;s winner is no longer in our active set (defeated next
           cycle, retired, died, or ran for a different office). When that legislator&rsquo;s records become available we
@@ -72,29 +74,29 @@ export default async function GhostBeneficiaryIndexPage() {
         </p>
       </header>
 
-      <section className="mt-6 rounded-lg bg-[#2C4A5E]/60 p-5 text-[#F5DEB3]">
+      <section className="mt-6 rounded-lg bg-secondary p-5 text-foreground">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/80">Total ghost $</p>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-foreground">Total ghost $</p>
             <p className="mt-1 font-serif text-3xl font-bold tabular-nums">{fmtDollars(totals.totalDollars)}</p>
-            <p className="mt-1 font-mono text-[11px] text-[#F5DEB3]/70">{totals.totalRows} seat-cycles</p>
+            <p className="mt-1 font-mono text-[11px] text-foreground">{totals.totalRows} seat-cycles</p>
           </div>
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/80">U.S. House</p>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-foreground">U.S. House</p>
             <p className="mt-1 font-serif text-3xl font-bold tabular-nums">{fmtDollars(totals.houseDollars)}</p>
-            <p className="mt-1 font-mono text-[11px] text-[#F5DEB3]/70">{houseRows.length} seat-cycles</p>
+            <p className="mt-1 font-mono text-[11px] text-foreground">{houseRows.length} seat-cycles</p>
           </div>
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/80">U.S. Senate</p>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-foreground">U.S. Senate</p>
             <p className="mt-1 font-serif text-3xl font-bold tabular-nums">{fmtDollars(totals.senateDollars)}</p>
-            <p className="mt-1 font-mono text-[11px] text-[#F5DEB3]/70">{senateRows.length} seat-cycles</p>
+            <p className="mt-1 font-mono text-[11px] text-foreground">{senateRows.length} seat-cycles</p>
           </div>
         </div>
       </section>
 
       <section className="mt-8">
-        <h2 className="font-serif text-2xl font-bold text-[#2C4A5E]">Why these dollars exist</h2>
-        <div className="mt-3 max-w-3xl space-y-3 text-sm leading-relaxed text-gray-800">
+        <h2 className="font-serif text-2xl font-bold text-foreground">Why these dollars exist</h2>
+        <div className="mt-3 max-w-3xl space-y-3 text-sm leading-relaxed text-foreground">
           <p>
             The per-target PAC Score is honest about a single fact: when a Super PAC files an Independent Expenditure
             opposing a candidate, the FEC filing names the target of the opposition, not the eventual beneficiary. So
@@ -116,14 +118,14 @@ export default async function GhostBeneficiaryIndexPage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="font-serif text-2xl font-bold text-[#2C4A5E]">All seat-cycles</h2>
-        <p className="mt-2 text-sm text-gray-700">
+        <h2 className="font-serif text-2xl font-bold text-foreground">All seat-cycles</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
           Ordered by total IE_OPPOSE $ descending. Click a seat to see the candidates in that race.
         </p>
-        <div className="mt-4 overflow-x-auto rounded border border-gray-300">
+        <div className="mt-4 overflow-x-auto rounded border border-border">
           <table className="w-full border-collapse text-sm">
             <thead>
-              <tr className="bg-[#2C4A5E] text-[#F5DEB3]">
+              <tr className="bg-secondary text-foreground">
                 <th className="px-3 py-2 text-left font-mono text-xs uppercase tracking-wide">Seat</th>
                 <th className="px-3 py-2 text-left font-mono text-xs uppercase tracking-wide">Cycle</th>
                 <th className="px-3 py-2 text-right font-mono text-xs uppercase tracking-wide">IE_OPPOSE $</th>
@@ -134,24 +136,24 @@ export default async function GhostBeneficiaryIndexPage() {
               {rows.map((r, i) => (
                 <tr
                   key={`${r.state}|${r.district ?? ''}|${r.chamber}|${r.cycleYear}`}
-                  className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                  <td className="px-3 py-2 text-[#2C4A5E]">
+                  className={i % 2 === 0 ? 'bg-surface' : 'bg-surface-elevated'}>
+                  <td className="px-3 py-2 text-foreground">
                     <Link
                       href={`/scorecard/race/${encodeURIComponent(raceSlug(r))}`}
-                      className="font-semibold underline hover:text-[#8B3A3A]">
+                      className="font-semibold underline hover:text-accent">
                       {seatLabel(r)}
                     </Link>
                   </td>
-                  <td className="px-3 py-2 font-mono text-xs text-gray-700">{r.cycleYear}</td>
-                  <td className="px-3 py-2 text-right font-mono tabular-nums text-[#2C4A5E]">
+                  <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{r.cycleYear}</td>
+                  <td className="px-3 py-2 text-right font-mono tabular-nums text-foreground">
                     {fmtDollars(r.totalAgainst)}
                   </td>
-                  <td className="px-3 py-2 text-right font-mono text-xs text-gray-700">{r.rowCount}</td>
+                  <td className="px-3 py-2 text-right font-mono text-xs text-muted-foreground">{r.rowCount}</td>
                 </tr>
               ))}
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-3 py-6 text-center text-sm text-gray-500">
+                  <td colSpan={4} className="px-3 py-6 text-center text-sm text-subtle-foreground">
                     No ghost-beneficiary rows. Every IE_OPPOSE $ in our index credits an active legislator.
                   </td>
                 </tr>
@@ -161,19 +163,19 @@ export default async function GhostBeneficiaryIndexPage() {
         </div>
       </section>
 
-      <footer className="mt-12 border-t-2 border-gray-900 pt-4 text-xs text-gray-600">
+      <footer className="mt-12 border-t-2 border-border pt-4 text-xs text-muted-foreground">
         <p>
-          Source: <code className="rounded bg-gray-100 px-1 font-mono">scripts/attribute-ie-beneficiary.ts</code>{' '}
+          Source: <code className="rounded bg-muted px-1 font-mono">scripts/attribute-ie-beneficiary.ts</code>{' '}
           (v1.8.14). Refreshed on each run of{' '}
-          <code className="rounded bg-gray-100 px-1 font-mono">npm run scorecard:attribute-ie-beneficiary</code>. CSV
-          snapshot at <code className="rounded bg-gray-100 px-1 font-mono">data/ghost-beneficiary-202605.csv</code>.
+          <code className="rounded bg-muted px-1 font-mono">npm run scorecard:attribute-ie-beneficiary</code>. CSV
+          snapshot at <code className="rounded bg-muted px-1 font-mono">data/ghost-beneficiary-202605.csv</code>.
         </p>
         <p className="mt-2">
-          <Link href="/scorecard/methodology" className="underline hover:text-[#8B3A3A]">
+          <Link href="/scorecard/methodology" className="underline hover:text-accent">
             Full methodology
           </Link>{' '}
           ·{' '}
-          <Link href="/scorecard" className="underline hover:text-[#8B3A3A]">
+          <Link href="/scorecard" className="underline hover:text-accent">
             Scorecard index
           </Link>
         </p>
