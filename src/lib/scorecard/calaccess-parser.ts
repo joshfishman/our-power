@@ -26,7 +26,7 @@
 // what the classifier needs. cvr_campaign_disclosure_cd.csv carries the
 // FILING_ID -> FILER_ID + candidate-identity fields we need for Pass 1.
 
-import { createReadStream } from 'node:fs';
+import { createReadStream, existsSync } from 'node:fs';
 import path from 'node:path';
 import { parse } from 'csv-parse';
 
@@ -323,6 +323,19 @@ interface CsvStreamOptions {
   filter?: (row: Record<string, string>) => boolean;
 }
 
+/**
+ * Resolve a CCDC table file in `dir`: prefers `<base>.csv` (CCDC processed
+ * export), falls back to `<base>.tsv` (the raw SoS dbwebexport tables, which
+ * carry identical columns but tab-delimited). Throws if neither exists.
+ */
+export function resolveDataFile(dir: string, base: string): string {
+  const csv = path.join(dir, `${base}.csv`);
+  if (existsSync(csv)) return csv;
+  const tsv = path.join(dir, `${base}.tsv`);
+  if (existsSync(tsv)) return tsv;
+  throw new Error(`[ca-access] missing data file: ${base}.csv|.tsv in ${dir}`);
+}
+
 async function streamCsv(
   filePath: string,
   options: CsvStreamOptions,
@@ -337,6 +350,8 @@ async function streamCsv(
         relax_column_count: true,
         relax_quotes: true,
         bom: true,
+        // Raw SoS exports are tab-delimited; CCDC processed files are CSV.
+        delimiter: filePath.toLowerCase().endsWith('.tsv') ? '\t' : ',',
       }),
     );
     parser.on('data', (row: Record<string, string>) => {
@@ -391,7 +406,7 @@ export async function parseCalAccess(
   const matchedLegIds = new Set<string>();
   console.log('[ca-access] Pass 1: scanning cvr_campaign_disclosure_cd.csv...');
   const cvrRows = await streamCsv(
-    path.join(dir, 'cvr_campaign_disclosure_cd.csv'),
+    resolveDataFile(dir, 'cvr_campaign_disclosure_cd'),
     {
       filter: (row) => row.FORM_TYPE === 'F460',
     },
@@ -451,7 +466,7 @@ export async function parseCalAccess(
   let rcptMatched = 0;
 
   console.log('[ca-access] Pass 2: streaming rcpt_cd.csv (this is the large file)...');
-  await streamCsv(path.join(dir, 'rcpt_cd.csv'), {}, (row) => {
+  await streamCsv(resolveDataFile(dir, 'rcpt_cd'), {}, (row) => {
     rcptCount += 1;
     const target = filingToLegislator.get(row.FILING_ID);
     if (!target) return;
@@ -675,7 +690,7 @@ export async function parseCalAccessIe(args: ParseCalAccessIeArgs): Promise<CalA
   // ---- Pass 1: cvr_campaign_disclosure_cd → filing→filerId map ----
   const filingToFiler = new Map<string, string>();
   console.log('[ca-access-ie] Pass 1: scanning cvr_campaign_disclosure_cd.csv for FILING_ID → FILER_ID...');
-  const cvrRows = await streamCsv(path.join(dataDir, 'cvr_campaign_disclosure_cd.csv'), {}, (row) => {
+  const cvrRows = await streamCsv(resolveDataFile(dataDir, 'cvr_campaign_disclosure_cd'), {}, (row) => {
     const filingId = row.FILING_ID;
     const filerId = row.FILER_ID;
     if (!filingId || !filerId) return;
@@ -710,7 +725,7 @@ export async function parseCalAccessIe(args: ParseCalAccessIeArgs): Promise<CalA
   }
 
   console.log('[ca-access-ie] Pass 2: streaming expn_cd.csv for F461P5 IE rows (large file — be patient)...');
-  await streamCsv(path.join(dataDir, 'expn_cd.csv'), { filter: (row) => row.FORM_TYPE === 'F461P5' }, (row) => {
+  await streamCsv(resolveDataFile(dataDir, 'expn_cd'), { filter: (row) => row.FORM_TYPE === 'F461P5' }, (row) => {
     ieRowsScanned += 1;
 
     const filerId = filingToFiler.get(row.FILING_ID);
