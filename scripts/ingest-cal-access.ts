@@ -16,11 +16,14 @@
 //        --ccdc-dir=path/to/calaccess-extracted
 //      Walks the CCDC processed CSV exports — specifically Form 460
 //      receipts (Statement of Receipts and Expenditures) joined against
-//      filer/committee tables — and rolls up corporate vs non-corporate
-//      contributions per candidate per cycle. Requires `CommitteeClassification`
-//      table to be populated for top-N CA committees; un-classified
-//      committees default to "non-corporate" rather than corporate, on
-//      the methodology principle of conservative attribution.
+//      filer/committee tables — and rolls up MONEY-bucket vs PEOPLE-bucket
+//      contributions per candidate per cycle (v0.9 parity with the federal
+//      COUNTS_AGAINST_CLASSES in src/lib/scorecard/queries.ts). Committee
+//      receipts classified CORPORATE / TRADE_ASSOCIATION / PARTY /
+//      IDEOLOGICAL / UNCLASSIFIED count against; LABOR and CANDIDATE never
+//      do. Conservative attribution now runs in the legislator's
+//      DISFAVOR: unclassified committee money counts (mirrors federal
+//      UNKNOWN).
 //
 //      CCDC publishes raw Cal-Access tables plus normalized "processed"
 //      CSVs at https://calaccess.californiacivicdata.org/downloads/latest/.
@@ -229,11 +232,16 @@ async function runIePass(
     );
   }
 
-  const corpCmtes = await prisma.committeeClassification.findMany({
-    where: { jurisdiction: 'CA', category: { in: ['CORPORATE', 'TRADE_ASSOCIATION'] } },
+  // v0.9 MONEY-bucket parity: gate IE spenders on motivationClass = MONEY
+  // (CORPORATE + TRADE_ASSOCIATION + PARTY + IDEOLOGICAL, minus manual
+  // PEOPLE overrides) instead of the pre-v0.9 CORPORATE+TRADE_ASSOCIATION
+  // category filter. Matches the federal COUNTS_AGAINST_CLASSES semantics
+  // and the parser's documented v1.5 intent for `corporateSpenderFilerIds`.
+  const moneyCmtes = await prisma.committeeClassification.findMany({
+    where: { jurisdiction: 'CA', motivationClass: 'MONEY' },
     select: { committeeId: true },
   });
-  const corporateSpenderFilerIds = new Set(corpCmtes.map((c) => c.committeeId));
+  const corporateSpenderFilerIds = new Set(moneyCmtes.map((c) => c.committeeId));
 
   const result = await parseCalAccessIe({
     dataDir: dir,

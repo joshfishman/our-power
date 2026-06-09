@@ -14,8 +14,10 @@
 //  Pass 2 — RCPT_CD.csv (the 3+ GB one — must stream)
 //    For each receipt whose FILING_ID is in our map:
 //      - Add AMOUNT to that legislator's total for the cycle.
-//      - If ENTITY_CD === 'COM' and the contributor name classifies as
-//        CORPORATE (or TRADE_ASSOCIATION), also add to corporatePacAmount.
+//      - If ENTITY_CD === 'COM' and the contributor name classifies into
+//        the MONEY bucket (CORPORATE, TRADE_ASSOCIATION, PARTY,
+//        IDEOLOGICAL, or UNCLASSIFIED — see CA_COUNTS_AGAINST_CLASSES),
+//        also add to corporatePacAmount. LABOR and CANDIDATE never count.
 //
 // Output: PacAggregate[] — one row per (legislator, cycleYear).
 //
@@ -59,10 +61,13 @@ export type CommitteeClass =
  * checks run before corporate so a "Teamsters Local 853 Political Action
  * Fund" doesn't get tagged corporate just because it contains "FUND".
  *
- * Methodology principle: conservative attribution. When in doubt, return
- * UNCLASSIFIED — the corporate-PAC ratio counts only confirmed corporate
- * contributions, so misclassifying borderline cases as UNCLASSIFIED can
- * only LOWER a legislator's reported corporate share, never inflate it.
+ * Conservative-attribution rule (v0.9 MONEY-bucket parity): UNCLASSIFIED
+ * committee money COUNTS AGAINST the legislator, mirroring the federal
+ * UNKNOWN class in COUNTS_AGAINST_CLASSES (queries.ts). A committee that
+ * wants to be excluded from the ratio must affirmatively classify as
+ * PEOPLE-bucket (LABOR / grassroots). When in doubt, still return
+ * UNCLASSIFIED — the counting rule, not the classifier, decides the
+ * attribution direction.
  */
 export function classifyCommittee(rawName: string): CommitteeClass {
   if (!rawName) return 'UNCLASSIFIED';
@@ -95,9 +100,10 @@ export function classifyCommittee(rawName: string): CommitteeClass {
     return 'CANDIDATE';
   }
 
-  // Ballot-measure committees aren't candidate committees and aren't
-  // "corporate PAC money" in the methodology sense — they fund yes/no
-  // campaigns on propositions. Bucket separately as IDEOLOGICAL.
+  // Ballot-measure committees aren't candidate committees — they fund
+  // yes/no campaigns on propositions. Bucket as IDEOLOGICAL, which under
+  // v0.9 MONEY-bucket parity counts toward the ratio (same as federal
+  // IDEOLOGICAL in COUNTS_AGAINST_CLASSES).
   if (/\bBALLOT MEASURE COMMITTEE\b|\bYES ON \d+\b|\bNO ON \d+\b|\bYES ON PROP\b|\bNO ON PROP\b/.test(name)) {
     return 'IDEOLOGICAL';
   }
@@ -150,13 +156,38 @@ export function classifyCommittee(rawName: string): CommitteeClass {
 }
 
 /**
- * Returns true if the classification should count toward the corporate
- * PAC ratio. Trade associations are bundled with corporate per
- * methodology — they're the corporate sector's vehicle for collective
- * lobbying.
+ * Classes that count toward the counts-against PAC ratio — the CA mirror
+ * of the federal MONEY bucket (COUNTS_AGAINST_CLASSES in
+ * src/lib/scorecard/queries.ts: CORPORATE, DARK_MONEY, FOREIGN_POLICY,
+ * TRADE_ASSOCIATION, PARTY, LEADERSHIP, IDEOLOGICAL, CONDUIT, UNKNOWN).
+ *
+ * CA mapping:
+ *  - CORPORATE / TRADE_ASSOCIATION / PARTY / IDEOLOGICAL → count (MONEY).
+ *  - UNCLASSIFIED → counts, mirroring federal UNKNOWN (conservative
+ *    attribution: unattributed committee money is presumed MONEY-bucket).
+ *  - LABOR → never counts (PEOPLE bucket).
+ *  - CANDIDATE → excluded. Cal-Access has no LEADERSHIP-PAC / CONDUIT /
+ *    DARK_MONEY equivalents; inter-candidate transfers are the closest
+ *    analog to federal LEADERSHIP but are candidate-controlled committees,
+ *    which the CA classification pipeline deliberately skips. Documented
+ *    limitation in docs/scorecard/ca-pac-parity.md.
+ */
+export const CA_COUNTS_AGAINST_CLASSES: ReadonlySet<CommitteeClass> = new Set([
+  'CORPORATE',
+  'TRADE_ASSOCIATION',
+  'PARTY',
+  'IDEOLOGICAL',
+  'UNCLASSIFIED',
+]);
+
+/**
+ * Returns true if the classification counts toward the counts-against PAC
+ * ratio (MONEY bucket). Kept under the historical export name so existing
+ * imports keep working; pre-v0.9 this returned true only for
+ * CORPORATE | TRADE_ASSOCIATION.
  */
 export function isCorporateForRatio(c: CommitteeClass): boolean {
-  return c === 'CORPORATE' || c === 'TRADE_ASSOCIATION';
+  return CA_COUNTS_AGAINST_CLASSES.has(c);
 }
 
 /**
