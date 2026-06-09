@@ -235,9 +235,12 @@ export default async function LegislatorScorecardPage(props: Props) {
           <OutsideMoneySection summary={outsideMoney} />
         )}
 
-      {jurisdiction === 'FEDERAL' && leadershipPacInflows && leadershipPacInflows.pacCount > 0 && (
-        <LeadershipPacInflowsSection inflows={leadershipPacInflows} />
-      )}
+      {/* v0.9 "Money they move" disclosure — render only when the legislator
+          controls committee(s) WITH actual inflows on record. */}
+      {jurisdiction === 'FEDERAL' &&
+        leadershipPacInflows &&
+        leadershipPacInflows.pacCount > 0 &&
+        leadershipPacInflows.totalAll > 0 && <LeadershipPacInflowsSection inflows={leadershipPacInflows} />}
 
       {jurisdiction === 'FEDERAL' && dimeProfile && (
         <DonorProfileSection profile={dimeProfile} party={legislator.party} />
@@ -766,6 +769,7 @@ function MoneyTrail({
     leadershipPassThroughTotal,
     beneficiaryCountsAgainst,
     beneficiaryPacScore,
+    perCycle,
   } = moneyTrail;
   // Sort classes by dollar amount desc for the breakdown bars. v1.8.6 — drop
   // negative-net slices (refund-heavy CONDUIT in particular) from the bars;
@@ -826,7 +830,7 @@ function MoneyTrail({
           <p className="mt-1 font-serif text-2xl font-bold tabular-nums text-[#2C4A5E]">
             {pacScore !== null ? `${pacScore}%` : '—'}
           </p>
-          <p className="mt-0.5 font-mono text-[10px] text-[#2C4A5E]/70">1 − counts-against ÷ total raised</p>
+          <p className="mt-0.5 font-mono text-[10px] text-[#2C4A5E]/70">100 − mean per-cycle counted share</p>
         </div>
         <div className="rounded bg-gray-50 p-3">
           <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/70">IE against</p>
@@ -836,6 +840,46 @@ function MoneyTrail({
           <p className="mt-0.5 font-mono text-[10px] text-[#2C4A5E]/70">opposed this leg</p>
         </div>
       </div>
+
+      {/* v0.9 — per-cycle ratios. The PAC Score averages these with equal
+          weight per cycle, so one mega-fundraising cycle can't dilute the rest. */}
+      {perCycle.length > 0 && (
+        <div className="mt-4 rounded border border-gray-200 bg-gray-50 p-4">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/70">Per-cycle counted share</p>
+          <table className="mt-2 w-full max-w-md text-sm">
+            <thead>
+              <tr className="border-b border-gray-200 text-left font-mono text-[10px] uppercase tracking-wide text-[#2C4A5E]/70">
+                <th className="py-1 pr-3 font-normal">Cycle</th>
+                <th className="py-1 pr-3 text-right font-normal">Counted $</th>
+                <th className="py-1 pr-3 text-right font-normal">Cycle money $</th>
+                <th className="py-1 text-right font-normal">Share</th>
+              </tr>
+            </thead>
+            <tbody>
+              {perCycle.map((c) => (
+                <tr key={c.cycle} className="border-b border-gray-100 last:border-b-0">
+                  <td className="py-1 pr-3 font-mono text-xs tabular-nums text-[#2C4A5E]">{c.cycle}</td>
+                  <td className="py-1 pr-3 text-right font-mono text-xs tabular-nums text-red-400">
+                    ${Math.round(c.countsAgainst).toLocaleString()}
+                  </td>
+                  <td className="py-1 pr-3 text-right font-mono text-xs tabular-nums text-[#2C4A5E]">
+                    ${Math.round(c.denominator).toLocaleString()}
+                  </td>
+                  <td className="py-1 text-right font-mono text-xs font-semibold tabular-nums text-[#2C4A5E]">
+                    {(c.ratio * 100).toFixed(1)}%
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="mt-2 text-xs text-[#2C4A5E]/90">
+            Each cycle&apos;s ratio is computed on its own money — counted-class dollars on this legislator&apos;s
+            behalf ÷ that cycle&apos;s receipts + IE support — then the PAC Score averages the cycles with equal weight.
+            One mega-fundraising cycle can no longer dilute the others. Cycles with no receipts on record but real
+            counted activity are excluded rather than scored on IE alone.
+          </p>
+        </div>
+      )}
 
       {/* Beneficiary PAC Score — alt view crediting IE against defeated opponents */}
       {beneficiaryCountsAgainst > 0 && (
@@ -1149,64 +1193,92 @@ function OutsideMoneySection({ summary }: { summary: OutsideMoneySummary }) {
   );
 }
 
-// v1.7.2 — Leadership PAC inflows section. Shows money flowing INTO the
-// legislator's leadership PAC(s). These dollars don't count toward the
-// legislator's PAC Score (it's not their campaign money), but they ARE an
-// influence-flow signal worth surfacing — corporate PACs often prefer
-// leadership PACs because limits are looser.
+// v0.9 — "Money they move" DISCLOSURE panel (upgrades the v1.7.2 leadership-
+// PAC-inflows surface). Shows money flowing INTO committees this legislator
+// CONTROLS (PacClassification.affiliatedLegislatorId). These dollars flow out
+// to OTHER candidates and never enter this legislator's PAC Score — the score
+// measures money RECEIVED on their behalf. Disclosed because leadership
+// fundraising is influence the received-money score cannot see: the power to
+// collect and redistribute money is power over colleagues.
 function LeadershipPacInflowsSection({ inflows }: { inflows: LeadershipPacInflows }) {
   const { pacCount, totalAll, totalCounted, pacs, topDonors } = inflows;
+  const moneyShare = totalAll > 0 ? (totalCounted / totalAll) * 100 : 0;
   return (
     <section className="mt-8 rounded border border-[#8B3A3A]/60 border-gray-200 bg-white p-5 shadow-sm">
       <header className="flex items-baseline justify-between gap-3">
-        <h2 className="font-serif text-xl font-bold text-[#2C4A5E]">Leadership PAC inflows</h2>
+        <h2 className="font-serif text-xl font-bold text-[#2C4A5E]">Money they move</h2>
         <p
-          title="Leadership PAC inflows surface introduced in v1.7.2; applied methodology shown at page top."
-          className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/80">
-          informational
+          title="Disclosure surface — leadership-PAC inflows do not enter the PAC Score. Applied methodology shown at page top."
+          className="font-mono text-[10px] uppercase tracking-widest text-[#8B3A3A]">
+          disclosure — not scored
         </p>
       </header>
       <p className="mt-1 text-sm text-[#2C4A5E]">
-        This legislator sponsors {pacCount === 1 ? 'a leadership PAC' : `${pacCount} leadership PACs`} — legally
-        separate committee(s) that collect PAC + individual money and redistribute to other candidates. These dollars
-        don&apos;t count toward this legislator&apos;s PAC Score (it&apos;s not their campaign money), but they show
-        influence flowing through their network.
+        This legislator controls {pacCount === 1 ? 'a fundraising committee' : `${pacCount} fundraising committees`}{' '}
+        (leadership PAC{pacCount === 1 ? '' : 's'}) — legally separate from their campaign — that collect PAC +
+        individual money and redistribute it to other candidates.
       </p>
 
-      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded bg-gray-50 p-3">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/70">Total inbound (4-cycle)</p>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/70">Total raised (4-cycle)</p>
           <p className="mt-1 font-serif text-xl font-bold tabular-nums text-[#2C4A5E]">
             ${totalAll >= 1_000_000 ? `${(totalAll / 1_000_000).toFixed(1)}M` : `${(totalAll / 1000).toFixed(0)}K`}
           </p>
+          <p className="mt-0.5 font-mono text-[10px] text-[#2C4A5E]/70">into committees they control</p>
         </div>
         <div className="rounded bg-gray-50 p-3">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/70">From counted classes</p>
-          <p className="mt-1 font-serif text-xl font-bold tabular-nums text-red-300">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/70">From MONEY bucket</p>
+          <p className="mt-1 font-serif text-xl font-bold tabular-nums text-red-400">
             $
             {totalCounted >= 1_000_000
               ? `${(totalCounted / 1_000_000).toFixed(1)}M`
               : `${(totalCounted / 1000).toFixed(0)}K`}
           </p>
-          <p className="mt-0.5 font-mono text-[10px] text-[#2C4A5E]/70">Corp + Dark + Foreign</p>
+          <p className="mt-0.5 font-mono text-[10px] text-[#2C4A5E]/70">
+            corp, dark, party, ideological + unclassified
+          </p>
+        </div>
+        <div className="rounded bg-gray-50 p-3">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/70">MONEY-bucket share</p>
+          <p className="mt-1 font-serif text-xl font-bold tabular-nums text-[#2C4A5E]">
+            {totalAll > 0 ? `${moneyShare.toFixed(0)}%` : '—'}
+          </p>
+          <p className="mt-0.5 font-mono text-[10px] text-[#2C4A5E]/70">of everything they move</p>
         </div>
         <div className="col-span-2 rounded bg-gray-50 p-3 sm:col-span-1">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/70">Leadership PAC(s)</p>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#2C4A5E]/70">Committee(s)</p>
           <ul className="mt-1 space-y-0.5">
             {pacs.map((p) => (
-              <li key={p.committeeId} className="font-mono text-[11px] text-[#2C4A5E]">
-                <Link href={`/scorecard/pac/${p.committeeId.toLowerCase()}`} className="hover:underline">
+              <li
+                key={p.committeeId}
+                className="flex items-baseline justify-between gap-2 font-mono text-[11px] text-[#2C4A5E]">
+                <Link href={`/scorecard/pac/${p.committeeId.toLowerCase()}`} className="truncate hover:underline">
                   {p.name}
                 </Link>
+                <span className="shrink-0 tabular-nums text-[#2C4A5E]/80">
+                  ${p.all >= 1_000_000 ? `${(p.all / 1_000_000).toFixed(1)}M` : `${(p.all / 1000).toFixed(0)}K`}
+                </span>
               </li>
             ))}
           </ul>
         </div>
       </div>
 
+      <p className="mt-4 rounded border border-[#8B3A3A]/40 bg-gray-50 p-3 text-xs text-[#2C4A5E]">
+        <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-[#8B3A3A]">
+          Why this is disclosed:{' '}
+        </span>
+        this money flows to OTHER candidates and does <strong>not</strong> enter this legislator&apos;s PAC Score — that
+        score measures money received on their own behalf. We disclose it because the power to collect and redistribute
+        money is influence the received-money score cannot see.
+      </p>
+
       {topDonors.length > 0 && (
         <div className="mt-5">
-          <p className="font-mono text-xs uppercase tracking-widest text-[#2C4A5E]/70">Top donors to these PACs</p>
+          <p className="font-mono text-xs uppercase tracking-widest text-[#2C4A5E]/70">
+            Top donors to these committees
+          </p>
           <ul className="mt-2 divide-y divide-[#F5DEB3]/10 rounded border border-gray-200">
             {topDonors.slice(0, 10).map((d) => {
               const tone = PAC_CLASS_TONE[d.class] ?? PAC_CLASS_TONE.UNKNOWN;
