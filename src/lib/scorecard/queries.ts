@@ -146,25 +146,39 @@ export function computePublishedTotal(scores: Array<{ score: number }>): number 
 }
 
 /**
- * v1.7 — corporate-PAC score for one legislator.
+ * v1.7 — corporate-PAC score for one legislator (California path).
  *
  * Score = (1 − combined_corporate_ratio) × 100, clamped to [0, 100].
  *
- * `combined_corporate_ratio` reads the legislator's most-recent PacMoneyData
- * row (any cycle, any source). If no PAC data exists we return null and the
- * page renders a "no PAC data" badge instead of a misleading 100%.
+ * v0.9 drop-incomplete rule: in-progress election cycles (e.g. 2026) have
+ * incomplete Cal-Access receipts, so their `corporatePacPercentage` can exceed
+ * 1.0 — an impossible >100% corporate share. Reading the most-recent row blind
+ * (the old behavior) therefore swung many CA legislators wildly on their 2026
+ * line. We now read the most-recent cycle whose ratio is COMPLETE (≤ 1.0), and
+ * only fall back to the most-recent row of all if every cycle exceeds 1.0.
+ *
+ * If no PAC data exists we return null and the page renders a "no PAC data"
+ * badge instead of a misleading 100%.
  */
 export async function getLegislatorPacScore(legislatorId: string): Promise<number | null> {
-  const row = await prisma.pacMoneyData.findFirst({
+  const rows = await prisma.pacMoneyData.findMany({
     where: { legislatorId },
     orderBy: [{ dataSource: 'asc' }, { cycleYear: 'desc' }],
     select: { combinedCorporateRatio: true, corporatePacPercentage: true },
   });
-  if (!row) return null;
-  const ratioRaw = row.combinedCorporateRatio ?? row.corporatePacPercentage;
-  if (ratioRaw === null) return null;
-  const ratio = Number(ratioRaw);
-  if (!Number.isFinite(ratio)) return null;
+  if (rows.length === 0) return null;
+  const ratioOf = (r: (typeof rows)[number]): number | null => {
+    const raw = r.combinedCorporateRatio ?? r.corporatePacPercentage;
+    if (raw === null) return null;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  };
+  // Most-recent COMPLETE cycle (ratio ≤ 1.0); rows are already ordered
+  // most-recent-first within each dataSource. Fall back to the first row of
+  // all (most-recent) if every cycle's ratio is incomplete (> 1.0) or null.
+  const complete = rows.map(ratioOf).find((r) => r !== null && r <= 1);
+  const ratio = complete ?? ratioOf(rows[0]);
+  if (ratio === null) return null;
   return Math.max(0, Math.min(100, Math.round((1 - ratio) * 100)));
 }
 
@@ -341,8 +355,9 @@ export interface PacMoneyTrail {
   beneficiaryCountsAgainst: number; // $ from IE_OPPOSE_BENEFICIARY (counted classes only)
   beneficiaryPacScore: number | null; // v0.9 — equals pacScore (beneficiary IE is folded into the headline)
   // v0.9 per-cycle PAC ratio — one row per cycle that survived the per-cycle
-  // guards. ratio = countsAgainst / denominator for that cycle; pacScore above
-  // is (1 − mean(ratio)) × 100.
+  // guards (raw, unclamped ratio), each tagged `included`. pacScore above is
+  // (1 − mean(ratio of the INCLUDED cycles)) × 100; cycles with raw ratio > 1
+  // (incomplete in-progress receipts) are dropped from that mean.
   perCycle: PerCyclePacRatio[];
 }
 
@@ -356,25 +371,33 @@ export interface PacMoneyTrail {
 //
 //   cycle ratio = (counts-against + beneficiary that cycle)
 //               ÷ (receipts + IE_SUPPORT + beneficiary that cycle)
-//   PAC Score   = (1 − mean(cycle ratios)) × 100
+//   PAC Score   = (1 − mean(cycle ratios of the INCLUDED cycles)) × 100
 //
 // Per-cycle guards (each mirrors the old aggregate-level rule):
-//   • zero denominator → cycle skipped
+//   • zero / non-finite denominator → cycle skipped
 //   • $0 receipts with real counts-against activity → cycle dropped (the
 //     v1.7.7 no-receipts guard, now applied per cycle)
-//   • ratio clamped at 1.0 — a cycle can be at most 100% counted money. The
-//     in-progress cycle's FEC receipts snapshot can lag the PacContribution
-//     ingest (observed: Graham 2026 counted $1.66M vs $573K reported
-//     receipts → raw ratio 178%), and an impossible >100% share must not be
-//     allowed to drag the mean below what "every dollar was counted-class"
-//     would produce.
-//   • ALL cycles dropped → pacScore null ("no data" badge)
+//   • RAW ratio > 1.0 → cycle EXCLUDED from the mean (drop-incomplete rule).
+//     A share of money cannot exceed 100%; a raw ratio above 1 is the tell
+//     that the cycle's FEC/Cal-Access receipts snapshot is still incomplete
+//     (in-progress election cycle — observed: Graham 2026 counted $1.66M vs
+//     $573K reported receipts → raw ratio 178%). Earlier versions clamped
+//     such cycles to 1.0 and averaged them, which dragged the score far below
+//     the legislator's true complete-cycle picture (Graham PAC 75 → 37). We
+//     now DROP these cycles entirely rather than clamp-and-average.
+//   • ALL cycles excluded → fall back to the single MOST-RECENT cycle's ratio,
+//     clamped to [0, 1], so the legislator still gets a score rather than null.
+//
+// `perCycle` keeps EVERY computed cycle (raw, unclamped ratio) tagged with
+// `included` so the detail-page table can show which cycles counted toward the
+// mean and which were dropped as incomplete.
 
 export interface PerCyclePacRatio {
   cycle: number;
-  ratio: number; // counts-against share of that cycle's money (0–1, clamped at 1)
+  ratio: number; // RAW counts-against share of that cycle's money (NOT clamped; can exceed 1)
   countsAgainst: number; // counted-class $ on the leg's behalf that cycle (incl. beneficiary IE)
   denominator: number; // receipts + IE_SUPPORT + beneficiary that cycle
+  included: boolean; // false when dropped from the mean (raw ratio > 1 = incomplete receipts)
 }
 
 interface PerCycleInputs {
@@ -405,11 +428,24 @@ export function computePerCyclePacScore(cycles: PerCycleInputs[]): {
     if (receipts <= 0 && ca > 0) continue;
     const denominator = receipts + ie + (Number.isFinite(c.beneficiary) ? c.beneficiary : 0);
     if (!Number.isFinite(denominator) || denominator <= 0) continue;
-    // Clamp at 100% — see the guard list above (stale in-progress-cycle receipts).
-    perCycle.push({ cycle: c.cycle, ratio: Math.min(1, ca / denominator), countsAgainst: ca, denominator });
+    // RAW ratio — NOT clamped. A raw ratio > 1 is the tell that this cycle's
+    // receipts snapshot is incomplete (in-progress election cycle); such cycles
+    // are EXCLUDED from the mean below rather than clamped-and-averaged.
+    const ratio = ca / denominator;
+    perCycle.push({ cycle: c.cycle, ratio, countsAgainst: ca, denominator, included: ratio <= 1 });
   }
   if (perCycle.length === 0) return { perCycle, pacScore: null };
-  const mean = perCycle.reduce((acc, c) => acc + c.ratio, 0) / perCycle.length;
+  const included = perCycle.filter((c) => c.included);
+  if (included.length === 0) {
+    // Drop-incomplete fallback: every surviving cycle has a raw ratio > 1
+    // (all snapshots incomplete). Rather than null, fall back to the single
+    // most-recent cycle's ratio clamped to [0, 1] so the legislator still gets
+    // a score. perCycle is sorted ascending, so the last entry is most-recent.
+    const mostRecent = perCycle[perCycle.length - 1];
+    const clamped = Math.max(0, Math.min(1, mostRecent.ratio));
+    return { perCycle, pacScore: Math.max(0, Math.min(100, Math.round((1 - clamped) * 100))) };
+  }
+  const mean = included.reduce((acc, c) => acc + c.ratio, 0) / included.length;
   return { perCycle, pacScore: Math.max(0, Math.min(100, Math.round((1 - mean) * 100))) };
 }
 
@@ -598,8 +634,11 @@ export async function getLegislatorMoneyTrail(legislatorId: string): Promise<Pac
   // The `denominator` aggregate is retained for the money-trail display tiles;
   // the SCORE is the v0.9 per-cycle mean (computePerCyclePacScore), matching
   // getPacScoresByLegislatorV171 exactly. The per-cycle guards subsume the
-  // v1.7.7 no-receipts guard: a cycle with $0 receipts and real counts-against
-  // is dropped, and if every cycle drops the score is null ("no data" badge).
+  // v1.7.7 no-receipts guard (a cycle with $0 receipts and real counts-against
+  // is dropped) and apply the v0.9 drop-incomplete rule (a cycle whose raw
+  // ratio > 1 is excluded from the mean as an incomplete-receipts snapshot). If
+  // every cycle is incomplete it falls back to the most-recent cycle's clamped
+  // ratio.
   const denominator = totalReceipts + ieSupportTotal + beneficiaryCountsAgainst;
   const { perCycle, pacScore } = computePerCyclePacScore([...cycleInputs.values()]);
   // Beneficiary view historically counted IE-against-defeated-opponent as

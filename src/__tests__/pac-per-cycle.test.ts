@@ -23,7 +23,7 @@ describe('computePerCyclePacScore', () => {
   it('scores a single clean cycle as 100', () => {
     const { pacScore, perCycle } = computePerCyclePacScore([cycle(2024, { receipts: 1_000_000 })]);
     expect(pacScore).toBe(100);
-    expect(perCycle).toEqual([{ cycle: 2024, ratio: 0, countsAgainst: 0, denominator: 1_000_000 }]);
+    expect(perCycle).toEqual([{ cycle: 2024, ratio: 0, countsAgainst: 0, denominator: 1_000_000, included: true }]);
   });
 
   it('averages per-cycle ratios with equal weight — a mega-cycle cannot dilute the rest', () => {
@@ -41,7 +41,9 @@ describe('computePerCyclePacScore', () => {
   it('puts beneficiary IE in both numerator and denominator of its cycle', () => {
     const { perCycle } = computePerCyclePacScore([cycle(2024, { ca: 0, benef: 50_000, receipts: 50_000 })]);
     // ratio = (0 + 50k) / (50k + 0 + 50k) = 0.5
-    expect(perCycle).toEqual([{ cycle: 2024, ratio: 0.5, countsAgainst: 50_000, denominator: 100_000 }]);
+    expect(perCycle).toEqual([
+      { cycle: 2024, ratio: 0.5, countsAgainst: 50_000, denominator: 100_000, included: true },
+    ]);
   });
 
   it('adds IE_SUPPORT to the cycle denominator', () => {
@@ -77,15 +79,34 @@ describe('computePerCyclePacScore', () => {
     expect(pacScore).toBe(90);
   });
 
-  it('clamps an impossible >100% cycle ratio at 1.0 (stale in-progress receipts snapshot)', () => {
-    // Observed in the wild: Graham 2026 counted $1.66M vs $573K reported
-    // receipts → raw ratio 178%. A share of money cannot exceed 100%.
+  it('DROPS an incomplete >100% cycle from the mean rather than clamping it (v0.9)', () => {
+    // Observed in the wild: Graham 2026 counted $1.66M vs $930K reported
+    // receipts → raw ratio ~178%. A share of money cannot exceed 100%, so this
+    // is the tell of an incomplete in-progress receipts snapshot. v0.9 drops it
+    // from the mean entirely (the old behavior clamped it to 1.0 and averaged,
+    // dragging the score from 75 → 38).
     const { pacScore, perCycle } = computePerCyclePacScore([
       cycle(2020, { ca: 250_000, receipts: 1_000_000 }),
       cycle(2026, { ca: 1_660_000, receipts: 930_000 }),
     ]);
-    expect(perCycle[1].ratio).toBe(1);
-    expect(pacScore).toBe(38); // round((1 − (0.25 + 1)/2) × 100)
+    // Both cycles are still reported (raw, unclamped) but only 2020 is included.
+    expect(perCycle.map((c) => c.cycle)).toEqual([2020, 2026]);
+    expect(perCycle[1].ratio).toBeGreaterThan(1); // raw, not clamped
+    expect(perCycle[1].included).toBe(false);
+    expect(perCycle[0].included).toBe(true);
+    expect(pacScore).toBe(75); // round((1 − 0.25) × 100) — 2020 cycle only
+  });
+
+  it('falls back to the most-recent cycle ratio (clamped) when ALL cycles are incomplete', () => {
+    // Every surviving cycle has a raw ratio > 1 (all snapshots incomplete).
+    // Rather than null, fall back to the single most-recent cycle's clamped ratio.
+    const { pacScore, perCycle } = computePerCyclePacScore([
+      cycle(2024, { ca: 1_500_000, receipts: 1_000_000 }), // raw 1.5
+      cycle(2026, { ca: 2_000_000, receipts: 1_000_000 }), // raw 2.0, most recent
+    ]);
+    expect(perCycle.every((c) => c.included === false)).toBe(true);
+    // most-recent (2026) raw ratio 2.0 clamped to 1.0 → score 0.
+    expect(pacScore).toBe(0);
   });
 
   it('sorts the per-cycle rows ascending by cycle', () => {
