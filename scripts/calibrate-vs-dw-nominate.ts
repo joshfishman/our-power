@@ -1,8 +1,8 @@
-// Calibration check: how does our v1.5 score compare to DW-NOMINATE
+// Calibration check: how does our v0.9 Voting Score compare to DW-NOMINATE
 // (Poole/Rosenthal), the academic standard for legislator ideology
 // derived from ALL roll-call votes since 1789?
 //
-// Hypothesis: if our methodology is sound, the v1.5 score should
+// Hypothesis: if our methodology is sound, the v0.9 Voting Score should
 // correlate strongly with -dim1 (economic liberal/conservative,
 // since our planks are mostly economic-progressive in direction).
 // A correlation near 0 would suggest we're measuring noise rather
@@ -10,12 +10,24 @@
 // re-deriving the standard ideology score (and adding no signal).
 // Somewhere between -0.6 and -0.9 is the goldilocks zone — strongly
 // related but with our methodology adding issue-specific structure.
+// (See docs/scorecard-methodology.md for why |r| below 0.90 is fine.)
+//
+// v0.9 port: the score is now the mean of published per-plank percent
+// scores (0–100) — no signed sum, no ScoreCalibration anchors.
 //
 // Source: https://voteview.com/static/data/out/members/HSall_members.csv
-// Run: npx tsx --env-file=.env.local scripts/calibrate-vs-dw-nominate.ts
+// Run: npx tsx scripts/calibrate-vs-dw-nominate.ts
 
-import prisma from '@/lib/prisma/prisma';
+import './load-env';
+import { PrismaClient } from '../src/generated/prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 import fs from 'node:fs/promises';
+
+const prisma = new PrismaClient({
+  adapter: new PrismaPg({ connectionString: process.env.DIRECT_URL || process.env.DATABASE_URL! }),
+});
+
+const METHODOLOGY_VERSION = 'v0.9';
 
 const VOTEVIEW_CSV = '/tmp/voteview_members.csv';
 
@@ -100,10 +112,21 @@ function pearson(xs: number[], ys: number[]): number {
 }
 
 async function main(): Promise<void> {
+  try {
+    await fs.access(VOTEVIEW_CSV);
+  } catch {
+    console.error(
+      `[calibrate] DW-NOMINATE data file not found at ${VOTEVIEW_CSV}.\n` +
+        `  Download it first:\n` +
+        `    curl -o ${VOTEVIEW_CSV} https://voteview.com/static/data/out/members/HSall_members.csv\n` +
+        `  Skipping — no correlation computed.`,
+    );
+    process.exit(2);
+  }
   const dw = await loadDwNominate();
   console.log(`[calibrate] loaded ${dw.size} 119th-Congress members from Voteview`);
 
-  // Pull our federal legislators + their v1.5 totals
+  // Pull our federal legislators + their published v0.9 per-plank scores.
   const legs = await prisma.legislator.findMany({
     where: { jurisdiction: 'FEDERAL', isActive: true, bioguideId: { not: null } },
     select: {
@@ -112,29 +135,25 @@ async function main(): Promise<void> {
       party: true,
       chamber: true,
       scores: {
-        where: { methodologyVersion: 'v1.5', publishedAt: { not: null } },
+        where: { methodologyVersion: METHODOLOGY_VERSION, publishedAt: { not: null } },
         select: { score: true },
       },
     },
   });
-  const calib = await prisma.scoreCalibration.findUnique({ where: { methodologyVersion: 'v1.5' } });
-  const posA = Number(calib?.positiveAnchor ?? 17);
-  const negA = Number(calib?.negativeAnchor ?? -4);
 
-  const pairs: { name: string; party: string; ourPct: number; ourRaw: number; dw1: number; dw2: number }[] = [];
+  const pairs: { name: string; party: string; ourPct: number; dw1: number; dw2: number }[] = [];
   for (const leg of legs) {
     if (!leg.bioguideId) continue;
     const d = dw.get(leg.bioguideId);
     if (!d) continue;
     if (leg.scores.length === 0) continue;
-    const raw = leg.scores.reduce((s, ps) => s + ps.score, 0);
-    // Match scoring.ts:rawToPercent piecewise — positive arm scales against
-    // positiveAnchor, negative arm scales against |negativeAnchor|. raw is
-    // already signed so we don't flip the sign on the negative arm.
-    const pct = raw >= 0 ? (raw / posA) * 100 : (raw / Math.abs(negA)) * 100;
-    pairs.push({ name: leg.fullName, party: leg.party, ourPct: pct, ourRaw: raw, dw1: d.dim1, dw2: d.dim2 });
+    // v0.9 Voting Score = mean of published per-plank percent scores (0–100).
+    const pct = leg.scores.reduce((s, ps) => s + ps.score, 0) / leg.scores.length;
+    pairs.push({ name: leg.fullName, party: leg.party, ourPct: pct, dw1: d.dim1, dw2: d.dim2 });
   }
-  console.log(`[calibrate] matched ${pairs.length} legislators (have both v1.5 score and DW-NOMINATE)`);
+  console.log(
+    `[calibrate] matched ${pairs.length} legislators (have both ${METHODOLOGY_VERSION} voting score and DW-NOMINATE)`,
+  );
 
   const ourPcts = pairs.map((p) => p.ourPct);
   const dw1s = pairs.map((p) => p.dw1);
@@ -142,26 +161,28 @@ async function main(): Promise<void> {
   const r1 = pearson(ourPcts, dw1s);
   const r2 = pearson(ourPcts, dw2s);
   console.log(`\n[calibrate] Pearson correlation:`);
-  console.log(`  our v1.5 percent  vs  DW-NOMINATE dim1 (econ): ${r1.toFixed(3)}`);
-  console.log(`  our v1.5 percent  vs  DW-NOMINATE dim2 (social): ${r2.toFixed(3)}`);
+  console.log(`  our ${METHODOLOGY_VERSION} voting percent  vs  DW-NOMINATE dim1 (econ): ${r1.toFixed(3)}`);
+  console.log(`  our ${METHODOLOGY_VERSION} voting percent  vs  DW-NOMINATE dim2 (social): ${r2.toFixed(3)}`);
   console.log(
-    `  (expect dim1 ≈ -0.6 to -0.9 if methodology is working — negative because positive Common Ground score = liberal-aligned, and positive dim1 = conservative)`,
+    `  (expect dim1 ≈ -0.6 to -0.9 if methodology is working — negative because high Common Ground score = liberal-aligned, and positive dim1 = conservative)`,
   );
 
-  // Outlier detection: legislators where our score disagrees most with DW-NOMINATE
+  // Outlier detection: legislators where our score disagrees most with
+  // DW-NOMINATE. v0.9 scores are 0–100, so "we credit them" ≈ >60% and
+  // "we read them as opposed" ≈ <40%.
   console.log(
-    `\n[calibrate] Top 10 'we say liberal-aligned, DW says very conservative' (potential false-positive credit):`,
+    `\n[calibrate] Top 10 'we say aligned (>60%), DW says very conservative' (potential false-positive credit):`,
   );
   pairs
-    .filter((p) => p.ourPct > 0 && p.dw1 > 0.3)
+    .filter((p) => p.ourPct > 60 && p.dw1 > 0.3)
     .sort((a, b) => b.ourPct - a.ourPct + (b.dw1 - a.dw1) * 50)
     .slice(0, 10)
     .forEach((p) =>
       console.log(`    ${p.party}  our=${p.ourPct.toFixed(0).padStart(4)}%  dw1=${p.dw1.toFixed(2)}  ${p.name}`),
     );
-  console.log(`\n[calibrate] Top 10 'we say opposed, DW says very liberal' (potential false-negative):`);
+  console.log(`\n[calibrate] Top 10 'we say opposed (<40%), DW says very liberal' (potential false-negative):`);
   pairs
-    .filter((p) => p.ourPct < 0 && p.dw1 < -0.3)
+    .filter((p) => p.ourPct < 40 && p.dw1 < -0.3)
     .sort((a, b) => a.ourPct - b.ourPct + (a.dw1 - b.dw1) * 50)
     .slice(0, 10)
     .forEach((p) =>
@@ -169,7 +190,9 @@ async function main(): Promise<void> {
     );
 
   // Partisan-strength check: what is the average our-percent for each DW decile?
-  console.log(`\n[calibrate] Average v1.5 percent by DW-NOMINATE decile (dim1 sorted liberal→conservative):`);
+  console.log(
+    `\n[calibrate] Average ${METHODOLOGY_VERSION} voting percent by DW-NOMINATE decile (dim1 sorted liberal→conservative):`,
+  );
   const sorted = [...pairs].sort((a, b) => a.dw1 - b.dw1);
   const decileSize = Math.ceil(sorted.length / 10);
   for (let d = 0; d < 10; d += 1) {

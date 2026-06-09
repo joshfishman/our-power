@@ -2,40 +2,48 @@
 
 This scorecard measures every sitting member of Congress and every sitting member of the California State Legislature against five planks of a cross-partisan civic platform (four planks for California — see below). The same rubric applies to every legislator regardless of party: Bernie Sanders and Josh Hawley are scored against identical markers. Every point in every score traces to a public source — a vote roll, a cosponsorship record, an FEC filing, or a Cal-Access filing — and every score is reviewed by a human before it goes public.
 
-## How v1.7 works
+## How v0.9 works
 
 Every legislator gets **two scores**, each 0–100%. The headline number on the scorecard is the **average of the two**.
 
+**Overall-score rule:** the overall is `average(PAC, Voting)`. A legislator with **no voting record gets no overall score** — insufficient data, rendered as "—" and ranked last (unranked) on the index; their PAC Score is shown on its own. This matters for the six non-voting House seats (the territorial delegates, the D.C. delegate, and the Puerto Rico Resident Commissioner), who are legally barred from floor votes: an "overall" built from PAC money alone is not comparable with everyone else's two-part average, and at one point it ranked the PR Resident Commissioner #6 overall on PAC alone. The inverse holds: a legislator with a voting record but no PAC data yet gets an overall equal to their Voting Score (a missing money ingest shouldn't erase a real record).
+
+> The version number is intentionally **below 1.0**. The methodology is sound and live, but we are not calling it final: the public-support gate, the data coverage, and the calibration are still being widened. v0.9 signals "trustworthy and in the open, not frozen."
+
 ### Score 1 — PAC Score
 
-Corporate-PAC money corrupts the work before any vote is cast. The PAC Score answers one question: what share of this legislator's campaign receipts came from somewhere other than corporate PACs?
+Concentrated-wealth money corrupts the work before any vote is cast. The PAC Score answers one question: what share of the money flowing into this legislator's races came from concentrated wealth seeking access, rather than from many people pooling small contributions?
 
-> **PAC Score = (1 − combined_corporate_ratio) × 100**
+> **PAC Score = (1 − money_ratio) × 100**
 
-`combined_corporate_ratio` is the share of total receipts coming from corporate PACs plus corporate-classified independent-expenditure spending (federal) or pre-classified corporate PACs from Cal-Access (California). Data sources: FEC for federal, Cal-Access for California — both public filings, refreshed each cycle.
+`money_ratio` is the share of the legislator's money pool that comes from the **MONEY bucket** — see [Outside money](#outside-money-concentrated-wealth-vs-the-people) below for the full class list and the against-opponents rule. Data sources: FEC for federal, Cal-Access for California — both public filings, refreshed each cycle.
 
-A legislator who takes zero corporate-PAC money scores 100. A legislator with half their funding from corporate PACs scores 50.
+A legislator who takes zero MONEY-bucket money scores 100. A legislator with half their money pool from the MONEY bucket scores 50.
 
-This was previously a sub-component of Plank 1. In v1.7 we promoted it to its own headline score because the corporate-money signal is independent of voting record — refusing the money is its own commitment, separate from how you vote once you're in office — and because burying it inside Plank 1 made it invisible to readers comparing legislators side-by-side.
+This was previously a sub-component of Plank 1. We promoted it to its own headline score because the money signal is independent of voting record — refusing the money is its own commitment, separate from how you vote once you're in office — and because burying it inside Plank 1 made it invisible to readers comparing legislators side-by-side. **The PAC signal lives only here; it is never folded into any plank's voting tally.**
 
 ### Score 2 — Voting Record
 
-For every plank-relevant bill in this legislator's chamber, did they support it?
+For every plank-relevant bill in this legislator's chamber, did they support it? The Voting Score is a **rate, not a sum**: per plank, the share of eligible bills the legislator was aligned on; the headline Voting Score is the mean of the per-plank rates.
 
-> **Voting Score = aligned_bills / total_bills × 100**
+> **Voting Score (per plank) = aligned ÷ total × 100**
+
+This is the central methodology fact, and it replaces the earlier signed-sum engine. The old engine added a point for each aligned action and subtracted one for each opposed action, producing a signed integer per plank. That made scores scale with how *many* bills happened to touch a legislator rather than what *share* they supported — a prolific moderate could outscore a perfect-record member, and the displayed "percent" was never a real percentage. v0.9 retires the signed-sum engine entirely. Every plank number is now a genuine ratio of the same denominator the "X aligned of Y bills" line on the detail page draws from, so the score and the evidence can never disagree.
 
 A legislator is "aligned on a bill" if they either:
 
 1. Voted the platform-aligned way on **any** roll-call vote attached to that bill, OR
-2. Cosponsored that bill.
+2. Cosponsored that bill (or sponsored any of a marker's bills).
 
-Cosponsorship counts as full alignment under v1.7. Filing your name on a bill is a public commitment to it — same signal weight as casting a vote. This was the biggest v1.6 → v1.7 gap: a senator who cosponsored eight Plank-2 bills but cast no recorded vote on any of them used to score 0 on Plank 2. Now they score 100.
+**Cosponsorship only ever helps.** Filing your name on a bill is a public commitment to it — full alignment, the same as casting an aligned vote. But *not* cosponsoring a bill is not a failure: an un-cosponsored marker bill is **excluded from the denominator entirely**, never a drag. Opting into a cosponsorship is voluntary; we don't penalize a legislator for declining to add their name. (Contrast roll-call votes below, where showing up is mandatory.)
 
-**Bill-level dedup.** A single bill that comes up in four procedural roll calls counts as one bill, not four. This was the second v1.6 gap: procedural votes inflated denominators and let one substantive disagreement read as four. We dedupe at the bill level, then look at the legislator's most-supportive position across all roll calls on that bill.
+**A missed or opposed vote drags only where the legislator was eligible to vote.** For roll-call bills in the legislator's own chamber, a NO vote, an absence, or no recorded position stays in the denominator as a not-aligned bill — the bill needed your yes and you didn't deliver it. It is **never scored below zero**; it simply isn't in the aligned numerator. There is no active penalty.
 
-**Chamber gating.** A senator only gets credit (or blame) for Senate bills; a House member only for House bills. CA Assembly and CA Senate likewise scored independently. A legislator isn't penalized for the other chamber's roll calls they were never eligible to vote on.
+**Bill-level dedup.** A single bill that comes up in four procedural roll calls counts as one bill, not four. We dedupe at the bill level, then take the legislator's most-supportive position across all roll calls on that bill.
 
-**Non-aligned.** Bills the legislator opposed on a recorded vote AND bills they were absent for AND bills they neither cosponsored nor voted on count as not aligned. The bill needed your position to pass, and you didn't deliver it — same stance as v1.5/v1.6. Cosponsoring lets you off the hook even if you missed the vote.
+**Chamber gating.** A senator only gets credit (or blame) for Senate bills; a House member only for House bills. CA Assembly and CA Senate are scored independently. A legislator isn't penalized for the other chamber's roll calls they were never eligible to vote on.
+
+**Non-voting delegates.** The six House members who cannot cast floor votes — the delegates from American Samoa (AS), Guam (GU), the U.S. Virgin Islands (VI), the Northern Mariana Islands (MP), and the District of Columbia (DC), plus the Puerto Rico Resident Commissioner (PR) — are barred from the floor, so scoring them against ~150 roll calls they're legally excluded from would tank them to ~0%. They have no roll-call eligibility and are therefore **scored on cosponsorship (markers) only**, consistent with the rule that a missed vote drags only where the legislator was eligible.
 
 ### Per-plank drill-down
 
@@ -54,7 +62,27 @@ Confidence below 0.5 → bill is **not scorable** (excluded from any tally). Bor
 
 ### Calibration check
 
-v1.7 correlates with DW-NOMINATE (the academic legislator-ideology standard from Voteview) at Pearson r in the same range as v1.6 (−0.69 to −0.91 depending on subset). Below the −0.90 ceiling because the Common Ground methodology deliberately diverges from a pure left-right axis on a few dimensions — Hawley's anti-corporate-PAC stance is platform-aligned even though he's economically conservative, AFP-aligned spending counts against legislators even when bipartisan-supported, etc.
+The Voting Record correlates with DW-NOMINATE (the academic legislator-ideology standard from Voteview) at Pearson r in the −0.69 to −0.91 range (depending on subset). Below the −0.90 ceiling because the Common Ground methodology deliberately diverges from a pure left-right axis on a few dimensions — Hawley's anti-corporate-PAC stance is platform-aligned even though he's economically conservative, MONEY-bucket spending counts against legislators even when bipartisan-supported, etc.
+
+## The public-support gate
+
+A scorecard that grades legislators against positions most Americans reject is just one more partisan advocacy group with a spreadsheet. We refuse that. So v0.9 adds a hard gate in front of every marker:
+
+> **A marker is scored only if its position has at least 55% overall public support — a solid majority.**
+
+A low score on a gated marker therefore means a legislator voted against something most Americans want, not against our politics. We demand alignment with the country, not with a faction.
+
+**The rules:**
+
+- **Threshold: 55%.** Solid-majority support in the best-matched poll.
+- **Overall majority only.** A position can be popular but partisan — war powers polls ~70% overall on a sharp D/R split. It still passes on its aggregate number. We record the split for transparency; we do not gate on it. The point is national majority support, not consensus.
+- **No-poll positions pass by documented judgment** — and only when the position is self-evidently popular and a direct poll simply doesn't exist. Exactly two markers qualify: **#1 corporate-PAC refusal** (no headline poll, but ~80% say donors have too much influence and a cross-partisan trust study backs the position — and it is bill-less, so it never enters the voting tally regardless) and **#24 the PACT Act** (no public-opinion poll located, but it passed the Senate 86–11 with strong veteran-group backing). Every judgment call is documented with its proxy evidence.
+- **Antitrust is anchored to the concept, not the bill.** "Break up Big Tech / open markets / rein in Apple & Google" polls ~74–85% across both parties; the bill-specific Open App Markets Act provision wording never cleared ~32%. We keep the antitrust marker, cite the concept-level majority, and score on that framing. (Plank 5 retains its "Peace and Strength" name and this marker.)
+- **Unresearched or sub-majority positions fail** the gate and do not score until they are substantiated with polling or an explicit judgment call.
+
+The full evidence for all 27 federal positions — support %, partisan split, pollster, date, question wording, match-confidence, and source URL — is in [`docs/scorecard/public-support-audit.md`](scorecard/public-support-audit.md). The at-a-glance ranked pass/fail table is in [`docs/scorecard/marker-public-support.md`](scorecard/marker-public-support.md). The machine-readable gate (keyed by `Marker.slug`, threshold and decisions locked) is `src/lib/scorecard/public-support.ts`.
+
+**Current standing:** 27 markers, all pass — 25 on a real majority poll, 2 by documented judgment (corporate-PAC refusal, PACT Act). The one marker that originally failed the gate — State Department funding (Plank 5) — has been **deleted from the seed and the database**: no poll existed and the position was not self-evidently majority-popular, so rather than carry a permanently-gated-out marker we removed it. The gate therefore excludes nothing from the live voting tally — every marker in the catalog clears 55% or passes on documented judgment. The gate's job is forward-looking: any new marker must clear the bar before it can move a legislator's score.
 
 ## The five planks
 
@@ -133,18 +161,27 @@ against the legislator.
 
 ### The MONEY bucket — counts against you
 
-- Corporate PACs and trade-association PACs (drug companies, defense
+The MONEY bucket is the full set of concentrated-wealth committee classes. Every one of these counts against the legislator (the source-of-truth list is `COUNTS_AGAINST_CLASSES` in `src/lib/scorecard/queries.ts`):
+
+- **CORPORATE** and **TRADE_ASSOCIATION** PACs (drug companies, defense
   contractors, banks, crypto-industry vehicles, etc.).
-- Party committees (DNC, RNC, DSCC, NRSC, DCCC, NRCC). The major-party
+- **DARK_MONEY** — committees that obscure their donors.
+- **FOREIGN_POLICY** — foreign-policy-driven donor-class vehicles.
+- **PARTY** committees (DNC, RNC, DSCC, NRSC, DCCC, NRCC). The major-party
   national committees are establishment vehicles regardless of which
   side you're on.
-- Leadership super PACs: House Majority PAC, Senate Majority PAC,
-  Congressional Leadership Fund, Senate Leadership Fund. These are funded
-  by wealthy individual mega-donors and the party-aligned corporate
-  donor base.
-- Donor-class ideological super PACs: Club for Growth Action, Future
+- **LEADERSHIP** super PACs: House Majority PAC, Senate Majority PAC,
+  Congressional Leadership Fund, Senate Leadership Fund. Funded by wealthy
+  individual mega-donors and the party-aligned corporate donor base.
+- **IDEOLOGICAL** donor-class super PACs: Club for Growth Action, Future
   Forward USA, Senate Conservatives Fund, AIPAC's UDP, American Bridge.
   A small number of wealthy donors fund each.
+- **CONDUIT** committees that route concentrated money to candidates.
+- **UNKNOWN** — unclassified committees, counted against by the
+  **conservative-attribution rule** (see below). We'd rather over-count
+  outside-money pressure than let donor-class money escape unmeasured.
+
+Earlier versions counted only CORPORATE / DARK_MONEY / FOREIGN_POLICY, which let party, leadership, conduit, ideological, and unclassified money slip past the PAC Score. v0.9 counts the full bucket.
 
 ### The PEOPLE bucket — does NOT count against you
 
@@ -162,18 +199,17 @@ against the legislator.
 
 ### The ratio
 
-    Outside-money ratio = (direct MONEY PAC contributions + MONEY IE supporting you + MONEY IE against your opponents)
-                          ───────────────────────────────────────────────────────────────────────────────────────────
-                          (total receipts + MONEY IE supporting you + MONEY IE against your opponents)
+    money_ratio = (direct MONEY PAC contributions + MONEY IE supporting you + MONEY IE against your opponents)
+                  ───────────────────────────────────────────────────────────────────────────────────────────
+                  (total receipts + MONEY IE supporting you + MONEY IE against your opponents)
 
-The score follows the same gradient as v1.4: under 5% → +1, 0% → +2,
-above the upper anchors → −3.
+    PAC Score = (1 − money_ratio) × 100
 
-**What's NOT in the formula: MONEY attacks ON you.** When a donor-class
-super PAC spends to defeat a legislator, that's not money working for
-them. We disclose those attacks in the PAC scoreboard table (small
-italic column) but don't reward being attacked. Race competitiveness
-drives attack spending in ways that don't track policy alignment.
+A legislator with no MONEY-bucket money scores 100; one whose pool is half MONEY scores 50.
+
+**MONEY spent against your opponents counts.** When a MONEY-bucket super PAC spends an independent expenditure to defeat the legislator's opponent, that spending worked on the legislator's behalf — they were the beneficiary even if they never touched the check. v0.9 counts that against-opponent MONEY in **both** the numerator and the denominator of the ratio, so it pulls the score down without distorting the scale. (We attribute it to the seat's winner cycle-by-cycle; the unattributable remainder is surfaced separately on the ghost-beneficiary page rather than silently dropped.)
+
+**What's NOT in the formula: MONEY attacks ON you.** When a donor-class super PAC spends to defeat *the legislator*, that's not money working for them — it's the legislator suffering attacks. We disclose those attacks in the PAC scoreboard table (small italic column) but don't reward or penalize being attacked. Race competitiveness drives attack spending in ways that don't track policy alignment.
 
 ### Why this binary, not corporate-vs-labor
 
@@ -214,21 +250,13 @@ The scoring engine prefers the highest-fidelity source where multiple records ex
 
 ## Scores as percentages
 
-Each legislator's total is a signed integer (sum of weighted markers
-across planks). We display it as a percentage from −100% to +100% to
-make it easier to read at a glance:
+Both scores are already true 0–100% rates, so there is nothing to rescale and no global anchors to maintain:
 
-- **+100%** = the top-scoring legislator's raw score
-- **−100%** = the bottom-scoring legislator's raw score
-- Everyone else scales linearly between
+- The **Voting Score** is `aligned ÷ total × 100` per plank, averaged across planks — a real share of a defined denominator.
+- The **PAC Score** is `(1 − money_ratio) × 100` — a real share of the legislator's money pool.
+- The **headline** is the simple average of the two — except a legislator with **no voting record has no headline score** (insufficient data; PAC shown alone, unranked). A legislator with a voting record but no PAC data gets the Voting Score as their headline.
 
-The percentile anchors are computed once per methodology version (from
-the first published compute) and frozen until the next version. That
-keeps percentages stable across the lifetime of a methodology version
-even as new bills are added.
-
-The raw integer score is always visible alongside the percentage for
-anyone who wants the unscaled signal.
+This is a deliberate change from earlier versions, which displayed a signed-integer sum rescaled to a −100%…+100% band using percentile anchors that were re-derived (and quietly drifted) every recompute. v0.9 removes the signed-sum engine, the −100…+100 scaling, and the frozen-anchor machinery altogether. Because every number is now a percentage of its own denominator, scores are **stable across recomputes** (adding a bill changes only the affected plank) and **directly comparable** across legislators and chambers. The "X aligned of Y bills" breakdown on the detail page is the score's own input, so the displayed plank percentage and the evidence beneath it always reconcile.
 
 ## What we don't (yet) score
 
@@ -285,6 +313,7 @@ Each score row in the database is stamped with the methodology version it was co
 | v1.8.15-v2          | 2026-05-31 | **117th bills re-activated with bioguide-fallback patch.** The cross-session `legiscanPeopleId` namespace mismatch identified in `v1.8.15-rollback` has been fixed in PR #52 (merged to `main`): the LegiScan bulk sync resolver now falls back from `legiscanPeopleId` to a `bioguide_id` lookup against the dataset's `people/*.json` snapshot whenever the primary ID misses. Re-flipped `isProvisional=false` on CHIPS / IIJA / PACT in `src/lib/scorecard/federal-planks.ts` (LegiScan IDs still pinned from v1.8.15) and re-ran `scorecard:sync --source=bulk` per bill. **Unmapped-voter drop confirms the patch:** CHIPS 285 → 125 (-56%), IIJA 1,402 → 586 (-58%), PACT 270 → 113 (-58%). Aggregate sync result: **1,528 achievements written** (512 CHIPS + 510 IIJA + 506 PACT), **53 roll calls** ingested (10 + 36 + 7), **10,096 roll-call vote records** (2,526 + 6,322 + 1,248), 297 procedureHistory entries. Marquee validation against the historical record: Sanders / Warren / Klobuchar / Markey / Capito / Murkowski correctly ACTED_FOR; Hawley / Cruz CHIPS ACTED_AGAINST; Cornyn IIJA ACTED_AGAINST (he was in fact a NAY on IIJA — earlier guidance suggesting YES was incorrect). The three remaining "FOR↔AGAINST" discrepancies vs. the surface-level final-passage filter (Sanders CHIPS cloture, Schumer PACT motion-to-reconsider, Cornyn PACT mis-recorded as "Absent" in the LegiScan bulk dump itself) are upstream LegiScan source-data quirks, not patch bugs, and they do not affect the achievement-level ACTED_FOR / ACTED_AGAINST signal that drives scoring. Aggregate Senate / House coverage on final-passage votes now lands within 84-106% of historic on CHIPS-House, IIJA-House, PACT-House, and 92-103% on CHIPS-Senate + PACT-Senate. Recompute auto-verified 985 new achievements; score distribution: **1,319 positive / 884 negative / 967 zero** (pre-rollback v1.8.15 was 1,271 / 867 / 1,032; v1.8.15-rollback was 888 / 647 / 1,635 — the v2 distribution is essentially the v1.8.15 envelope with the additional ~50 marquee-senator achievements the bioguide fallback recovered). Percentile anchors: +100% = +19 raw, −100% = −6 raw (matches v1.8.15). Methodology promise on every score tracing to public sources is preserved: LegiScan IDs cited in v1.8.15 row link to canonical bill records. |
 | v1.9.0              | 2026-05-31 | **LEADERSHIP_PASS_THROUGH — trace corp $ through leadership PACs.** Mirrors the v1.7.2 / v1.8.6 JFC architecture for the leadership-PAC conduit: for every LEADERSHIP-classified committee, sums corp-PAC inbound and apportions out to candidate recipients proportional to outflow share. Carries forward the v1.8.6 MEMO_CD and party-committee fixes. Methodology choice: the corp class is preserved through the conduit — the recipient's PAC Score sees the corp dollar at its ORIGINAL class (CORPORATE / DARK_MONEY / FOREIGN_POLICY), the leadership PAC is the path, not the source. Existing LEADERSHIP-class treatment for DIRECT contributions FROM a leadership PAC to a candidate is unchanged. Adds `LEADERSHIP_PASS_THROUGH` (and an internal `JFC_FEED` slot used by an internal aggregate) to the `ContributionKind` enum. New ingest script `scripts/ingest-fec-leadership-passthrough.ts`. **Ingest result: 1,108,389 attribution rows across 5 cycles · $306.3M apportioned.** Marquee deltas land alongside the v1.9.1 weighting change in the next row; pre-v1.9.1 the new rows counted at full Tier-1 weight in the PAC Score numerator. |
 | v1.9.1              | 2026-05-31 | **Three-tier outside-money weighting (PAC Score methodology change).** Outside spending in a legislator's races is no longer all-or-nothing in the PAC Score. The prior weighting wrongly read $277M of dark-money washing through Warnock's races as Warnock corruption — he didn't raise a dollar of it. The new framework asks one question per dollar: could the legislator have refused it? **Tier 1 — full weight (100%).** `DIRECT` (direct corporate-PAC contribution to principal committee) and `JFC_PASS_THROUGH` (corp PAC → JFC → candidate). The legislator's committee accepted the check; refusal was available. `LEADERSHIP_PASS_THROUGH` is modelled here for the future enum case. **Tier 2 — half weight (50%).** `IE_SUPPORT` (outside group independent expenditure FOR the legislator). The legislator could publicly disclaim it but cannot legally refuse the spending — split the difference. Applied to both numerator AND denominator so adding tier-2 dollars doesn't artificially shrink the ratio. **Tier 3 — zero weight (0%).** `IE_OPPOSE_BENEFICIARY` (outside group IE AGAINST the legislator's opponent, credited to the seat winner via the v1.7.4 attribution). The legislator could not refuse spending directed at someone else. Counts at zero in the PAC Score; remains fully surfaced on the legislator detail page in the new **"Outside money in your races"** section with class breakdown (DARK_MONEY / CORPORATE / ACTIVIST / IDEOLOGICAL / etc.) and top spenders, so readers see what shaped the race even when it doesn't shape the score. Implementation: single source-of-truth `OUTSIDE_MONEY_WEIGHTS` constant in `src/lib/scorecard/queries.ts`; `getLegislatorMoneyTrail` and `getPacScoresByLegislatorV171` apply the weights consistently; `scripts/ingest-fec-bulk-ie.ts` updates the cached `PacMoneyData.combinedCorporateRatio` formula to `(corporatePacAmount + 0.5 * selfSupport) / (totalReceipts + 0.5 * selfSupport)` (drops `oppOppose` entirely); `scripts/recompute-pac-ratio-v191.ts` applies the new formula to 2,022 existing FEC_DIRECT rows without requiring an FEC bulk re-download. Marquee senator deltas after recompute (PacContribution V171 score, the canonical federal PAC Score): **Warnock 93 → 96 (+3)**, **Fetterman 82 → 89 (+7)**, **McCormick 63 → 76 (+13)**, **Hawley 89 → 90 (+1)**, **Sanders 100 → 100 (no change)**. McCormick's +13 is the largest because his 2022 + 2024 races attracted ~$34M of MONEY-class IE_SUPPORT that was previously fully held against him; under v1.9.1 it counts at half. Civic register: outside money in your race is information you owe voters. Whether you raised it is a separate question. The PAC Score answers only the question it can answer honestly. `IE_OPPOSE` (Super PAC spending against the legislator) remains 100% — that's the legislator suffering attacks, not the legislator profiting from spending. The `beneficiaryPacScore` field is retained on the Money Trail tile as a transparency comparison ("what if Tier 3 counted at full?") but is no longer presented as a co-equal score. |
+| v0.9 | 2026-06-08 | **Ratio voting engine + public-support gate + full MONEY bucket (methodology reset; version intentionally below 1.0 to signal "not final").** Five linked changes. (1) **Voting Score is now a rate, not a sum.** Retired the signed-sum engine (`scoreLegislator`/`scorePlank` in `scoring.ts`) — it scaled with bill volume rather than support share and produced fake "percentages" (Bernie Sanders read 4%). The live engine is the ratio model in `src/lib/scorecard/voting-alignment.ts`: per plank, `aligned ÷ total × 100`; headline Voting Score = mean across planks. Bill-level dedup, chamber-gated; the score and the "X aligned of Y bills" line now share one code path and can never disagree. (2) **Cosponsorship only ever helps.** An un-cosponsored marker bill is excluded from the denominator (not a drag); a missed or NO roll-call vote drags **only** where the legislator was eligible to vote (own chamber, real floor vote) and is never scored below zero — no active −1 penalty. (3) **Non-voting delegates** (AS/GU/VI/MP/PR/DC) are barred from the floor and are scored on cosponsorship/markers only, so the ~150 roll calls they can't cast don't tank them to ~0%. (4) **Full MONEY bucket in the PAC Score.** `COUNTS_AGAINST_CLASSES` now counts CORPORATE, DARK_MONEY, FOREIGN_POLICY, TRADE_ASSOCIATION, PARTY, LEADERSHIP, IDEOLOGICAL, CONDUIT, and (by the conservative-attribution rule) UNKNOWN — previously only CORPORATE/DARK_MONEY/FOREIGN_POLICY counted, letting party/leadership/conduit/ideological/unclassified money escape. PEOPLE-bucket money (LABOR, grassroots ACTIVIST) never counts. MONEY independent expenditures spent **against the legislator's opponents** count in both numerator and denominator (attributed to the seat winner; unattributable remainder surfaced on the ghost-beneficiary page). PAC Score remains `(1 − money_ratio) × 100`. (5) **NEW public-support gate.** A marker scores only if its position has ≥55% overall public support (solid majority). Overall-majority basis only (popular-but-partisan items like war powers still pass; splits recorded for transparency). No-poll positions pass by documented judgment (corporate-PAC refusal #1, PACT Act #24); antitrust anchored to the broad "open markets / rein in Big Tech" framing (~74–85%) rather than the narrow Open App Markets Act wording (~32%). Source of truth: `src/lib/scorecard/public-support.ts` (threshold + decisions locked); evidence in `docs/scorecard/public-support-audit.md`; ranked pass/fail reference in `docs/scorecard/marker-public-support.md`. Current standing: **27 markers, all pass** (25 on a real poll + 2 by judgment); the one marker that originally failed (State Department funding) was **deleted from seed + DB** rather than carried as permanently gated-out. (6) **Senate vote expansion.** Senate scorable distinct bills **11 → 74** by admitting substantive cloture / motion-to-proceed / CRA-disapproval / war-powers-discharge / tariff-termination / foreign-military-sale votes (in the 60-vote Senate, cloture/MTP is frequently THE decisive vote); classification record in `docs/scorecard/senate-vote-expansion.md`. Explicit exclusions: **SJRES 103** (VA reproductive-health CRA — abortion-adjacent, out of the platform's non-culture-war register; owner decision) and the **~30-bill LOW-confidence remainder** (appropriations/CR cloture series, messaging bills, name/direction traps) — **explicitly dropped, not pending**. (7) **Overall-score rule.** Overall = average(PAC, Voting). A legislator with **no voting record has no overall** (insufficient data — rendered "—", ranked last/unranked; PAC Score shown alone). Prevents PAC-only overalls (the PR Resident Commissioner, 0 scoreable bills, had ranked #6 on PAC alone). Inverse case unchanged: voting present + PAC missing → overall = voting. Display is now true 0–100% rates throughout; the signed-integer −100…+100 scaling, percentile anchors, and `ScoreCalibration` machinery are removed. Locked platform decisions unchanged: no vouchers/charters (Plank 2), no PRO Act (Plank 3), fiscal honesty on Social Security (Plank 4), "Peace and Strength" name retained (Plank 5). |
 
 ## Data sources & inventory
 
