@@ -80,6 +80,14 @@ export default async function ScorecardAdminQueuePage({ searchParams }: { search
           Roll-call votes whose plank classification is below 0.8 confidence (or not scorable yet). Approve or edit each
           to lock in the right classification. Reviewed rows feed into the next compute pass.
         </p>
+        <nav className="mt-3 flex flex-wrap gap-3 text-xs">
+          <Link href="/admin/scorecard/verification" className="text-gray-500 underline hover:text-gray-900">
+            Verification queue →
+          </Link>
+          <Link href="/admin/scorecard/audit" className="text-gray-500 underline hover:text-gray-900">
+            Score audit →
+          </Link>
+        </nav>
       </header>
 
       <nav className="mt-6 flex flex-wrap items-center gap-2 text-sm">

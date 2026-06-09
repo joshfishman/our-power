@@ -162,6 +162,14 @@ export default async function ScorecardAuditPage({ searchParams }: { searchParam
           <strong>{prevVersion}</strong>). Sort by delta to spot anomalous shifts; click any row to see the bill-level
           breakdown on the public detail page.
         </p>
+        <nav className="mt-3 flex flex-wrap gap-3 text-xs">
+          <Link href="/admin/scorecard/verification" className="text-gray-500 underline hover:text-gray-900">
+            Verification queue →
+          </Link>
+          <Link href="/admin/scorecard/queue" className="text-gray-500 underline hover:text-gray-900">
+            Classification queue →
+          </Link>
+        </nav>
       </header>
 
       <nav className="mt-6 flex flex-wrap items-center gap-2 text-sm">
