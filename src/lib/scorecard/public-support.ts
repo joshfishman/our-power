@@ -50,6 +50,7 @@ export const PUBLIC_SUPPORT: Record<string, MarkerSupport> = {
   'environmental-protection': { pct: 70, source: 'Morning Consult / Walton FF (Clean Water Act)', asOf: '2022-09', confidence: 'HIGH' },
   'infrastructure-broadband': { pct: 83, byParty: { R: 79, D: 87 }, source: 'AP-NORC (IIJA)', asOf: '2021-07', confidence: 'HIGH' },
   'early-childhood': { pct: 74, byParty: { D: 86, R: 61, I: 74 }, source: 'First Five Years Fund / POS', asOf: '2023-07', confidence: 'HIGH' },
+  'childcare-tax-credit-gop-alt': { pct: 74, byParty: { D: 86, R: 61, I: 74 }, source: 'rides FFYF/POS childcare number', asOf: '2023-07', confidence: 'MEDIUM', note: 'No poll names the Britt bill; maps to the childcare-assistance question used for early-childhood.' },
 
   // ── Plank 3 — Making a Living ──
   'paid-family-leave': { pct: 82, byParty: { D: 90, R: 76 }, source: 'BPC / Morning Consult', asOf: '2024', confidence: 'HIGH' },
@@ -58,6 +59,7 @@ export const PUBLIC_SUPPORT: Record<string, MarkerSupport> = {
   'wage-theft-noncompete': { pct: 62, source: 'Ipsos (non-compete ban)', asOf: '2024-05', confidence: 'MEDIUM', note: 'Non-compete proxy (59–66%); wage-theft itself not separately polled.' },
   'loan-rate-cap': { pct: 77, source: 'LendingTree', asOf: '2024', confidence: 'MEDIUM', note: 'Consumer survey, not top-tier pollster; cap level varies (10–36%).' },
   'housing-supply': { pct: 83, source: 'BPC / NHC / Morning Consult', asOf: '2024', confidence: 'HIGH' },
+  'road-to-housing-gop-alt': { pct: 83, source: 'rides BPC/NHC/Morning Consult housing-supply number', asOf: '2024', confidence: 'MEDIUM', note: 'No poll names the ROAD package; maps to the build-more-housing question used for housing-supply.' },
 
   // ── Plank 4 — The Care We Owe ──
   'major-care-vote': { pct: 85, oppose: 14, byParty: { D: 92, R: 77, I: 89 }, source: 'KFF (Medicare drug-price negotiation)', asOf: '2024-09', confidence: 'HIGH' },
@@ -66,6 +68,7 @@ export const PUBLIC_SUPPORT: Record<string, MarkerSupport> = {
   'paid-leave-childcare': { pct: 76, byParty: { D: 86, R: 61 }, source: 'FFYF / BPC (childcare + paid leave)', asOf: '2024', confidence: 'HIGH' },
   'new-parents-act-gop-alt': { pct: 76, source: 'sponsor poll; consistent with BPC paid-leave 82%', asOf: '2024', confidence: 'MEDIUM', note: 'GOP tax-credit paid-leave approach; rides broader paid-leave support.' },
   'pact-act': { pct: null, proxyPass: true, source: 'Senate vote 86–11; strong veteran-group backing', asOf: '2022', confidence: 'LOW', note: 'No public-opinion poll found; passed with overwhelming bipartisan legislative consensus. Pass on judgment.' },
+  'star-act-gop-alt': { pct: null, proxyPass: true, source: '~316-cosponsor House supermajority (122 R); MOAA + veteran-group backing', asOf: '2026-05', confidence: 'LOW', note: 'No public-opinion poll located for concurrent receipt. Pass on documented judgment, mirroring the pact-act precedent. The 122 GOP House cosponsors are the evidence.' },
 
   // ── Plank 5 — Peace and Strength ──
   'pentagon-audit': { pct: 83, byParty: { D: 84, R: 82, I: 84 }, source: 'Data for Progress', asOf: '2023-10', confidence: 'HIGH', note: 'Most cross-partisan item in the scorecard.' },

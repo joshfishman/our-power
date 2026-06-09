@@ -305,6 +305,40 @@ export const FEDERAL_PLANKS: SeedPlank[] = [
           },
         ],
       },
+      {
+        slug: 'childcare-tax-credit-gop-alt',
+        name: 'Republican-led childcare affordability alternative',
+        markerType: 'SECONDARY',
+        description:
+          'Cosponsored the Republican-led Child Care Availability and Affordability Act, a tax-credit-based alternative to direct-funding childcare proposals.',
+        methodologyNotes:
+          'Option C two-tier marker (expansion batch 2026-06). Britt (R-AL)/Kaine (D-VA) S.847 modernizes the CDCTC (refundable, larger), DCAP, and the 45F employer credit — same direction as the American Family Act / Child Care for Working Families Act vehicles, different (tax-credit) mechanism. 9+ GOP Senate cosponsors verified via congress.gov sponsor list (Ernst, Curtis, Collins, Capito, Tillis, McCormick, Tuberville et al.) as of 2026-06-09.',
+        displayOrder: 7,
+        isRepublicanAlternative: true,
+        parallelMarkerSlug: 'early-childhood',
+        bills: [
+          {
+            congressNumber: 119,
+            billType: 'SENATE_BILL',
+            billNumber: 'S.847',
+            billTitle: 'Child Care Availability and Affordability Act',
+            actionType: 'COSPONSOR',
+            isProvisional: false,
+            notes:
+              'Britt (R-AL) + Kaine (D-VA). Verified 119th via congress.gov 2026-06-09. GOP cosponsors incl. Ernst, Capito, Collins, Curtis, Tillis, McCormick, Tuberville. legiscanBillId unpinned (no LegiScan access in this worktree) — sync should pin it.',
+          },
+          {
+            congressNumber: 119,
+            billType: 'HOUSE_BILL',
+            billNumber: 'H.R.1827',
+            billTitle: 'Child Care Availability and Affordability Act',
+            actionType: 'COSPONSOR',
+            isProvisional: false,
+            notes:
+              'House companion. Carbajal (D) + Lawler (R) + Davids (D) + Ciscomani (R). Verified 119th via congress.gov 2026-06-09 (doc flagged this UNVERIFIED; now confirmed). legiscanBillId unpinned — sync should pin it.',
+          },
+        ],
+      },
     ],
   },
 
@@ -454,6 +488,40 @@ export const FEDERAL_PLANKS: SeedPlank[] = [
             legiscanBillId: 2044287,
             isProvisional: false,
             notes: 'Gillibrand-led with 39 Senate cosponsors. The flagship Democratic paid-leave vehicle in the 119th.',
+          },
+        ],
+      },
+      {
+        slug: 'road-to-housing-gop-alt',
+        name: 'Republican-led housing supply alternative',
+        markerType: 'SECONDARY',
+        description:
+          'Cosponsored or voted for the Republican-led ROAD to Housing package, a supply-side alternative to tax-credit-based housing vehicles.',
+        methodologyNotes:
+          'Option C two-tier marker (expansion batch 2026-06). Hill (R-AR) H.R.6644 / Scott (R-SC) S.2651 — construction grants and pilots, manufactured-housing reform, limits on institutional bulk purchases of single-family homes. House-introduced H.R.6644, Senate-amended and returned to House 2026-05; S.2651 reported from Senate Banking 24-0. Verified 119th via congress.gov 2026-06-09. Roll-call vehicle attribution should be confirmed at sync; credit also flows via cosponsorship.',
+        displayOrder: 7,
+        isRepublicanAlternative: true,
+        parallelMarkerSlug: 'housing-supply',
+        bills: [
+          {
+            congressNumber: 119,
+            billType: 'HOUSE_BILL',
+            billNumber: 'H.R.6644',
+            billTitle: '21st Century ROAD to Housing Act',
+            actionType: 'COSPONSOR',
+            isProvisional: false,
+            notes:
+              'Hill (R-AR). Verified 119th via congress.gov 2026-06-09. ~15 R + 16 D cosponsors. Add VOTE_YES roll call at sync if LegiScan attaches Senate/House passage to this number. legiscanBillId unpinned — sync should pin it.',
+          },
+          {
+            congressNumber: 119,
+            billType: 'SENATE_BILL',
+            billNumber: 'S.2651',
+            billTitle: 'ROAD to Housing Act of 2025',
+            actionType: 'COSPONSOR',
+            isProvisional: false,
+            notes:
+              'Tim Scott (R-SC) + Warren (D). Verified 119th via congress.gov 2026-06-09. Committee product reported 24-0 (few/no cosponsors) — credit flows via roll calls, not cosponsorship. legiscanBillId unpinned — sync should pin it.',
           },
         ],
       },
@@ -617,6 +685,40 @@ export const FEDERAL_PLANKS: SeedPlank[] = [
             isProvisional: false,
             notes:
               '44 Senate cosponsors. Companion to H.R.4418 (100 House cosponsors). Federal childcare-cap-on-fees bill.',
+          },
+        ],
+      },
+      {
+        slug: 'star-act-gop-alt',
+        name: 'Republican-led veterans concurrent-receipt bill (Major Richard Star Act)',
+        markerType: 'SECONDARY',
+        description:
+          'Cosponsored the Major Richard Star Act, ending the offset that reduces earned military retirement pay dollar-for-dollar against VA disability for combat-injured veterans.',
+        methodologyNotes:
+          'Option C two-tier marker (expansion batch 2026-06). Bilirakis (R-FL) H.R.2102 with 122 GOP House cosponsors (of ~316, as of 2026-05); Senate S.1032 (Blumenthal lead) carries Crapo/Scott/Boozman/Britt/Capito/Cornyn/Cotton among 76+. Verified 119th via congress.gov 2026-06-09. Alternative framing: could instead be plain bill-additions under the existing pact-act marker — credit flow is identical.',
+        displayOrder: 7,
+        isRepublicanAlternative: true,
+        parallelMarkerSlug: 'pact-act',
+        bills: [
+          {
+            congressNumber: 119,
+            billType: 'HOUSE_BILL',
+            billNumber: 'H.R.2102',
+            billTitle: 'Major Richard Star Act',
+            actionType: 'COSPONSOR',
+            isProvisional: false,
+            notes:
+              'Bilirakis (R-FL). Verified 119th via congress.gov 2026-06-09. ~316 cosponsors (incl. 122 R) as of 2026-05. legiscanBillId unpinned — sync should pin it.',
+          },
+          {
+            congressNumber: 119,
+            billType: 'SENATE_BILL',
+            billNumber: 'S.1032',
+            billTitle: 'Major Richard Star Act',
+            actionType: 'COSPONSOR',
+            isProvisional: false,
+            notes:
+              'Blumenthal (D-CT). Verified 119th via congress.gov 2026-06-09. 76+ cosponsors, heavily bipartisan (Crapo, Rick Scott, Boozman, Britt, Capito, Cornyn, Cotton). legiscanBillId unpinned — sync should pin it.',
           },
         ],
       },
