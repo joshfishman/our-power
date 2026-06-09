@@ -27,6 +27,7 @@
 // loaders are Prisma-backed because the universe lives in the DB at runtime.
 
 import type { PrismaClient } from '@/generated/prisma/client';
+import { passesPublicSupportGate } from './public-support';
 
 export type RcChamber = 'HOUSE' | 'SENATE' | 'CA_ASSEMBLY' | 'CA_SENATE';
 export type Jurisdiction = 'FEDERAL' | 'CA';
@@ -204,6 +205,12 @@ export async function loadMarkerSlots(
   const slots: MarkerSlot[] = [];
   for (const m of markers) {
     if (m.bills.length === 0) continue; // bill-less markers (PAC) handled elsewhere
+    // Public-support gate (v0.9): a marker only scores if its underlying
+    // position clears the majority threshold. See public-support.ts +
+    // docs/scorecard/public-support-audit.md. (Today this excludes nothing
+    // scorable — all 27 bill-bearing markers clear 55% — but it enforces the
+    // standard for any marker added later.)
+    if (!passesPublicSupportGate(m.slug)) continue;
     const jur = m.plank.jurisdiction as Jurisdiction;
     const aligned = new Set<string>();
     // Source A: legacy curated BillSponsorship.
