@@ -237,6 +237,11 @@ export async function getPacScoresByLegislator(legislatorIds: string[]): Promise
 //                     individuals.
 //   PAC Score       = (1 − counts_against / denominator) × 100
 //
+// v0.9 per-cycle update: numerator and denominator are now paired PER CYCLE
+// and the score is (1 − mean(per-cycle ratio)) × 100 — see the
+// computePerCyclePacScore block below. The formula above still describes each
+// cycle's ratio; it just no longer blends all cycles into one fraction.
+//
 // v1.9.1 — Two-tier outside-money weighting (2026-05-31, corrected). The
 // dividing question per dollar: was this dollar spent ON THIS LEGISLATOR'S
 // BEHALF? If yes — full weight in both numerator (when the source class is
@@ -322,8 +327,8 @@ export interface PacMoneyTrail {
   countsAgainst: number; // $ from CORPORATE+DARK_MONEY+FOREIGN_POLICY (counted)
   totalInfluence: number; // $ from all classes via DIRECT or IE_SUPPORT or JFC_PASS_THROUGH or LEADERSHIP_PASS_THROUGH
   totalReceipts: number; // principal-committee 4-cycle receipts (the denominator base)
-  denominator: number; // totalReceipts + IE_SUPPORT — the score denominator
-  pacScore: number | null; // (1 − counts_against / denominator) × 100
+  denominator: number; // totalReceipts + IE_SUPPORT — the aggregate display denominator
+  pacScore: number | null; // v0.9 per-cycle: (1 − mean(per-cycle money ratio)) × 100
   byClass: Record<string, number>; // direct + IE-support + JFC-passthrough per class
   ieOpposeTotal: number; // info only — Super PAC IE against this leg
   ieSupportTotal: number; // IE_SUPPORT subtotal (helpful for the page UI)
@@ -334,7 +339,78 @@ export interface PacMoneyTrail {
   // (only counted classes). beneficiaryPacScore is the alternative scoring
   // view computed with that augmented numerator.
   beneficiaryCountsAgainst: number; // $ from IE_OPPOSE_BENEFICIARY (counted classes only)
-  beneficiaryPacScore: number | null; // (1 − (counts_against + benefiary)) / denominator) × 100
+  beneficiaryPacScore: number | null; // v0.9 — equals pacScore (beneficiary IE is folded into the headline)
+  // v0.9 per-cycle PAC ratio — one row per cycle that survived the per-cycle
+  // guards. ratio = countsAgainst / denominator for that cycle; pacScore above
+  // is (1 − mean(ratio)) × 100.
+  perCycle: PerCyclePacRatio[];
+}
+
+// ─── v0.9 per-cycle PAC ratio ────────────────────────────────────────────────
+//
+// The blended-receipts ratio (sum of counts-against ÷ sum of receipts+IE
+// across ALL cycles) lets one mega-fundraising cycle swamp the rest: Lindsey
+// Graham's $112M small-dollar 2020 cycle diluted his corporate share to ~9%
+// even though his 2026 cycle runs ~21%. Fix: compute each cycle's money ratio
+// separately, then average the per-cycle ratios with EQUAL weight per cycle.
+//
+//   cycle ratio = (counts-against + beneficiary that cycle)
+//               ÷ (receipts + IE_SUPPORT + beneficiary that cycle)
+//   PAC Score   = (1 − mean(cycle ratios)) × 100
+//
+// Per-cycle guards (each mirrors the old aggregate-level rule):
+//   • zero denominator → cycle skipped
+//   • $0 receipts with real counts-against activity → cycle dropped (the
+//     v1.7.7 no-receipts guard, now applied per cycle)
+//   • ratio clamped at 1.0 — a cycle can be at most 100% counted money. The
+//     in-progress cycle's FEC receipts snapshot can lag the PacContribution
+//     ingest (observed: Graham 2026 counted $1.66M vs $573K reported
+//     receipts → raw ratio 178%), and an impossible >100% share must not be
+//     allowed to drag the mean below what "every dollar was counted-class"
+//     would produce.
+//   • ALL cycles dropped → pacScore null ("no data" badge)
+
+export interface PerCyclePacRatio {
+  cycle: number;
+  ratio: number; // counts-against share of that cycle's money (0–1, clamped at 1)
+  countsAgainst: number; // counted-class $ on the leg's behalf that cycle (incl. beneficiary IE)
+  denominator: number; // receipts + IE_SUPPORT + beneficiary that cycle
+}
+
+interface PerCycleInputs {
+  cycle: number;
+  countsAgainst: number; // counted classes via DIRECT/JFC/LEADERSHIP/IE_SUPPORT
+  beneficiary: number; // counted classes via IE_OPPOSE_BENEFICIARY
+  ieSupport: number; // IE_SUPPORT, any class
+  receipts: number; // principal-committee receipts that cycle
+}
+
+/**
+ * v0.9 — pure per-cycle PAC scoring. Shared by getLegislatorMoneyTrail
+ * (detail page) and getPacScoresByLegislatorV171 (index bulk) so the two
+ * surfaces can never disagree.
+ */
+export function computePerCyclePacScore(cycles: PerCycleInputs[]): {
+  perCycle: PerCyclePacRatio[];
+  pacScore: number | null;
+} {
+  const perCycle: PerCyclePacRatio[] = [];
+  for (const c of [...cycles].sort((a, b) => a.cycle - b.cycle)) {
+    const ca =
+      (Number.isFinite(c.countsAgainst) ? c.countsAgainst : 0) + (Number.isFinite(c.beneficiary) ? c.beneficiary : 0);
+    const receipts = Number.isFinite(c.receipts) ? c.receipts : 0;
+    const ie = Number.isFinite(c.ieSupport) ? c.ieSupport : 0;
+    // v1.7.7 no-receipts guard, per cycle: $0 receipts + real counts-against
+    // means the ratio would be driven entirely by IE — drop the cycle.
+    if (receipts <= 0 && ca > 0) continue;
+    const denominator = receipts + ie + (Number.isFinite(c.beneficiary) ? c.beneficiary : 0);
+    if (!Number.isFinite(denominator) || denominator <= 0) continue;
+    // Clamp at 100% — see the guard list above (stale in-progress-cycle receipts).
+    perCycle.push({ cycle: c.cycle, ratio: Math.min(1, ca / denominator), countsAgainst: ca, denominator });
+  }
+  if (perCycle.length === 0) return { perCycle, pacScore: null };
+  const mean = perCycle.reduce((acc, c) => acc + c.ratio, 0) / perCycle.length;
+  return { perCycle, pacScore: Math.max(0, Math.min(100, Math.round((1 - mean) * 100))) };
 }
 
 /**
@@ -343,22 +419,25 @@ export interface PacMoneyTrail {
  */
 export async function getPacScoresByLegislatorV171(legislatorIds: string[]): Promise<Map<string, number | null>> {
   if (legislatorIds.length === 0) return new Map();
-  // Two halves, joined in JS:
+  // Two halves, joined in JS per (legislator, cycle):
   //   contribAgg  — counts-against and IE_SUPPORT from PacContribution
-  //   receiptsAgg — multi-cycle principal-committee receipts from PacMoneyData
+  //   receiptsAgg — per-cycle principal-committee receipts from PacMoneyData
   //
   // v1.9.1 two-tier counts-against numerator. Full weight on every dollar
   // spent on the legislator's behalf: DIRECT, JFC_PASS_THROUGH,
   // LEADERSHIP_PASS_THROUGH, and IE_SUPPORT (outside group IE FOR the
-  // legislator — supported is supported). IE_OPPOSE_BENEFICIARY is the
-  // zero-weight class and is intentionally absent. The denominator is
-  // receipts + total IE_SUPPORT (any class) so the ratio is bounded by the
-  // full pool of money that landed on the candidate's side of the race.
+  // legislator — supported is supported). IE_OPPOSE_BENEFICIARY counts in
+  // both numerator and denominator (MONEY IE against the leg's opponents).
+  //
+  // v0.9 per-cycle: each cycle's ratio is computed separately, then averaged
+  // with equal weight (see computePerCyclePacScore). A blended-receipts
+  // aggregate let one mega-cycle swamp the rest.
   const contribAgg = await prisma.$queryRaw<
-    Array<{ legislatorId: string; countsAgainst: string; beneficiary: string; ieSupport: string }>
+    Array<{ legislatorId: string; cycleYear: number; countsAgainst: string; beneficiary: string; ieSupport: string }>
   >`
     SELECT
       pcontrib."legislatorId" AS "legislatorId",
+      pcontrib."cycleYear" AS "cycleYear",
       COALESCE(SUM(CASE
         WHEN pc.class::text = ANY(${COUNTS_AGAINST_CLASSES_SQL})
          AND pcontrib.kind IN ('DIRECT', 'JFC_PASS_THROUGH', 'LEADERSHIP_PASS_THROUGH', 'IE_SUPPORT')
@@ -379,39 +458,49 @@ export async function getPacScoresByLegislatorV171(legislatorIds: string[]): Pro
     FROM "PacContribution" pcontrib
     JOIN "PacClassification" pc ON pc."committeeId" = pcontrib."donorCommitteeId"
     WHERE pcontrib."legislatorId" = ANY(${legislatorIds})
-    GROUP BY pcontrib."legislatorId"
+    GROUP BY pcontrib."legislatorId", pcontrib."cycleYear"
   `;
-  const receiptsAgg = await prisma.$queryRaw<Array<{ legislatorId: string; receipts: string }>>`
+  const receiptsAgg = await prisma.$queryRaw<Array<{ legislatorId: string; cycleYear: number; receipts: string }>>`
     SELECT
       "legislatorId",
+      "cycleYear",
       COALESCE(SUM("totalReceipts"::numeric), 0)::text AS receipts
     FROM "PacMoneyData"
     WHERE "legislatorId" = ANY(${legislatorIds})
-    GROUP BY "legislatorId"
+    GROUP BY "legislatorId", "cycleYear"
   `;
-  const receiptsByLeg = new Map<string, number>();
+  // Merge both halves into per-legislator per-cycle inputs. A cycle with
+  // receipts but no contributions is a clean cycle (ratio 0) and still counts.
+  const cyclesByLeg = new Map<string, Map<number, PerCycleInputs>>();
+  const getCycle = (legId: string, cycle: number): PerCycleInputs => {
+    let legCycles = cyclesByLeg.get(legId);
+    if (!legCycles) {
+      legCycles = new Map();
+      cyclesByLeg.set(legId, legCycles);
+    }
+    let c = legCycles.get(cycle);
+    if (!c) {
+      c = { cycle, countsAgainst: 0, beneficiary: 0, ieSupport: 0, receipts: 0 };
+      legCycles.set(cycle, c);
+    }
+    return c;
+  };
+  for (const r of contribAgg) {
+    const c = getCycle(r.legislatorId, r.cycleYear);
+    c.countsAgainst += Number(r.countsAgainst) || 0;
+    c.beneficiary += Number(r.beneficiary) || 0;
+    c.ieSupport += Number(r.ieSupport) || 0;
+  }
   for (const r of receiptsAgg) {
     const v = Number(r.receipts);
-    if (Number.isFinite(v)) receiptsByLeg.set(r.legislatorId, v);
+    if (!Number.isFinite(v)) continue;
+    getCycle(r.legislatorId, r.cycleYear).receipts += v;
   }
   const out = new Map<string, number | null>();
   for (const id of legislatorIds) out.set(id, null);
-  for (const r of contribAgg) {
-    const benef = Number(r.beneficiary) || 0; // v0.9 — MONEY IE spent against this leg's opponents
-    const ca = Number(r.countsAgainst) + benef;
-    const ie = Number(r.ieSupport);
-    const receipts = receiptsByLeg.get(r.legislatorId) ?? 0;
-    // v1.7.7 safety guard: if there are no principal-committee receipts on
-    // record AND there is meaningful counts-against activity, the IE-only
-    // denominator produces a misleading score (e.g. McCormick's $14.86M IE
-    // alone collapsed to "6"). Treat as no data instead. Leaves the score
-    // valid for cases where the leg legitimately has both receipts and IE.
-    if (receipts <= 0 && ca > 0) continue;
-    // Money against opponents sits in BOTH numerator and denominator (doc formula).
-    const denom = receipts + (Number.isFinite(ie) ? ie : 0) + benef;
-    if (!Number.isFinite(denom) || denom <= 0) continue;
-    const ratio = ca / denom;
-    out.set(r.legislatorId, Math.max(0, Math.min(100, Math.round((1 - ratio) * 100))));
+  for (const [legId, legCycles] of cyclesByLeg) {
+    const { pacScore } = computePerCyclePacScore([...legCycles.values()]);
+    out.set(legId, pacScore);
   }
   return out;
 }
@@ -421,20 +510,39 @@ export async function getPacScoresByLegislatorV171(legislatorIds: string[]): Pro
  * render counts-against, per-class breakdown, top donors, and IE-opposed.
  */
 export async function getLegislatorMoneyTrail(legislatorId: string): Promise<PacMoneyTrail> {
-  const rows = await prisma.$queryRaw<Array<{ class: string; kind: string; amount: string }>>`
-    SELECT pc.class::text AS class, pcontrib.kind::text AS kind, SUM(pcontrib.amount::numeric)::text AS amount
+  const rows = await prisma.$queryRaw<Array<{ class: string; kind: string; cycleYear: number; amount: string }>>`
+    SELECT pc.class::text AS class, pcontrib.kind::text AS kind, pcontrib."cycleYear" AS "cycleYear",
+           SUM(pcontrib.amount::numeric)::text AS amount
     FROM "PacContribution" pcontrib
     JOIN "PacClassification" pc ON pc."committeeId" = pcontrib."donorCommitteeId"
     WHERE pcontrib."legislatorId" = ${legislatorId}
-    GROUP BY pc.class, pcontrib.kind
+    GROUP BY pc.class, pcontrib.kind, pcontrib."cycleYear"
   `;
-  // Receipts (denominator base) — sum across all PacMoneyData cycles for this leg.
-  const receiptsRows = await prisma.$queryRaw<Array<{ receipts: string }>>`
-    SELECT COALESCE(SUM("totalReceipts"::numeric), 0)::text AS receipts
+  // Receipts per cycle (per-cycle denominators; summed for the aggregate display).
+  const receiptsRows = await prisma.$queryRaw<Array<{ cycleYear: number; receipts: string }>>`
+    SELECT "cycleYear", COALESCE(SUM("totalReceipts"::numeric), 0)::text AS receipts
     FROM "PacMoneyData"
     WHERE "legislatorId" = ${legislatorId}
+    GROUP BY "cycleYear"
   `;
-  const totalReceipts = receiptsRows.length > 0 ? Number(receiptsRows[0].receipts) || 0 : 0;
+  let totalReceipts = 0;
+  // v0.9 per-cycle inputs, keyed by cycle. Receipts-only cycles still count
+  // (clean cycles, ratio 0).
+  const cycleInputs = new Map<number, PerCycleInputs>();
+  const getCycle = (cycle: number): PerCycleInputs => {
+    let c = cycleInputs.get(cycle);
+    if (!c) {
+      c = { cycle, countsAgainst: 0, beneficiary: 0, ieSupport: 0, receipts: 0 };
+      cycleInputs.set(cycle, c);
+    }
+    return c;
+  };
+  for (const r of receiptsRows) {
+    const v = Number(r.receipts);
+    if (!Number.isFinite(v)) continue;
+    totalReceipts += v;
+    getCycle(r.cycleYear).receipts += v;
+  }
 
   const byClass: Record<string, number> = {};
   let countsAgainst = 0; // DIRECT + JFC_PASS_THROUGH + LEADERSHIP_PASS_THROUGH + IE_SUPPORT in counts-against classes
@@ -452,15 +560,18 @@ export async function getLegislatorMoneyTrail(legislatorId: string): Promise<Pac
       continue;
     }
     if (r.kind === 'IE_OPPOSE_BENEFICIARY') {
-      // v1.9.1 — Zero weight. Surfaced for transparency on the page but does
-      // not enter the PAC Score: money spent AGAINST the legislator's
-      // opponent, not on the legislator's behalf.
+      // v0.9 — MONEY IE spent against this leg's opponents counts on their
+      // behalf: it sits in BOTH numerator and denominator of the cycle ratio.
       if ((COUNTS_AGAINST_CLASSES as readonly string[]).includes(r.class)) {
         beneficiaryCountsAgainst += amt;
+        getCycle(r.cycleYear).beneficiary += amt;
       }
       continue;
     }
-    if (r.kind === 'IE_SUPPORT') ieSupportTotal += amt;
+    if (r.kind === 'IE_SUPPORT') {
+      ieSupportTotal += amt;
+      getCycle(r.cycleYear).ieSupport += amt;
+    }
     if (r.kind === 'JFC_PASS_THROUGH') jfcPassThroughTotal += amt;
     if (r.kind === 'LEADERSHIP_PASS_THROUGH') leadershipPassThroughTotal += amt;
     // Bucket DIRECT + IE_SUPPORT + JFC_PASS_THROUGH + LEADERSHIP_PASS_THROUGH by class for the breakdown display.
@@ -471,6 +582,7 @@ export async function getLegislatorMoneyTrail(legislatorId: string): Promise<Pac
       // JFC_PASS_THROUGH, LEADERSHIP_PASS_THROUGH, IE_SUPPORT — counts at full
       // weight. Supported is supported.
       countsAgainst += amt;
+      getCycle(r.cycleYear).countsAgainst += amt;
     }
   }
   // v1.9.1 two-tier — full weight on every dollar spent on the legislator's
@@ -478,27 +590,21 @@ export async function getLegislatorMoneyTrail(legislatorId: string): Promise<Pac
   // JFC + leadership pass-through dollars are already in the principal-
   // committee receipts on the denominator side; we add their counts-against
   // share to the numerator (when the original donor was corp/dark/foreign).
-  // IE_OPPOSE_BENEFICIARY does not enter either total.
   // v0.9 — money spent against the legislator's opponents (IE_OPPOSE_BENEFICIARY,
   // MONEY classes) counts on their behalf: it sits in BOTH numerator and
   // denominator, per docs/scorecard-methodology.md ("MONEY IE against your
-  // opponents"). beneficiaryCountsAgainst is folded into both below.
+  // opponents").
+  //
+  // The `denominator` aggregate is retained for the money-trail display tiles;
+  // the SCORE is the v0.9 per-cycle mean (computePerCyclePacScore), matching
+  // getPacScoresByLegislatorV171 exactly. The per-cycle guards subsume the
+  // v1.7.7 no-receipts guard: a cycle with $0 receipts and real counts-against
+  // is dropped, and if every cycle drops the score is null ("no data" badge).
   const denominator = totalReceipts + ieSupportTotal + beneficiaryCountsAgainst;
-  // v1.7.7 safety guard (mirrors getPacScoresByLegislatorV171): when there
-  // are zero principal-committee receipts on record but real counts-against
-  // activity exists, the resulting score is driven entirely by IE_SUPPORT
-  // and reads as misleadingly low. Return null ("no data") in that case so
-  // the UI renders a "no data" badge rather than a near-zero number.
-  const noReceiptsData = totalReceipts <= 0 && countsAgainst > 0;
-  const pacScore =
-    !noReceiptsData && denominator > 0
-      ? Math.max(0, Math.min(100, Math.round((1 - (countsAgainst + beneficiaryCountsAgainst) / denominator) * 100)))
-      : null;
-  // Beneficiary view: also count IE_OPPOSE-against-defeated-opponent as
-  // counts-against. Denominator includes IE_OPPOSE_BENEFICIARY too so it
-  // doesn't artificially inflate the ratio. Same no-receipts guard applies.
-  // v0.9 — beneficiary IE is now folded into the headline pacScore above, so
-  // this alternate view equals it. Retained for existing consumers of the field.
+  const { perCycle, pacScore } = computePerCyclePacScore([...cycleInputs.values()]);
+  // Beneficiary view historically counted IE-against-defeated-opponent as
+  // counts-against. v0.9 — beneficiary IE is folded into the headline pacScore,
+  // so this alternate view equals it. Retained for existing consumers.
   const beneficiaryPacScore = pacScore;
   return {
     countsAgainst,
@@ -513,6 +619,7 @@ export async function getLegislatorMoneyTrail(legislatorId: string): Promise<Pac
     leadershipPassThroughTotal,
     beneficiaryCountsAgainst,
     beneficiaryPacScore,
+    perCycle,
   };
 }
 
