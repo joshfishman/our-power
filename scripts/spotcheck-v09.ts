@@ -1,4 +1,4 @@
-// TEMP read-only spot-check: v0.9 voting + fixed PAC + overall, marquee + extremes.
+// Read-only spot-check (standing tool): v0.9 voting + fixed PAC + overall, marquee + extremes.
 import './load-env';
 import { PrismaClient } from '../src/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -49,7 +49,10 @@ async function main() {
     const l = legById.get(id)!; const v = vby.get(id);
     const voting = v ? Math.round(v.sum / v.n) : null;
     const pac = pacOf(id);
-    const overall = pac != null && voting != null ? Math.round((pac + voting) / 2) : (pac ?? voting);
+    // v0.9 overall rule (matches computeTwoScoreAverage in queries.ts):
+    // no voting record → no overall (PAC alone is not an overall score);
+    // no PAC data + voting present → overall = voting.
+    const overall = voting == null ? null : pac == null ? voting : Math.round((pac + voting) / 2);
     return { name: l.fullName, party: l.party, chamber: l.chamber, voting, bills: v?.bills ?? 0, pac, overall };
   }
   const fmt = (r: ReturnType<typeof row>) =>

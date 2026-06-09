@@ -128,12 +128,15 @@ export default async function LegislatorScorecardPage(props: Props) {
   const chamberLabel =
     jurisdiction === 'FEDERAL' ? CHAMBER_LABEL_FEDERAL[legislator.chamber] : CHAMBER_LABEL_STATE[legislator.chamber];
 
-  // v1.7.1 — per-plank bill breakdown. Every bill that contributes to each
-  // plank's score, with the legislator's position (vote and/or cosponsorship).
+  // Per-plank bill breakdown. Every bill that contributes to each plank's
+  // score, with the legislator's position (vote and/or cosponsorship). Shares
+  // the v0.9 predicates with the compute (delegate rule, public-support gate,
+  // cosponsor-only-helps) so "X aligned of Y" always matches the score.
   const billBreakdown = await getLegislatorBillBreakdown(
     legislator.id,
     jurisdiction,
     legislator.chamber as 'SEN' | 'REP',
+    legislator.state,
   );
 
   // Index achievements by markerId for fast lookup in the per-plank grid.
@@ -183,7 +186,7 @@ export default async function LegislatorScorecardPage(props: Props) {
           </p>
         </div>
         <div className="text-right">
-          {avgScore === null ? (
+          {pacScore === null && votingScore === null ? (
             <div>
               <p className="font-mono text-xs uppercase tracking-widest text-gray-500">Score pending</p>
               <p className="mt-1 text-sm text-gray-600">Methodology {METHODOLOGY_VERSION} — no data yet</p>
@@ -199,7 +202,7 @@ export default async function LegislatorScorecardPage(props: Props) {
         </div>
       </header>
 
-      {avgScore === null && (
+      {pacScore === null && votingScore === null && (
         <div className="mt-6 rounded border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           <p className="font-semibold">Scoring is in development.</p>
           <p className="mt-1">
@@ -207,6 +210,17 @@ export default async function LegislatorScorecardPage(props: Props) {
             and PAC-money data has not yet been verified for{' '}
             {jurisdiction === 'FEDERAL' ? 'the 119th Congress' : 'the 2025-2026 California session'}, so no score is
             published. Markers below show the structure that will be scored.
+          </p>
+        </div>
+      )}
+
+      {avgScore === null && votingScore === null && pacScore !== null && (
+        <div className="mt-6 rounded border border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+          <p className="font-semibold">No overall score — insufficient voting data.</p>
+          <p className="mt-1">
+            This legislator has no scoreable roll-call record (non-voting delegates and Resident Commissioners cannot
+            cast floor votes). The PAC Score stands on its own; an overall average is published only when a voting
+            record exists.
           </p>
         </div>
       )}
@@ -377,14 +391,21 @@ function HeroTwoScore({
 }: {
   pacScore: number | null;
   votingScore: number | null;
-  avgScore: number;
+  avgScore: number | null;
   planksCount: number;
 }) {
+  // v0.9 — avgScore is null when there is no voting record (PAC alone is not
+  // an overall). Rendered as "—" with an explanatory subline.
   return (
     <div className="flex items-end justify-end gap-3">
       <HeroCell label="PAC" value={pacScore} />
       <HeroCell label="Voting" value={votingScore} subline={planksCount > 0 ? `${planksCount}-plank avg` : undefined} />
-      <HeroCell label="Average" value={avgScore} large />
+      <HeroCell
+        label="Average"
+        value={avgScore}
+        large
+        subline={avgScore === null ? 'insufficient voting data' : undefined}
+      />
     </div>
   );
 }

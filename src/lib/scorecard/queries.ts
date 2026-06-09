@@ -4,6 +4,11 @@
 import prisma from '@/lib/prisma/prisma';
 import { METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
 import { classifyEmployer, SECTOR_LABEL } from '@/lib/scorecard/employer-industry';
+// Breakdown↔scorer parity: the bill breakdown shares the SAME pure predicates
+// as the v0.9 compute (scripts/compute-scores.ts → voting-alignment.ts), so
+// the "X aligned of Y bills" line and the stored score can never disagree.
+import { isLegAlignedOnBill, isNonVotingDelegate, MARKER_STORAGE_TYPE_MAP, stripBillNum } from './voting-alignment';
+import { passesPublicSupportGate } from './public-support';
 
 export type ScorecardJurisdiction = 'FEDERAL' | 'CA';
 
@@ -164,14 +169,21 @@ export async function getLegislatorPacScore(legislatorId: string): Promise<numbe
 }
 
 /**
- * v1.7 — combine PAC + Voting into a single average. Either input can be
- * null (e.g. no PAC data, or no voting record yet); when one is missing we
- * return the other unrounded.
+ * Combine PAC + Voting into the single Overall average.
+ *
+ * v0.9 rule: a legislator with NO voting record gets NO overall score —
+ * votingScore null → null. Rationale: an overall built from PAC money alone
+ * is not comparable with everyone else's two-part average (it let the PR
+ * Resident Commissioner — 0 scoreable bills — rank #6 overall on PAC alone).
+ * The UI renders a null overall as "—" with an "insufficient voting data"
+ * note, and the index ranks those legislators last (unranked).
+ *
+ * The inverse stands: pacScore null + voting present → overall = voting
+ * (a missing PAC ingest shouldn't erase a real voting record).
  */
 export function computeTwoScoreAverage(pacScore: number | null, votingScore: number | null): number | null {
-  if (pacScore === null && votingScore === null) return null;
+  if (votingScore === null) return null;
   if (pacScore === null) return votingScore;
-  if (votingScore === null) return pacScore;
   return Math.round((pacScore + votingScore) / 2);
 }
 
@@ -981,7 +993,13 @@ export async function getLegislatorBillBreakdown(
   legislatorId: string,
   jurisdiction: ScorecardJurisdiction,
   legChamber: 'SEN' | 'REP',
+  legState = '',
 ): Promise<Map<number, PlankBreakdown>> {
+  // v0.9 delegate rule — non-voting House members (AS/GU/VI/MP/PR/DC) are
+  // legally barred from floor votes; the compute skips their entire roll-call
+  // universe, so the breakdown must too (else "X aligned of Y" disagrees with
+  // the score). They're scored on cosponsorship/markers only.
+  const delegateNoFloorVotes = legState !== '' && isNonVotingDelegate({ chamber: legChamber, state: legState });
   // 1. Roll-call universe (chamber-gated). Same filter the compute uses.
   const rcChambers =
     jurisdiction === 'FEDERAL'
@@ -991,23 +1009,25 @@ export async function getLegislatorBillBreakdown(
       : legChamber === 'SEN'
       ? ['CA_SENATE']
       : ['CA_ASSEMBLY'];
-  const rcVotes = await prisma.rollCallVote.findMany({
-    where: {
-      isScorable: true,
-      alignedPosition: { not: null },
-      plankNumbers: { isEmpty: false },
-      chamber: { in: rcChambers as ('SENATE' | 'HOUSE' | 'CA_SENATE' | 'CA_ASSEMBLY')[] },
-    },
-    select: {
-      id: true,
-      billType: true,
-      billNumber: true,
-      billTitle: true,
-      plankNumbers: true,
-      alignedPosition: true,
-      positions: { where: { legislatorId }, select: { position: true } },
-    },
-  });
+  const rcVotes = delegateNoFloorVotes
+    ? []
+    : await prisma.rollCallVote.findMany({
+        where: {
+          isScorable: true,
+          alignedPosition: { not: null },
+          plankNumbers: { isEmpty: false },
+          chamber: { in: rcChambers as ('SENATE' | 'HOUSE' | 'CA_SENATE' | 'CA_ASSEMBLY')[] },
+        },
+        select: {
+          id: true,
+          billType: true,
+          billNumber: true,
+          billTitle: true,
+          plankNumbers: true,
+          alignedPosition: true,
+          positions: { where: { legislatorId }, select: { position: true } },
+        },
+      });
 
   // 2. Legislator's cosponsor set (jurisdiction-scoped).
   const cosponsors = await prisma.billCosponsor.findMany({
@@ -1026,25 +1046,14 @@ export async function getLegislatorBillBreakdown(
           billType: true,
           billNumber: true,
           billTitle: true,
+          // Curated sponsorship rows — the compute (loadMarkerSlots) counts
+          // these as aligned alongside ingested BillCosponsor rows, so the
+          // breakdown must too.
+          sponsorships: { where: { legislatorId }, select: { legislatorId: true } },
         },
       },
     },
   });
-
-  const STORAGE_TYPE_MAP: Record<string, string> = {
-    HOUSE_BILL: 'HR',
-    SENATE_BILL: 'S',
-    HOUSE_JOINT_RES: 'HJRES',
-    SENATE_JOINT_RES: 'SJRES',
-    HOUSE_CONCURRENT_RES: 'HCONRES',
-    SENATE_CONCURRENT_RES: 'SCONRES',
-    HOUSE_RES: 'HRES',
-    SENATE_RES: 'SRES',
-    CA_ASSEMBLY_BILL: 'CA_BILL',
-    CA_SENATE_BILL: 'CA_BILL',
-    CA_HOUSE_BILL: 'CA_BILL',
-  };
-  const stripBillNum = (raw: string) => raw.match(/\d+/)?.[0] ?? null;
 
   const byPlank = new Map<number, PlankBreakdown>();
   // Use bill-level dedup keyed by (storage-form billType|billNumber). A bill
@@ -1108,7 +1117,7 @@ export async function getLegislatorBillBreakdown(
   // 4. Emit roll-call rows.
   for (const a of billAggs.values()) {
     const cosponsored = cosponsorKeys.has(`${a.billType}|${a.billNumber}`);
-    const isAligned = a.votedAligned || cosponsored;
+    const isAligned = isLegAlignedOnBill(a.votedAligned, cosponsored);
     for (const plankNum of a.plankNumbers) {
       pushRow(plankNum, {
         billType: a.billType,
@@ -1127,6 +1136,11 @@ export async function getLegislatorBillBreakdown(
   // 5. Emit marker rows (cross-chamber; dedup against roll-call rows).
   for (const m of markers) {
     if (m.bills.length === 0) continue;
+    // v0.9 public-support gate — mirrors loadMarkerSlots in voting-alignment.ts:
+    // FEDERAL markers must clear the 55% gate to enter the scoring universe,
+    // so they must not appear in the breakdown denominator either. CA markers
+    // are not gated (no CA-specific polling yet).
+    if (jurisdiction === 'FEDERAL' && !passesPublicSupportGate(m.slug)) continue;
     const plankNum = m.plank.number;
     const alreadyHave = seen.get(plankNum);
     // Compute alignment ACROSS all of the marker's bills — sponsoring any of
@@ -1135,7 +1149,7 @@ export async function getLegislatorBillBreakdown(
     let representative: BillBreakdownRow | null = null;
     let anyAligned = false;
     for (const b of m.bills) {
-      const storageType = STORAGE_TYPE_MAP[b.billType];
+      const storageType = MARKER_STORAGE_TYPE_MAP[b.billType];
       if (!storageType) continue;
       const num = stripBillNum(b.billNumber);
       if (!num) continue;
@@ -1149,7 +1163,7 @@ export async function getLegislatorBillBreakdown(
         // marker-bill-sponsored as aligned regardless, so flag it.
         // For UI simplicity we'll leave the roll-call row as-is — it already
         // has the cosponsored flag if it applies.
-        const cosp = cosponsorKeys.has(key);
+        const cosp = cosponsorKeys.has(key) || b.sponsorships.length > 0;
         if (cosp) anyAligned = true;
         if (!representative && cosp)
           representative = {
@@ -1165,7 +1179,7 @@ export async function getLegislatorBillBreakdown(
           };
         continue;
       }
-      const cosp = cosponsorKeys.has(key);
+      const cosp = cosponsorKeys.has(key) || b.sponsorships.length > 0;
       if (cosp) anyAligned = true;
       if (!representative || (cosp && !representative.cosponsored)) {
         representative = {
@@ -1181,8 +1195,12 @@ export async function getLegislatorBillBreakdown(
         };
       }
     }
-    if (representative) {
-      representative.isAligned = anyAligned;
+    // v0.9 cosponsor-only-helps rule — mirrors computePlankTallies: an
+    // un-cosponsored marker is EXCLUDED from the denominator (it never drags),
+    // so it must not appear as a counted row in the breakdown either. The
+    // "didn't cosponsor" transparency lives in the "Not weighed in on" section.
+    if (representative && anyAligned) {
+      representative.isAligned = true;
       pushRow(plankNum, representative);
     }
   }

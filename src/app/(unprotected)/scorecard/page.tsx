@@ -229,18 +229,20 @@ export default async function ScorecardIndexPage(props: { searchParams: Promise<
       <ul className="mt-4 divide-y divide-gray-200 border border-gray-200">
         {legislators
           .map((leg) => {
-            // v1.7 — two-score model. Voting Record is the mean of per-plank
-            // v1.7 alignment percentages (already 0-100). PAC Score is the
-            // (1 − combined_corp_ratio) × 100 from the legislator's
-            // most-recent PacMoneyData row. Average is the simple mean.
+            // Two-score model. Voting Record is the mean of per-plank
+            // alignment percentages (already 0-100). PAC Score is the
+            // (1 − combined_corp_ratio) × 100. Average is the simple mean —
+            // except a legislator with NO voting record gets NO average
+            // (v0.9: PAC alone is not an overall; see computeTwoScoreAverage).
             const votingScore = computePublishedTotal(leg.scores);
             const pacScore = pacScoresById.get(leg.id) ?? null;
             const avg = computeTwoScoreAverage(pacScore, votingScore);
             return { leg, votingScore, pacScore, avg };
           })
           .sort((a, b) => {
-            // Pending (null) averages always fall to the bottom regardless of
-            // toggle direction — we want "scored" content first either way.
+            // Null averages always fall to the bottom (unranked) regardless of
+            // toggle direction — both "score pending" and "insufficient voting
+            // data" legislators must never rank at their PAC value.
             const aHas = a.avg !== null;
             const bHas = b.avg !== null;
             if (aHas !== bHas) return aHas ? -1 : 1;
@@ -273,7 +275,12 @@ export default async function ScorecardIndexPage(props: { searchParams: Promise<
                 <div className="ml-4 flex shrink-0 items-center gap-3 text-right">
                   <ScoreCell label="PAC" value={pacScore} />
                   <ScoreCell label="Voting" value={votingScore} />
-                  <ScoreCell label="Avg" value={avg} large />
+                  <ScoreCell
+                    label="Avg"
+                    value={avg}
+                    large
+                    note={avg === null && pacScore !== null ? 'insufficient voting data' : undefined}
+                  />
                 </div>
               </li>
             );
@@ -316,10 +323,12 @@ function ScoreCell({
   label,
   value: rawValue,
   large = false,
+  note,
 }: {
   label: string;
   value: number | null;
   large?: boolean;
+  note?: string;
 }) {
   // v1.8.6 — clamp the displayed score to ≥0 so the index never reads as
   // "Voting −2%" or "Plank 1 −1%". The raw stored RepresentativeScore is
@@ -330,9 +339,12 @@ function ScoreCell({
   const sizeClass = large ? 'text-3xl' : 'text-xl';
   if (value === null) {
     return (
-      <div className="w-14">
+      <div className={note ? 'w-24' : 'w-14'}>
         <p className="font-mono text-[9px] uppercase tracking-wide text-gray-500">{label}</p>
-        <p className={`font-serif font-bold tabular-nums text-gray-400 ${sizeClass}`}>—</p>
+        <p className={`font-serif font-bold tabular-nums text-gray-400 ${sizeClass}`} title={note}>
+          —
+        </p>
+        {note && <p className="font-mono text-[8px] uppercase tracking-wide text-gray-400">{note}</p>}
       </div>
     );
   }
