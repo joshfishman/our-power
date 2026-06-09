@@ -72,7 +72,6 @@ export const PUBLIC_SUPPORT: Record<string, MarkerSupport> = {
   'war-powers': { pct: 70, oppose: 27, byParty: { D: 91, R: 36, I: 78 }, source: 'Quinnipiac / Marist / Gallup', asOf: '2026-01', confidence: 'HIGH', note: 'Popular overall but the most partisan item; clears the majority gate but is not consensus.' },
   'antitrust-major': { pct: 74, source: 'YouGov / "rein in Apple & Google" framing', asOf: '2023', confidence: 'MEDIUM', note: 'Concept-level ("break up / open markets") polls 74–85%; the specific Open App Markets Act provisions poll ~32%. Kept at the concept level per methodology decision — cite the concept poll, not the bill.' },
   'trade-protections': { pct: 55, source: 'Progressive Policy Institute', asOf: '2023', confidence: 'MEDIUM', note: 'Soft and volatile (~55%); right at the gate. Trade polling is tariff-contaminated.' },
-  'state-department-funding': { pct: null, source: 'NOT YET RESEARCHED', asOf: '', confidence: 'LOW', note: 'Gap: not in the public-support research set, and not self-evidently majority-popular (foreign-affairs funding polls weakly). Needs a polling pass or an explicit judgment call before it can be gated in.' },
 };
 
 /**

@@ -205,12 +205,13 @@ export async function loadMarkerSlots(
   const slots: MarkerSlot[] = [];
   for (const m of markers) {
     if (m.bills.length === 0) continue; // bill-less markers (PAC) handled elsewhere
-    // Public-support gate (v0.9): a marker only scores if its underlying
-    // position clears the majority threshold. See public-support.ts +
-    // docs/scorecard/public-support-audit.md. (Today this excludes nothing
-    // scorable — all 27 bill-bearing markers clear 55% — but it enforces the
-    // standard for any marker added later.)
-    if (!passesPublicSupportGate(m.slug)) continue;
+    // v0.9 public-support gate: only score a marker whose position clears the
+    // 55% majority bar (proxyPass for no-poll-but-popular items). Applied to
+    // FEDERAL markers only — CA markers mirror the same federal platform
+    // positions (already gated) and have no CA-specific polling yet, so gating
+    // them against the federal-only slug map would wrongly drop every CA marker.
+    // (CA-specific public-support polling is a future refinement.)
+    if (m.plank.jurisdiction === 'FEDERAL' && !passesPublicSupportGate(m.slug)) continue;
     const jur = m.plank.jurisdiction as Jurisdiction;
     const aligned = new Set<string>();
     // Source A: legacy curated BillSponsorship.

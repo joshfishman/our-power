@@ -334,7 +334,7 @@ export const FEDERAL_PLANKS: SeedPlank[] = [
             actionType: 'COSPONSOR',
             legiscanBillId: 2022084,
             isProvisional: false,
-            notes: 'Lead: Sanders. Phased federal minimum wage increase to $17/hr by 2030.',
+            notes: 'Lead: Sanders. $15 federal minimum-wage demand (Raise the Wage Act vehicle phases to $17/hr by 2030).',
           },
         ],
       },
@@ -694,17 +694,6 @@ export const FEDERAL_PLANKS: SeedPlank[] = [
               'Klobuchar/Blumenthal/Hawley/Lee bipartisan antitrust vehicle restricting platform self-preferencing on app stores.',
           },
         ],
-      },
-      {
-        slug: 'state-department-funding',
-        name: 'Supported State Department funding and diplomatic capacity',
-        markerType: 'SECONDARY',
-        description: 'Voted for or cosponsored full State Department appropriations and diplomatic capacity expansion.',
-        displayOrder: 4,
-        bills: [],
-        // No clean 119th match found in the bulk dataset for diplomatic-capacity legislation.
-        // Leave empty — the secondary credit gap costs at most 1 point on this plank.
-        // Revisit when 119th gets a State Department Authorization vehicle.
       },
       {
         slug: 'trade-protections',
