@@ -379,6 +379,24 @@ export interface PacMoneyTrail {
   // (1 − mean(ratio of the INCLUDED cycles)) × 100; cycles with raw ratio > 1
   // (incomplete in-progress receipts) are dropped from that mean.
   perCycle: PerCyclePacRatio[];
+  // ── v0.9 freshness metadata (derived, no schema change) ──────────────────
+  // The primitives the detail page / race cards use to label the headline
+  // honestly: "track record (complete cycles)" vs "this cycle so far
+  // (provisional, as of <date>)". See docs/scorecard/pac-freshness.md.
+  //
+  // dataAsOf — max(PacMoneyData.updatedAt) across this legislator's rows; the
+  // freshness stamp for the underlying receipts/contributions snapshot. null
+  // when the legislator has no PacMoneyData rows.
+  dataAsOf: Date | null;
+  // cyclesTotal — every cycle that produced a usable ratio (= perCycle.length).
+  cyclesTotal: number;
+  // cyclesIncluded — cycles that fed the score mean (isCycleComplete = true).
+  cyclesIncluded: number;
+  // cyclesDroppedIncomplete — cycles excluded as incomplete (raw ratio > 1,
+  // i.e. receipts feed lagging the contributions feed). cyclesTotal −
+  // cyclesIncluded. A non-zero value here is the signal that the headline
+  // rests on a track record while an in-progress cycle is still provisional.
+  cyclesDroppedIncomplete: number;
 }
 
 // ─── v0.9 per-cycle PAC ratio ────────────────────────────────────────────────
@@ -429,6 +447,50 @@ interface PerCycleInputs {
 }
 
 /**
+ * v0.9 — the single, named staleness predicate for a PAC cycle.
+ *
+ * A cycle is COMPLETE (its money ratio is trustworthy) when:
+ *   • its receipts+IE denominator is positive, AND
+ *   • the counted (counts-against) money does NOT exceed that denominator
+ *     (raw ratio ≤ 1.0).
+ *
+ * It is INCOMPLETE (the FEC / Cal-Access receipts snapshot is still
+ * mid-cycle, so the ratio is garbage and must not feed the score) when EITHER:
+ *   • receipts are $0 while real counted money is on record — the ratio would
+ *     be driven entirely by independent expenditures, not the campaign's own
+ *     fundraising (the old v1.7.7 no-receipts guard); OR
+ *   • the raw, unclamped ratio exceeds 1.0 — a share of money cannot exceed
+ *     100%, so a ratio above 1 means the counted contributions feed has run
+ *     ahead of the receipts feed for an in-progress election cycle.
+ *
+ * Root cause of the >1 case: a cycle's counted money and its receipts
+ * denominator come from DIFFERENT FEC feeds, which update on different
+ * cadences. Mid-cycle the contributions feed routinely leads the receipts
+ * feed, so the ratio temporarily overshoots 100%. Observed: Lindsey Graham's
+ * 2026 cycle counted $1.66M against only $573K of reported receipts → raw
+ * ratio ~290%. Such a cycle is "this cycle so far," not a closed track record.
+ *
+ * This predicate is the SINGLE source of truth used for the per-cycle
+ * `included` flag (federal `computePerCyclePacScore`, feeding both
+ * `getLegislatorMoneyTrail` and `getPacScoresByLegislatorV171`). Keeping the
+ * test in one place means every federal surface drops the same cycles, and the
+ * freshness metadata on `PacMoneyTrail` can be derived from the same flags.
+ */
+export function isCycleComplete(input: {
+  /** Counted (counts-against) money this cycle, incl. beneficiary IE. */
+  countsAgainst: number;
+  /** receipts + IE_SUPPORT + beneficiary — the cycle's money universe. */
+  denominator: number;
+}): boolean {
+  const { countsAgainst, denominator } = input;
+  if (!Number.isFinite(denominator) || denominator <= 0) return false;
+  if (!Number.isFinite(countsAgainst)) return false;
+  // raw ratio > 1.0 → contributions feed has run ahead of the receipts feed
+  // (incomplete in-progress snapshot). Equality (== 1.0) is still complete.
+  return countsAgainst <= denominator;
+}
+
+/**
  * v0.9 — pure per-cycle PAC scoring. Shared by getLegislatorMoneyTrail
  * (detail page) and getPacScoresByLegislatorV171 (index bulk) so the two
  * surfaces can never disagree.
@@ -444,15 +506,23 @@ export function computePerCyclePacScore(cycles: PerCycleInputs[]): {
     const receipts = Number.isFinite(c.receipts) ? c.receipts : 0;
     const ie = Number.isFinite(c.ieSupport) ? c.ieSupport : 0;
     // v1.7.7 no-receipts guard, per cycle: $0 receipts + real counts-against
-    // means the ratio would be driven entirely by IE — drop the cycle.
+    // means the ratio would be driven entirely by IE. This is one of the two
+    // incomplete-cycle conditions (see isCycleComplete) — the cycle is dropped
+    // entirely rather than carried with a meaningless ratio.
     if (receipts <= 0 && ca > 0) continue;
     const denominator = receipts + ie + (Number.isFinite(c.beneficiary) ? c.beneficiary : 0);
     if (!Number.isFinite(denominator) || denominator <= 0) continue;
-    // RAW ratio — NOT clamped. A raw ratio > 1 is the tell that this cycle's
-    // receipts snapshot is incomplete (in-progress election cycle); such cycles
-    // are EXCLUDED from the mean below rather than clamped-and-averaged.
+    // RAW ratio — NOT clamped. The drop-incomplete decision is centralized in
+    // isCycleComplete (raw ratio > 1 ⇒ incomplete in-progress receipts); such
+    // cycles are EXCLUDED from the mean below rather than clamped-and-averaged.
     const ratio = ca / denominator;
-    perCycle.push({ cycle: c.cycle, ratio, countsAgainst: ca, denominator, included: ratio <= 1 });
+    perCycle.push({
+      cycle: c.cycle,
+      ratio,
+      countsAgainst: ca,
+      denominator,
+      included: isCycleComplete({ countsAgainst: ca, denominator }),
+    });
   }
   if (perCycle.length === 0) return { perCycle, pacScore: null };
   const included = perCycle.filter((c) => c.included);
@@ -581,6 +651,14 @@ export async function getLegislatorMoneyTrail(legislatorId: string): Promise<Pac
     WHERE "legislatorId" = ${legislatorId}
     GROUP BY "cycleYear"
   `;
+  // v0.9 freshness stamp — newest underlying PacMoneyData write for this
+  // legislator. Derived from the existing updatedAt column (no schema change);
+  // the page uses it to date a provisional "this cycle so far" headline.
+  const dataAsOfRow = await prisma.pacMoneyData.aggregate({
+    where: { legislatorId },
+    _max: { updatedAt: true },
+  });
+  const dataAsOf = dataAsOfRow._max.updatedAt ?? null;
   let totalReceipts = 0;
   // v0.9 per-cycle inputs, keyed by cycle. Receipts-only cycles still count
   // (clean cycles, ratio 0).
@@ -665,6 +743,11 @@ export async function getLegislatorMoneyTrail(legislatorId: string): Promise<Pac
   // counts-against. v0.9 — beneficiary IE is folded into the headline pacScore,
   // so this alternate view equals it. Retained for existing consumers.
   const beneficiaryPacScore = pacScore;
+  // v0.9 freshness counts — derived from the same per-cycle `included` flags
+  // that drive the score, so the metadata can never disagree with the headline.
+  const cyclesTotal = perCycle.length;
+  const cyclesIncluded = perCycle.filter((c) => c.included).length;
+  const cyclesDroppedIncomplete = cyclesTotal - cyclesIncluded;
   return {
     countsAgainst,
     totalInfluence,
@@ -679,6 +762,10 @@ export async function getLegislatorMoneyTrail(legislatorId: string): Promise<Pac
     beneficiaryCountsAgainst,
     beneficiaryPacScore,
     perCycle,
+    dataAsOf,
+    cyclesTotal,
+    cyclesIncluded,
+    cyclesDroppedIncomplete,
   };
 }
 
