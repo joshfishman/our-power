@@ -79,6 +79,16 @@ function parseFlags(argv: string[]): CliFlags {
 const CORPORATE_PAC_THRESHOLD = 0.05;
 
 /**
+ * Coverage gate (v0.9): a legislator measured on fewer than this many eligible
+ * bills can't get a trustworthy rate — a single bill swings the percentage.
+ * Below the bar we write NO voting rows → insufficient voting data → no overall
+ * (and unranked), rather than e.g. a non-voting delegate reading 100% off 3
+ * cosponsorships. The data has a clean gap: the only legislators below 10 are
+ * the 5 non-voting territorial delegates (1–4 bills); everyone else has 20+.
+ */
+const MIN_MEASURED_BILLS = 10;
+
+/**
  * Computes the corporate-pac-refusal MarkerAchievement for every active
  * legislator from their most recent PacMoneyData row. This is one of the
  * non-bill-shaped achievements — it has no MarkerBill, just a public-data
@@ -309,6 +319,7 @@ async function main(): Promise<void> {
   let totalScores = 0;
   let positiveScores = 0;
   let zeroScores = 0;
+  let insufficientCount = 0;
   // Per-leg overall voting % for the dry-run distribution + marquee spot-check.
   const overallByLeg = new Map<
     string,
@@ -321,6 +332,17 @@ async function main(): Promise<void> {
       { id: leg.id, jurisdiction, chamber: leg.chamber as LegChamber, state: leg.state },
       universe,
     );
+
+    // Coverage gate: too few measured bills → no voting score at all (mirrors
+    // the per-plank total<1 exclusion, at the legislator level). Catches the
+    // non-voting delegates; nobody else falls in the 5–19 range.
+    if (overall.total < MIN_MEASURED_BILLS) {
+      insufficientCount += 1;
+      console.warn(
+        `[compute-scores] insufficient coverage: ${leg.fullName} (${jurisdiction}) — ${overall.total} bill(s) < ${MIN_MEASURED_BILLS}; no voting score written.`,
+      );
+      continue;
+    }
 
     for (const [plankNum, tally] of perPlank) {
       // Insufficient-data exclusion: only write a row where total ≥ 1. A plank
@@ -406,7 +428,7 @@ async function main(): Promise<void> {
   }
 
   console.log(
-    `[compute-scores] summary: ${totalScores} per-plank row(s) across ${overallByLeg.size} legislator(s) · ${positiveScores} > 0% · ${zeroScores} at 0%` +
+    `[compute-scores] summary: ${totalScores} per-plank row(s) across ${overallByLeg.size} legislator(s) · ${positiveScores} > 0% · ${zeroScores} at 0% · ${insufficientCount} insufficient-coverage (no score)` +
       (flags.dryRun ? '' : flags.publish ? ` — published` : ` — NOT published (rerun with --publish)`),
   );
 
