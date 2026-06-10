@@ -160,11 +160,23 @@ export function computePublishedTotal(scores: Array<{ score: number }>): number 
  * If no PAC data exists we return null and the page renders a "no PAC data"
  * badge instead of a misleading 100%.
  */
+/**
+ * The in-progress (not-yet-decided) even-year election cycle as of `d`. A cycle
+ * is "complete" once its November election has passed; before that, its FEC /
+ * Cal-Access receipts are partial and money ratios for it are unreliable.
+ */
+export function inProgressElectionCycle(d: Date): number {
+  const y = d.getFullYear();
+  const even = y % 2 === 0 ? y : y + 1;
+  if (y % 2 === 0 && d.getMonth() >= 10) return y + 2; // past the Nov election → this cycle is complete
+  return even;
+}
+
 export async function getLegislatorPacScore(legislatorId: string): Promise<number | null> {
   const rows = await prisma.pacMoneyData.findMany({
     where: { legislatorId },
     orderBy: [{ dataSource: 'asc' }, { cycleYear: 'desc' }],
-    select: { combinedCorporateRatio: true, corporatePacPercentage: true },
+    select: { combinedCorporateRatio: true, corporatePacPercentage: true, cycleYear: true },
   });
   if (rows.length === 0) return null;
   const ratioOf = (r: (typeof rows)[number]): number | null => {
@@ -173,11 +185,19 @@ export async function getLegislatorPacScore(legislatorId: string): Promise<numbe
     const n = Number(raw);
     return Number.isFinite(n) ? n : null;
   };
-  // Most-recent COMPLETE cycle (ratio ≤ 1.0); rows are already ordered
-  // most-recent-first within each dataSource. Fall back to the first row of
-  // all (most-recent) if every cycle's ratio is incomplete (> 1.0) or null.
-  const complete = rows.map(ratioOf).find((r) => r !== null && r <= 1);
-  const ratio = complete ?? ratioOf(rows[0]);
+  // v0.9 CA parity with federal "drop incomplete cycles": the in-progress
+  // election cycle (e.g. 2026 before the Nov election) has partial Cal-Access
+  // receipts, so its ratio is unreliable even when ≤ 1.0. Prefer the most-recent
+  // COMPLETE cycle (cycleYear < the in-progress cycle) with a usable ratio.
+  // Fall back to most-recent ratio ≤ 1.0, then most-recent of all.
+  const inProgress = inProgressElectionCycle(new Date());
+  const isUsable = (r: (typeof rows)[number]): boolean => {
+    const v = ratioOf(r);
+    return v !== null && v <= 1;
+  };
+  const completeCycle = rows.find((r) => r.cycleYear < inProgress && isUsable(r));
+  const recentUsable = rows.find(isUsable);
+  const ratio = ratioOf(completeCycle ?? recentUsable ?? rows[0]);
   if (ratio === null) return null;
   return Math.max(0, Math.min(100, Math.round((1 - ratio) * 100)));
 }

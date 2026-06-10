@@ -24,7 +24,8 @@ import './load-env';
 import { PrismaClient } from '../src/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 
-const API_KEY = process.env.FEC_API_KEY || process.env.FEC_DATA_API!;
+// All three are aliases for an api.data.gov key (Congress.gov uses the same).
+const API_KEY = process.env.FEC_API_KEY || process.env.FEC_DATA_API || process.env.DATA_GOV_API!;
 const PAUSE_MS = 80;
 
 const adapter = new PrismaPg({
