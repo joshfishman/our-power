@@ -207,11 +207,14 @@ export async function loadMarkerSlots(
     if (m.bills.length === 0) continue; // bill-less markers (PAC) handled elsewhere
     // v0.9 public-support gate: only score a marker whose position clears the
     // 55% majority bar (proxyPass for no-poll-but-popular items). Applied to
-    // FEDERAL markers only — CA markers mirror the same federal platform
-    // positions (already gated) and have no CA-specific polling yet, so gating
-    // them against the federal-only slug map would wrongly drop every CA marker.
-    // (CA-specific public-support polling is a future refinement.)
-    if (m.plank.jurisdiction === 'FEDERAL' && !passesPublicSupportGate(m.slug)) continue;
+    // BOTH jurisdictions — CA markers mirror the same federal platform
+    // positions and now carry their own PUBLIC_SUPPORT entries that ride the
+    // parallel federal poll number ("rides federal <slug>" in public-support.ts),
+    // so CA markers are gated by the same evidence as their federal twins
+    // rather than left ungated. Every CA marker slug has an entry that clears
+    // the gate (the one contested position, single-payer, is proxyPass'd, not
+    // dropped). See docs/scorecard/ca-federal-parity.md.
+    if (!passesPublicSupportGate(m.slug)) continue;
     const jur = m.plank.jurisdiction as Jurisdiction;
     const aligned = new Set<string>();
     // Source A: legacy curated BillSponsorship.

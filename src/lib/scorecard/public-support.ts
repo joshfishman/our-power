@@ -75,6 +75,45 @@ export const PUBLIC_SUPPORT: Record<string, MarkerSupport> = {
   'war-powers': { pct: 70, oppose: 27, byParty: { D: 91, R: 36, I: 78 }, source: 'Quinnipiac / Marist / Gallup', asOf: '2026-01', confidence: 'HIGH', note: 'Popular overall but the most partisan item; clears the majority gate but is not consensus.' },
   'antitrust-major': { pct: 74, source: 'YouGov / "rein in Apple & Google" framing', asOf: '2023', confidence: 'MEDIUM', note: 'Concept-level ("break up / open markets") polls 74–85%; the specific Open App Markets Act provisions poll ~32%. Kept at the concept level per methodology decision — cite the concept poll, not the bill.' },
   'trade-protections': { pct: 55, source: 'Progressive Policy Institute', asOf: '2023', confidence: 'MEDIUM', note: 'Soft and volatile (~55%); right at the gate. Trade polling is tariff-contaminated.' },
+
+  // ── California planks (1–4; no Plank 5 at the state level) ──
+  //
+  // CA planks deliberately mirror the federal platform's popular positions.
+  // There is no CA-specific polling yet, so each CA marker RIDES the support
+  // number of its federal parallel position (noted per entry). This keeps CA
+  // markers gated by the SAME 55%-majority evidence as their federal twins
+  // rather than ungated. CA-specific polling is a future refinement; until
+  // then "rides federal <slug>" is the documented basis. See
+  // docs/scorecard/ca-federal-parity.md for the full mapping rationale.
+
+  // ── CA Plank 1 — Honest Government ──
+  'corporate-pac-refusal-ca': { pct: null, proxyPass: true, source: 'rides federal corporate-pac-refusal (Pew influence proxy ~80%)', asOf: '2023', confidence: 'LOW', note: 'Rides federal corporate-pac-refusal. Also the CA PAC-score signal (bill-less) — skipped from the voting tally regardless. Pass on the same proxy basis as federal.' },
+  'levine-act-strengthen': { pct: 85, oppose: 15, byParty: { R: 85, D: 88, I: 84 }, source: 'rides federal disclose-act (Brennan Center)', asOf: '2026-06', confidence: 'MEDIUM', note: 'Rides federal disclose-act. Anti-pay-to-play / contributions-from-pending-parties is the CA analog of dark-money disclosure + influence limits.' },
+  'lobbyist-gifts-ca': { pct: 65, byParty: { R: 65, D: 67 }, source: 'rides federal lobbying-cooling-off (PPC/UMD)', asOf: '2022-06', confidence: 'MEDIUM', note: 'Rides federal lobbying-cooling-off. Tightening lobbyist gift/influence limits is the same lobbying-restriction family.' },
+  'dark-money-disclosure-ca': { pct: 85, oppose: 15, byParty: { R: 85, D: 88, I: 84 }, source: 'rides federal disclose-act (Brennan Center)', asOf: '2026-06', confidence: 'MEDIUM', note: 'Rides federal disclose-act — state-level dark-money disclosure is the direct CA analog.' },
+  'cooling-off-ca': { pct: 65, byParty: { R: 65, D: 67 }, source: 'rides federal lobbying-cooling-off (PPC/UMD)', asOf: '2022-06', confidence: 'MEDIUM', note: 'Rides federal lobbying-cooling-off — extended revolving-door ban is the same position at the state level. (Bill-less today, so skipped from the tally; entry kept so a future vehicle is gated.)' },
+
+  // ── CA Plank 2 — Our Children Our Future ──
+  'public-school-investment-ca': { pct: 74, byParty: { D: 86, R: 61, I: 74 }, source: 'rides federal early-childhood (FFYF/POS)', asOf: '2023-07', confidence: 'MEDIUM', note: 'Rides federal early-childhood — public-education investment (LCFF/TK) is the CA education-investment analog.' },
+  'climate-sb100-ca': { pct: 86, oppose: 10, byParty: { D: 95, R: 83, I: 86 }, source: 'rides federal clean-energy-investment (SEIA)', asOf: '2024-09', confidence: 'MEDIUM', note: 'Rides federal clean-energy-investment — SB 100 100%-clean-electricity is the CA clean-energy analog. (Bill-less today, so skipped; entry kept for a future vehicle.)' },
+  'wildfire-prevention-ca': { pct: 70, source: 'rides federal environmental-protection (Morning Consult / Walton FF)', asOf: '2022-09', confidence: 'MEDIUM', note: 'Rides federal environmental-protection — wildfire prevention/resilience is the CA environment/resilience analog.' },
+  'higher-ed-funding-ca': { pct: 74, byParty: { D: 86, R: 61, I: 74 }, source: 'rides federal early-childhood (FFYF/POS)', asOf: '2023-07', confidence: 'MEDIUM', note: 'Rides federal early-childhood — UC/CSU/CCC funding floors are part of the same education-investment family.' },
+  'broadband-ca': { pct: 83, byParty: { R: 79, D: 87 }, source: 'rides federal infrastructure-broadband (AP-NORC / IIJA)', asOf: '2021-07', confidence: 'MEDIUM', note: 'Rides federal infrastructure-broadband — state broadband expansion is the direct CA analog.' },
+
+  // ── CA Plank 3 — Making a Living ──
+  'housing-supply-ca': { pct: 83, source: 'rides federal housing-supply (BPC / NHC / Morning Consult)', asOf: '2024', confidence: 'MEDIUM', note: 'Rides federal housing-supply — SB 9/10/ADU build-more-housing is the direct CA analog.' },
+  'tenant-protection-ca': { pct: 83, source: 'rides federal housing-supply (BPC / NHC / Morning Consult)', asOf: '2024', confidence: 'LOW', note: 'Rides federal housing-supply as the nearest popular parallel (housing security). No federal tenant-protection poll exists; renter protections poll well in CA but are not separately covered in the federal map. Documented proxy on the housing family.' },
+  'wage-theft-ca': { pct: 62, source: 'rides federal wage-theft-noncompete (Ipsos non-compete proxy)', asOf: '2024-05', confidence: 'MEDIUM', note: 'Rides federal wage-theft-noncompete — wage-theft enforcement is the same position; non-compete proxy used federally.' },
+  'loan-rate-cap-ca': { pct: 77, source: 'rides federal loan-rate-cap (LendingTree)', asOf: '2024', confidence: 'MEDIUM', note: 'Rides federal loan-rate-cap — state APR caps on small-dollar loans are the direct CA analog. (Bill-less today, so skipped; entry kept for a future vehicle.)' },
+  'paid-leave-sdi-ca': { pct: 82, byParty: { D: 90, R: 76 }, source: 'rides federal paid-family-leave (BPC / Morning Consult)', asOf: '2024', confidence: 'MEDIUM', note: 'Rides federal paid-family-leave — strengthening CA Paid Family Leave / SDI is the direct CA analog.' },
+
+  // ── CA Plank 4 — The Care We Owe ──
+  'medi-cal-expansion-ca': { pct: 76, oppose: 22, byParty: { D: 95, R: 55, I: 79 }, source: 'rides federal medicaid-protection (KFF)', asOf: '2025-05', confidence: 'MEDIUM', note: 'Rides federal medicaid-protection — Medi-Cal is California’s Medicaid program; expansion/protection is the direct analog.' },
+  'calrx-ca': { pct: 85, oppose: 14, byParty: { D: 92, R: 77, I: 89 }, source: 'rides federal major-care-vote (KFF drug-price negotiation)', asOf: '2024-09', confidence: 'MEDIUM', note: 'Rides federal major-care-vote — CalRx affordable-medication is the CA drug-pricing/affordability analog.' },
+  'veterans-ca': { pct: null, proxyPass: true, source: 'rides federal pact-act (overwhelming bipartisan veteran-group backing)', asOf: '2022', confidence: 'LOW', note: 'Rides federal pact-act — state veterans-home/benefits funding has no public poll but mirrors the same self-evidently popular veterans-support basis. (Bill-less today, so skipped; entry kept for a future vehicle.)' },
+  'mental-health-ca': { pct: 85, oppose: 14, byParty: { D: 92, R: 77, I: 89 }, source: 'rides federal major-care-vote (KFF healthcare access)', asOf: '2024-09', confidence: 'LOW', note: 'Rides federal major-care-vote as the nearest healthcare-access parallel. County mental-health capacity is not separately polled federally; documented proxy on the broad healthcare-access family.' },
+  'childcare-ca': { pct: 76, byParty: { D: 86, R: 61 }, source: 'rides federal paid-leave-childcare (FFYF / BPC)', asOf: '2024', confidence: 'MEDIUM', note: 'Rides federal paid-leave-childcare — state childcare assistance is the direct CA analog.' },
+  'calcare-single-payer': { pct: null, proxyPass: true, source: 'no clear popular parallel; CA vote-of-conscience marker', asOf: '2026-06', confidence: 'LOW', note: 'No federal single-payer marker exists and single-payer / Medicare-for-All polling is framing-sensitive and hovers near (not clearly above) the 55% bar, so there is no clean popular parallel to ride. Per methodology, kept as proxyPass rather than dropped: this marker is explicitly an opt-in vote-of-conscience signal (sponsoring/voting yes only HELPS; it never drags), and the marker copy already flags it for cross-partisan review. It must NOT be silently dropped from CA scoring.' },
 };
 
 /**
