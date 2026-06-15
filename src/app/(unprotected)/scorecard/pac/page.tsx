@@ -4,6 +4,7 @@ import Link from 'next/link';
 import prisma from '@/lib/prisma/prisma';
 import { PacSortableTable, type PacRow } from '@/components/scorecard/PacSortableTable';
 import { METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
+import { getArticlesForSection } from '@/lib/scorecard/articles';
 
 export const metadata: Metadata = {
   title: 'Corporate PAC Money | We the People Scorecard',
@@ -81,6 +82,8 @@ export default async function PacScorecardPage(props: { searchParams: Promise<Se
     (l) => Number(l.latest.combinedCorporateRatio ?? l.latest.corporatePacPercentage ?? 0) < CORPORATE_PAC_THRESHOLD,
   ).length;
 
+  const articles = getArticlesForSection('pac');
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
       <Link href="/scorecard" className="text-sm text-muted-foreground hover:text-foreground">
@@ -102,6 +105,24 @@ export default async function PacScorecardPage(props: { searchParams: Promise<Se
           legislator and AGAINST their same-cycle opponents. Corporate IE attacking is disclosed but not scored.
         </p>
       </header>
+
+      {articles.length > 0 && (
+        <section className="mt-6 rounded border border-2 border-accent bg-surface p-5 shadow-sm">
+          <h2 className="font-mono text-xs uppercase tracking-widest text-foreground">Reading on this issue</h2>
+          <ul className="mt-3 space-y-3">
+            {articles.map((article) => (
+              <li key={article.slug}>
+                <Link
+                  href={`/scorecard/articles/${encodeURIComponent(article.slug)}`}
+                  className="block hover:underline">
+                  <p className="font-serif text-lg font-semibold text-foreground">{article.title}</p>
+                  <p className="text-sm text-muted-foreground">{article.dek}</p>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <JurisdictionToggle active={searchParams.jurisdiction} searchParams={searchParams} />
 

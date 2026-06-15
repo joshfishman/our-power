@@ -63,6 +63,23 @@ export interface LegislatorListFilter {
 // the engine writes is the same version the public reads.
 export const CURRENT_METHODOLOGY = METHODOLOGY_VERSION;
 
+// Source of truth for the methodology version that drives the PUBLIC VOTING
+// RECORD (the 0-100 per-plank alignment % and its mean).
+//
+// This is DELIBERATELY decoupled from `CURRENT_METHODOLOGY` (the PAC engine's
+// METHODOLOGY_VERSION, currently v1.9.1). The PAC engine writes signed-integer
+// RepresentativeScore rows (range roughly −3..7) under its own version; those
+// are NOT the bill-level alignment percentages the Voting Record displays.
+// Reading them through `computePublishedTotal` collapsed every legislator to
+// ~4%. The correct Voting Record numbers are the pre-existing v1.7 bill-level
+// alignment-% rows (every score in [0, 100], all 658 legislators covered).
+//
+// Keeping this constant separate means the PAC/scoring engine can keep bumping
+// METHODOLOGY_VERSION without silently swapping the public Voting Record back
+// to the signed-integer rows. The PAC Score is computed separately (read-time
+// from PacContribution/PacMoneyData) and is unaffected by this value.
+export const VOTING_DISPLAY_METHODOLOGY = 'v1.7';
+
 export async function getLegislatorList(filter: LegislatorListFilter = {}) {
   return prisma.legislator.findMany({
     where: {
@@ -75,7 +92,7 @@ export async function getLegislatorList(filter: LegislatorListFilter = {}) {
     orderBy: [{ state: 'asc' }, { lastName: 'asc' }],
     include: {
       scores: {
-        where: { publishedAt: { not: null }, methodologyVersion: CURRENT_METHODOLOGY },
+        where: { publishedAt: { not: null }, methodologyVersion: VOTING_DISPLAY_METHODOLOGY },
         include: { plank: { select: { number: true, name: true } } },
       },
     },
@@ -94,7 +111,7 @@ export async function findLegislatorByAnyId(id: string) {
     },
     include: {
       scores: {
-        where: { publishedAt: { not: null }, methodologyVersion: CURRENT_METHODOLOGY },
+        where: { publishedAt: { not: null }, methodologyVersion: VOTING_DISPLAY_METHODOLOGY },
         include: { plank: true },
         orderBy: { plank: { number: 'asc' } },
       },
@@ -112,32 +129,25 @@ export async function findLegislatorByAnyId(id: string) {
 }
 
 /**
- * Computes a total score across published plank scores.
+ * Computes the Voting Record total across published plank scores — the MEAN
+ * of the per-plank alignment percentages.
  *
- * v1.5 and earlier: per-plank score is a signed integer; total = sum.
- * v1.6: per-plank score is a 0-100 alignment percentage; total is the
- *       MEAN across planks (not the sum, which would exceed 100).
- * v1.7 (current): per-plank score is the same shape as v1.6 (bill-level
- *       alignment percent, with cosponsorship folded in). The "total"
- *       under v1.7 is just the per-plank mean — i.e. the legislator's
- *       Voting Record. The Average of (PAC, Voting) is computed by
- *       `computeTwoScoreAverage` below, NOT by this helper.
+ * Every caller now passes rows filtered to `VOTING_DISPLAY_METHODOLOGY`
+ * (the v1.7 bill-level alignment-% pass), so each `score` is already a 0-100
+ * alignment percentage and the total is simply their mean. The Average of
+ * (PAC, Voting) is computed by `computeTwoScoreAverage` below, NOT here.
  *
- * Behavior: when every score sits in [0, 100] we treat it as v1.6/v1.7-shaped
- * (alignment percent) and average. Otherwise we fall back to v1.5 signed sum.
+ * Historically this helper carried an [0,100]-range heuristic plus a signed-sum
+ * fallback to cope with mixed methodology rows. That fallback is gone: the v1.9.1
+ * signed-integer engine rows are never passed here anymore (reading them through
+ * the old heuristic is exactly what collapsed every legislator to ~4%).
  *
  * Returns null if no scores are published yet (used to render "pending").
  */
 export function computePublishedTotal(scores: Array<{ score: number }>): number | null {
   if (scores.length === 0) return null;
-  // v1.6/v1.7 heuristic: all scores in [0, 100] → treat as alignment percent and average.
-  const allInPercentRange = scores.every((s) => s.score >= 0 && s.score <= 100);
-  if (allInPercentRange) {
-    const sum = scores.reduce((acc, s) => acc + s.score, 0);
-    return Math.round(sum / scores.length);
-  }
-  // v1.5 fallback: signed integer sum.
-  return scores.reduce((acc, s) => acc + s.score, 0);
+  const sum = scores.reduce((acc, s) => acc + s.score, 0);
+  return Math.round(sum / scores.length);
 }
 
 /**
@@ -1469,4 +1479,108 @@ export async function getGhostBeneficiaryTotals(): Promise<{
     houseDollars: house,
     senateDollars: senate,
   };
+}
+
+/**
+ * Plank summary (slug, number, name, descriptions) for one jurisdiction.
+ * Used by the issue-scorecard pages to render the issue index and detail
+ * headers without re-querying markers/bills. Returns null when the slug
+ * does not exist for that jurisdiction (e.g. plank 5 under CA).
+ */
+export async function getPlankBySlug(jurisdiction: ScorecardJurisdiction, slug: string) {
+  return prisma.plank.findFirst({
+    where: { jurisdiction, slug },
+    select: {
+      id: true,
+      jurisdiction: true,
+      slug: true,
+      number: true,
+      name: true,
+      shortDescription: true,
+      tagline: true,
+      body: true,
+      color: true,
+    },
+  });
+}
+
+export interface PlankLegislatorScoreRow {
+  id: string;
+  bioguideId: string | null;
+  openStatesId: string | null;
+  fullName: string;
+  party: string;
+  chamber: string;
+  state: string;
+  district: number | null;
+  jurisdiction: string;
+  photoUrl: string | null;
+  /** Published per-plank alignment percentage (0-100), or null if pending. */
+  score: number | null;
+  forCount: number;
+  againstCount: number;
+}
+
+/**
+ * Returns every active legislator in a jurisdiction together with their
+ * published score on a single plank. Reuses the same publish/methodology
+ * filters as the index + detail pages so the issue page can never show a
+ * different number than the rest of the scorecard.
+ *
+ * Legislators with no published score for the plank are still returned with
+ * `score: null` so the issue page can show "scoring pending" rather than
+ * silently dropping them.
+ */
+export async function getPlankScoresByLegislator(
+  jurisdiction: ScorecardJurisdiction,
+  plankId: string,
+  filter: Pick<LegislatorListFilter, 'chamber' | 'party' | 'state'> = {},
+): Promise<PlankLegislatorScoreRow[]> {
+  const legislators = await prisma.legislator.findMany({
+    where: {
+      isActive: true,
+      jurisdiction,
+      ...(filter.chamber ? { chamber: filter.chamber } : {}),
+      ...(filter.party ? { party: filter.party } : {}),
+      ...(filter.state ? { state: filter.state } : {}),
+    },
+    orderBy: [{ state: 'asc' }, { lastName: 'asc' }],
+    select: {
+      id: true,
+      bioguideId: true,
+      openStatesId: true,
+      fullName: true,
+      party: true,
+      chamber: true,
+      state: true,
+      district: true,
+      jurisdiction: true,
+      photoUrl: true,
+      scores: {
+        where: { plankId, publishedAt: { not: null }, methodologyVersion: VOTING_DISPLAY_METHODOLOGY },
+        select: { score: true, forCount: true, againstCount: true },
+        take: 1,
+      },
+    },
+  });
+
+  return legislators.map((leg) => {
+    const s = leg.scores[0];
+    return {
+      id: leg.id,
+      bioguideId: leg.bioguideId,
+      openStatesId: leg.openStatesId,
+      fullName: leg.fullName,
+      party: leg.party,
+      chamber: leg.chamber,
+      state: leg.state,
+      district: leg.district,
+      jurisdiction: leg.jurisdiction,
+      photoUrl: leg.photoUrl,
+      // Clamp displayed score to >= 0, matching the index page's ScoreCell.
+      score: s ? Math.max(0, s.score) : null,
+      forCount: s?.forCount ?? 0,
+      againstCount: s?.againstCount ?? 0,
+    };
+  });
 }
