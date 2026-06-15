@@ -80,6 +80,53 @@ export const CURRENT_METHODOLOGY = METHODOLOGY_VERSION;
 // from PacContribution/PacMoneyData) and is unaffected by this value.
 export const VOTING_DISPLAY_METHODOLOGY = 'v1.7';
 
+// ─── v1.9.3 Minimum-bills floor on the Voting Record ────────────────────────
+//
+// A per-plank alignment % should only be DISPLAYED (and folded into the
+// legislator's Voting Record mean) when it rests on at least this many
+// eligible bills. A plank scored off a tiny denominator (e.g. a CA plank or a
+// senator's plank-2 measured on only 2 marker bills) shouldn't be presented as
+// equally trustworthy as a plank measured on dozens of roll calls.
+//
+// For the v1.7 rows that drive the public Voting Record, the eligible-bill
+// count (denominator) is recoverable WITHOUT recomputing: compute-scores-v1.7
+// writes `forCount = aligned` and `againstCount = total - aligned`, so
+//     eligible bills = forCount + againstCount.
+// We therefore apply the floor purely at the display layer — no DB write, no
+// recompute, trivially reversible by changing this constant. Sub-floor planks
+// are EXCLUDED from the mean (not zeroed), so a legislator's remaining planks
+// still produce a fair average.
+//
+// FLOOR = 3 chosen from the actual v1.7 denominator distribution:
+//   denom=2 (100 rows, all federal Plank 2 — senators measured on 2 marker
+//            bills) is excluded; denom>=3 (every other plank/jurisdiction) is
+//            kept. FLOOR=4 was rejected because it collapses every senator to a
+//            single plank, and FLOOR=5 leaves 100 senators with zero planks
+//            (total -> null). FLOOR=3 drops 100 plank-rows, zeroes no
+//            legislator, and moves the validated marquee only marginally
+//            (Sanders/Warren 92->89, Cruz 52->53, McConnell 44->42; House
+//            members AOC/Pelosi/Jordan unchanged — their planks are all deep).
+//
+// NOTE: this floor is intentionally a single named constant so it is easy to
+// retune once the v1.7 voting universe is rebuilt with deeper senate coverage.
+//
+// Held INERT at 2 for now (no plank has <2 eligible bills, so this is a no-op):
+// per project decision the floor is only raised to its real value (3–4) AFTER
+// Senate + House roll-call coverage is deepened, so legislators are no longer
+// scored on thin 2–3 bill planks. Bump to 3 or 4 once that re-ingest lands.
+export const MIN_ELIGIBLE_BILLS_FLOOR = 2;
+
+/**
+ * v1.9.3 — true when a v1.7 plank score rests on enough eligible bills to be
+ * displayed. Eligible-bill count = forCount + againstCount (see the constant
+ * doc above). Rows missing the counts (forCount+againstCount === 0) are also
+ * dropped — a 0-denominator plank carries no signal.
+ */
+export function meetsMinBillsFloor(score: { forCount?: number | null; againstCount?: number | null }): boolean {
+  const denom = (score.forCount ?? 0) + (score.againstCount ?? 0);
+  return denom >= MIN_ELIGIBLE_BILLS_FLOOR;
+}
+
 export async function getLegislatorList(filter: LegislatorListFilter = {}) {
   return prisma.legislator.findMany({
     where: {
@@ -143,34 +190,64 @@ export async function findLegislatorByAnyId(id: string) {
  * the old heuristic is exactly what collapsed every legislator to ~4%).
  *
  * Returns null if no scores are published yet (used to render "pending").
+ *
+ * v1.9.3 — applies the MIN_ELIGIBLE_BILLS_FLOOR: per-plank rows whose
+ * eligible-bill count (forCount + againstCount) is below the floor are
+ * EXCLUDED from the mean rather than zeroed, so a thin-denominator plank
+ * doesn't drag (or prop up) the displayed Voting Record. If a caller passes
+ * rows without forCount/againstCount, those rows have a 0 denominator and are
+ * dropped — pass the full score rows to get the floor applied. When the floor
+ * removes every plank we fall back to "pending" (null) rather than inventing a
+ * number.
  */
-export function computePublishedTotal(scores: Array<{ score: number }>): number | null {
+export function computePublishedTotal(
+  scores: Array<{ score: number; forCount?: number | null; againstCount?: number | null }>,
+): number | null {
   if (scores.length === 0) return null;
-  const sum = scores.reduce((acc, s) => acc + s.score, 0);
-  return Math.round(sum / scores.length);
+  const eligible = scores.filter(meetsMinBillsFloor);
+  if (eligible.length === 0) return null;
+  const sum = eligible.reduce((acc, s) => acc + s.score, 0);
+  return Math.round(sum / eligible.length);
 }
 
 /**
- * v1.7 — corporate-PAC score for one legislator.
+ * v1.9.3 — corporate-PAC score for one legislator (CA / legacy PacMoneyData path).
  *
- * Score = (1 − combined_corporate_ratio) × 100, clamped to [0, 100].
+ * Score = (1 − mean_corporate_ratio) × 100, clamped to [0, 100].
  *
- * `combined_corporate_ratio` reads the legislator's most-recent PacMoneyData
- * row (any cycle, any source). If no PAC data exists we return null and the
- * page renders a "no PAC data" badge instead of a misleading 100%.
+ * `mean_corporate_ratio` is the SIMPLE MEAN of each available cycle's
+ * corporate-PAC ratio — every cycle weighted equally, regardless of how many
+ * dollars flowed in that cycle. (Prior to v1.9.3 this read only the
+ * most-recent cycle, which let a single light or heavy cycle dominate the
+ * displayed score.) When more than one PacMoneyData source exists for the
+ * same cycle we keep the highest-priority source per cycle (dataSource ASC —
+ * e.g. CAL_ACCESS_CCDC before OPENSECRETS_BULK) before averaging, so a cycle
+ * is never double-counted. If no PAC data exists we return null and the page
+ * renders a "no PAC data" badge instead of a misleading 100%.
  */
 export async function getLegislatorPacScore(legislatorId: string): Promise<number | null> {
-  const row = await prisma.pacMoneyData.findFirst({
+  const rows = await prisma.pacMoneyData.findMany({
     where: { legislatorId },
-    orderBy: [{ dataSource: 'asc' }, { cycleYear: 'desc' }],
-    select: { combinedCorporateRatio: true, corporatePacPercentage: true },
+    // dataSource ASC = higher-fidelity source first; cycleYear DESC for stable
+    // ordering. We dedupe to one row per cycle below (first wins).
+    orderBy: [{ cycleYear: 'desc' }, { dataSource: 'asc' }],
+    select: { cycleYear: true, combinedCorporateRatio: true, corporatePacPercentage: true },
   });
-  if (!row) return null;
-  const ratioRaw = row.combinedCorporateRatio ?? row.corporatePacPercentage;
-  if (ratioRaw === null) return null;
-  const ratio = Number(ratioRaw);
-  if (!Number.isFinite(ratio)) return null;
-  return Math.max(0, Math.min(100, Math.round((1 - ratio) * 100)));
+  if (rows.length === 0) return null;
+  // One ratio per cycle (first row per cycle wins — highest-fidelity source).
+  const ratioByCycle = new Map<number, number>();
+  for (const row of rows) {
+    if (ratioByCycle.has(row.cycleYear)) continue;
+    const ratioRaw = row.combinedCorporateRatio ?? row.corporatePacPercentage;
+    if (ratioRaw === null) continue;
+    const ratio = Number(ratioRaw);
+    if (!Number.isFinite(ratio)) continue;
+    ratioByCycle.set(row.cycleYear, ratio);
+  }
+  if (ratioByCycle.size === 0) return null;
+  // Simple mean across cycles — every cycle weighted equally.
+  const meanRatio = [...ratioByCycle.values()].reduce((a, b) => a + b, 0) / ratioByCycle.size;
+  return Math.max(0, Math.min(100, Math.round((1 - meanRatio) * 100)));
 }
 
 /**
@@ -186,31 +263,55 @@ export function computeTwoScoreAverage(pacScore: number | null, votingScore: num
 }
 
 /**
- * v1.7 — bulk PAC scores for a list of legislators. Used by the index page
- * so we don't fire N+1 queries. Returns a Map<legislatorId, score|null>.
+ * v1.9.3 — bulk PAC scores for a list of legislators (CA / legacy path). Used
+ * by the index page so we don't fire N+1 queries. Returns Map<legislatorId,
+ * score|null>.
+ *
+ * Mirrors `getLegislatorPacScore`: the score is the SIMPLE MEAN of each
+ * cycle's corporate-PAC ratio (every cycle weighted equally), not the
+ * most-recent cycle alone. We first collapse to one ratio per (legislator,
+ * cycle) — keeping the highest-fidelity source via DISTINCT ON ... dataSource
+ * ASC so a cycle is never double-counted — then average the per-cycle ratios
+ * in JS.
  */
 export async function getPacScoresByLegislator(legislatorIds: string[]): Promise<Map<string, number | null>> {
   if (legislatorIds.length === 0) return new Map();
-  // Most-recent PAC row per legislator. We use DISTINCT ON in raw SQL since
-  // Prisma doesn't expose it directly — the per-row dataSource priority is
-  // already deterministic via ORDER BY.
+  // One ratio row per (legislator, cycle): DISTINCT ON the (legislator, cycle)
+  // pair, preferring the higher-fidelity dataSource. Then we average the
+  // per-cycle ratios per legislator in JS for the simple mean.
   const rows = await prisma.$queryRaw<
-    Array<{ legislatorId: string; combinedCorporateRatio: number | null; corporatePacPercentage: number | null }>
+    Array<{
+      legislatorId: string;
+      cycleYear: number;
+      combinedCorporateRatio: number | null;
+      corporatePacPercentage: number | null;
+    }>
   >`
-    SELECT DISTINCT ON ("legislatorId")
+    SELECT DISTINCT ON ("legislatorId", "cycleYear")
       "legislatorId",
+      "cycleYear",
       "combinedCorporateRatio"::float AS "combinedCorporateRatio",
       "corporatePacPercentage"::float AS "corporatePacPercentage"
     FROM "PacMoneyData"
     WHERE "legislatorId" = ANY(${legislatorIds})
-    ORDER BY "legislatorId" ASC, "dataSource" ASC, "cycleYear" DESC
+    ORDER BY "legislatorId" ASC, "cycleYear" DESC, "dataSource" ASC
   `;
-  const out = new Map<string, number | null>();
-  for (const id of legislatorIds) out.set(id, null);
+  // Accumulate per-cycle ratios per legislator, then take the simple mean.
+  const sums = new Map<string, { sum: number; n: number }>();
   for (const r of rows) {
     const ratio = r.combinedCorporateRatio ?? r.corporatePacPercentage;
     if (ratio === null || ratio === undefined || !Number.isFinite(ratio)) continue;
-    out.set(r.legislatorId, Math.max(0, Math.min(100, Math.round((1 - ratio) * 100))));
+    const acc = sums.get(r.legislatorId) ?? { sum: 0, n: 0 };
+    acc.sum += ratio;
+    acc.n += 1;
+    sums.set(r.legislatorId, acc);
+  }
+  const out = new Map<string, number | null>();
+  for (const id of legislatorIds) out.set(id, null);
+  for (const [id, acc] of sums) {
+    if (acc.n === 0) continue;
+    const meanRatio = acc.sum / acc.n;
+    out.set(id, Math.max(0, Math.min(100, Math.round((1 - meanRatio) * 100))));
   }
   return out;
 }
@@ -322,20 +423,25 @@ export interface PacMoneyTrail {
  */
 export async function getPacScoresByLegislatorV171(legislatorIds: string[]): Promise<Map<string, number | null>> {
   if (legislatorIds.length === 0) return new Map();
-  // Two halves, joined in JS:
-  //   contribAgg  — counts-against and IE_SUPPORT from PacContribution
-  //   receiptsAgg — multi-cycle principal-committee receipts from PacMoneyData
+  // v1.9.3 — SIMPLE MEAN of per-cycle ratios (every cycle weighted equally),
+  // replacing the pooled (Σnumerator / Σdenominator) dollar-weighted ratio.
+  // We aggregate counts-against, IE_SUPPORT, and receipts BY (legislator,
+  // cycleYear), compute one ratio per cycle, then average the per-cycle ratios
+  // in JS. This stops a single heavy-fundraising cycle from dominating the
+  // displayed PAC Score.
   //
   // v1.9.1 two-tier counts-against numerator. Full weight on every dollar
   // spent on the legislator's behalf: DIRECT, JFC_PASS_THROUGH,
   // LEADERSHIP_PASS_THROUGH, and IE_SUPPORT (outside group IE FOR the
   // legislator — supported is supported). IE_OPPOSE_BENEFICIARY is the
-  // zero-weight class and is intentionally absent. The denominator is
-  // receipts + total IE_SUPPORT (any class) so the ratio is bounded by the
-  // full pool of money that landed on the candidate's side of the race.
-  const contribAgg = await prisma.$queryRaw<Array<{ legislatorId: string; countsAgainst: string; ieSupport: string }>>`
+  // zero-weight class and is intentionally absent. The per-cycle denominator
+  // is that cycle's receipts + that cycle's IE_SUPPORT (any class).
+  const contribAgg = await prisma.$queryRaw<
+    Array<{ legislatorId: string; cycleYear: number; countsAgainst: string; ieSupport: string }>
+  >`
     SELECT
       pcontrib."legislatorId" AS "legislatorId",
+      pcontrib."cycleYear" AS "cycleYear",
       COALESCE(SUM(CASE
         WHEN pc.class IN ('CORPORATE', 'DARK_MONEY', 'FOREIGN_POLICY')
          AND pcontrib.kind IN ('DIRECT', 'JFC_PASS_THROUGH', 'LEADERSHIP_PASS_THROUGH', 'IE_SUPPORT')
@@ -350,37 +456,50 @@ export async function getPacScoresByLegislatorV171(legislatorIds: string[]): Pro
     FROM "PacContribution" pcontrib
     JOIN "PacClassification" pc ON pc."committeeId" = pcontrib."donorCommitteeId"
     WHERE pcontrib."legislatorId" = ANY(${legislatorIds})
-    GROUP BY pcontrib."legislatorId"
+    GROUP BY pcontrib."legislatorId", pcontrib."cycleYear"
   `;
-  const receiptsAgg = await prisma.$queryRaw<Array<{ legislatorId: string; receipts: string }>>`
+  const receiptsAgg = await prisma.$queryRaw<Array<{ legislatorId: string; cycleYear: number; receipts: string }>>`
     SELECT
       "legislatorId",
+      "cycleYear",
       COALESCE(SUM("totalReceipts"::numeric), 0)::text AS receipts
     FROM "PacMoneyData"
     WHERE "legislatorId" = ANY(${legislatorIds})
-    GROUP BY "legislatorId"
+    GROUP BY "legislatorId", "cycleYear"
   `;
-  const receiptsByLeg = new Map<string, number>();
+  // receipts keyed by (legislatorId, cycleYear).
+  const receiptsByCycle = new Map<string, number>();
+  const cycleKey = (legId: string, cycle: number) => `${legId}|${cycle}`;
   for (const r of receiptsAgg) {
     const v = Number(r.receipts);
-    if (Number.isFinite(v)) receiptsByLeg.set(r.legislatorId, v);
+    if (Number.isFinite(v)) receiptsByCycle.set(cycleKey(r.legislatorId, r.cycleYear), v);
   }
-  const out = new Map<string, number | null>();
-  for (const id of legislatorIds) out.set(id, null);
+  // Accumulate per-cycle ratios per legislator, then take the simple mean.
+  const sums = new Map<string, { sum: number; n: number }>();
   for (const r of contribAgg) {
     const ca = Number(r.countsAgainst);
     const ie = Number(r.ieSupport);
-    const receipts = receiptsByLeg.get(r.legislatorId) ?? 0;
-    // v1.7.7 safety guard: if there are no principal-committee receipts on
-    // record AND there is meaningful counts-against activity, the IE-only
-    // denominator produces a misleading score (e.g. McCormick's $14.86M IE
-    // alone collapsed to "6"). Treat as no data instead. Leaves the score
-    // valid for cases where the leg legitimately has both receipts and IE.
+    const receipts = receiptsByCycle.get(cycleKey(r.legislatorId, r.cycleYear)) ?? 0;
+    // v1.7.7 safety guard (applied per cycle): a cycle with no principal-
+    // committee receipts on record but real counts-against activity yields a
+    // misleading IE-only ratio — skip that cycle rather than feed it into the
+    // mean. A cycle with neither receipts nor counts-against (denom 0) is also
+    // skipped. Cycles that legitimately have receipts contribute their ratio.
     if (receipts <= 0 && ca > 0) continue;
     const denom = receipts + (Number.isFinite(ie) ? ie : 0);
     if (!Number.isFinite(denom) || denom <= 0) continue;
     const ratio = ca / denom;
-    out.set(r.legislatorId, Math.max(0, Math.min(100, Math.round((1 - ratio) * 100))));
+    const acc = sums.get(r.legislatorId) ?? { sum: 0, n: 0 };
+    acc.sum += ratio;
+    acc.n += 1;
+    sums.set(r.legislatorId, acc);
+  }
+  const out = new Map<string, number | null>();
+  for (const id of legislatorIds) out.set(id, null);
+  for (const [id, acc] of sums) {
+    if (acc.n === 0) continue;
+    const meanRatio = acc.sum / acc.n;
+    out.set(id, Math.max(0, Math.min(100, Math.round((1 - meanRatio) * 100))));
   }
   return out;
 }
@@ -404,6 +523,68 @@ export async function getLegislatorMoneyTrail(legislatorId: string): Promise<Pac
     WHERE "legislatorId" = ${legislatorId}
   `;
   const totalReceipts = receiptsRows.length > 0 ? Number(receiptsRows[0].receipts) || 0 : 0;
+
+  // v1.9.3 — per-cycle aggregation, used ONLY to compute the displayed PAC
+  // Score as the SIMPLE MEAN of each cycle's ratio (every cycle weighted
+  // equally). The dollar-sum breakdown below (byClass, totals, denominator)
+  // is intentionally left pooled across cycles — it's a transparency view of
+  // total money, not the score. counts-against and IE_SUPPORT come from
+  // PacContribution per cycle; receipts come from PacMoneyData per cycle.
+  const perCycleContrib = await prisma.$queryRaw<
+    Array<{ cycleYear: number; countsAgainst: string; ieSupport: string; beneficiaryCountsAgainst: string }>
+  >`
+    SELECT
+      pcontrib."cycleYear" AS "cycleYear",
+      COALESCE(SUM(CASE
+        WHEN pc.class IN ('CORPORATE', 'DARK_MONEY', 'FOREIGN_POLICY')
+         AND pcontrib.kind IN ('DIRECT', 'JFC_PASS_THROUGH', 'LEADERSHIP_PASS_THROUGH', 'IE_SUPPORT')
+        THEN pcontrib.amount::numeric ELSE 0 END), 0)::text AS "countsAgainst",
+      COALESCE(SUM(CASE
+        WHEN pcontrib.kind = 'IE_SUPPORT' THEN pcontrib.amount::numeric ELSE 0 END), 0)::text AS "ieSupport",
+      COALESCE(SUM(CASE
+        WHEN pc.class IN ('CORPORATE', 'DARK_MONEY', 'FOREIGN_POLICY')
+         AND pcontrib.kind = 'IE_OPPOSE_BENEFICIARY'
+        THEN pcontrib.amount::numeric ELSE 0 END), 0)::text AS "beneficiaryCountsAgainst"
+    FROM "PacContribution" pcontrib
+    JOIN "PacClassification" pc ON pc."committeeId" = pcontrib."donorCommitteeId"
+    WHERE pcontrib."legislatorId" = ${legislatorId}
+    GROUP BY pcontrib."cycleYear"
+  `;
+  const perCycleReceipts = await prisma.$queryRaw<Array<{ cycleYear: number; receipts: string }>>`
+    SELECT "cycleYear", COALESCE(SUM("totalReceipts"::numeric), 0)::text AS receipts
+    FROM "PacMoneyData"
+    WHERE "legislatorId" = ${legislatorId}
+    GROUP BY "cycleYear"
+  `;
+  const receiptsByCycle = new Map<number, number>();
+  for (const r of perCycleReceipts) {
+    const v = Number(r.receipts);
+    if (Number.isFinite(v)) receiptsByCycle.set(r.cycleYear, v);
+  }
+  // Simple mean of per-cycle ratios for the headline + beneficiary scores.
+  let scoreRatioSum = 0;
+  let scoreRatioN = 0;
+  let benRatioSum = 0;
+  let benRatioN = 0;
+  for (const r of perCycleContrib) {
+    const ca = Number(r.countsAgainst) || 0;
+    const ie = Number(r.ieSupport) || 0;
+    const ben = Number(r.beneficiaryCountsAgainst) || 0;
+    const receipts = receiptsByCycle.get(r.cycleYear) ?? 0;
+    // v1.7.7 per-cycle guard: a cycle with no receipts but real counts-against
+    // is IE-only and misleading — skip it rather than feed it into the mean.
+    if (receipts <= 0 && ca > 0) continue;
+    const denomCycle = receipts + ie;
+    if (denomCycle > 0) {
+      scoreRatioSum += ca / denomCycle;
+      scoreRatioN += 1;
+    }
+    const benDenomCycle = denomCycle + ben;
+    if (benDenomCycle > 0) {
+      benRatioSum += (ca + ben) / benDenomCycle;
+      benRatioN += 1;
+    }
+  }
 
   const byClass: Record<string, number> = {};
   let countsAgainst = 0; // DIRECT + JFC_PASS_THROUGH + LEADERSHIP_PASS_THROUGH + IE_SUPPORT in counts-against classes
@@ -455,20 +636,22 @@ export async function getLegislatorMoneyTrail(legislatorId: string): Promise<Pac
   // and reads as misleadingly low. Return null ("no data") in that case so
   // the UI renders a "no data" badge rather than a near-zero number.
   const noReceiptsData = totalReceipts <= 0 && countsAgainst > 0;
+  // v1.9.3 — PAC Score is the SIMPLE MEAN of per-cycle ratios (scoreRatioN
+  // cycles contributed a valid ratio). The no-receipts guard still gates the
+  // whole legislator: if their only receipts gap coincides with counts-against
+  // activity (noReceiptsData) we render "no data" rather than an IE-only score.
+  // `denominator` (pooled) is retained for the money-trail breakdown display.
   const pacScore =
-    !noReceiptsData && denominator > 0
-      ? Math.max(0, Math.min(100, Math.round((1 - countsAgainst / denominator) * 100)))
+    !noReceiptsData && scoreRatioN > 0
+      ? Math.max(0, Math.min(100, Math.round((1 - scoreRatioSum / scoreRatioN) * 100)))
       : null;
   // Beneficiary view: also count IE_OPPOSE-against-defeated-opponent as
-  // counts-against. Denominator includes IE_OPPOSE_BENEFICIARY too so it
-  // doesn't artificially inflate the ratio. Same no-receipts guard applies.
-  const beneficiaryDenominator = denominator + beneficiaryCountsAgainst;
+  // counts-against (per cycle), with the denominator including
+  // IE_OPPOSE_BENEFICIARY too so it doesn't artificially inflate the ratio.
+  // Same simple-mean-of-per-cycle-ratios treatment and no-receipts guard.
   const beneficiaryPacScore =
-    !noReceiptsData && beneficiaryDenominator > 0
-      ? Math.max(
-          0,
-          Math.min(100, Math.round((1 - (countsAgainst + beneficiaryCountsAgainst) / beneficiaryDenominator) * 100)),
-        )
+    !noReceiptsData && benRatioN > 0
+      ? Math.max(0, Math.min(100, Math.round((1 - benRatioSum / benRatioN) * 100)))
       : null;
   return {
     countsAgainst,
@@ -1566,6 +1749,12 @@ export async function getPlankScoresByLegislator(
 
   return legislators.map((leg) => {
     const s = leg.scores[0];
+    // v1.9.3 — apply the MIN_ELIGIBLE_BILLS_FLOOR on this single plank. A plank
+    // measured on fewer than the floor's worth of eligible bills renders as
+    // "pending" (score null) rather than a thin, low-confidence percentage —
+    // matching how the same plank is excluded from the legislator's overall
+    // Voting Record mean in computePublishedTotal.
+    const meetsFloor = s ? meetsMinBillsFloor(s) : false;
     return {
       id: leg.id,
       bioguideId: leg.bioguideId,
@@ -1578,7 +1767,7 @@ export async function getPlankScoresByLegislator(
       jurisdiction: leg.jurisdiction,
       photoUrl: leg.photoUrl,
       // Clamp displayed score to >= 0, matching the index page's ScoreCell.
-      score: s ? Math.max(0, s.score) : null,
+      score: s && meetsFloor ? Math.max(0, s.score) : null,
       forCount: s?.forCount ?? 0,
       againstCount: s?.againstCount ?? 0,
     };

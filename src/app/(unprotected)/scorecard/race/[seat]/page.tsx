@@ -9,6 +9,7 @@ import {
   getLegislatorDimeProfile,
   computePublishedTotal,
   getGhostBeneficiariesForSeat,
+  VOTING_DISPLAY_METHODOLOGY,
 } from '@/lib/scorecard/queries';
 
 type Props = { params: Promise<{ seat: string }> };
@@ -76,8 +77,11 @@ export default async function RaceScorecardPage(props: Props) {
       fecIds: true,
       photoUrl: true,
       scores: {
-        where: { publishedAt: { not: null } },
-        select: { score: true, plank: { select: { number: true, name: true } } },
+        // Scope to the Voting Record methodology and pull the per-plank
+        // eligible-bill counts so computePublishedTotal can apply the
+        // v1.9.3 MIN_ELIGIBLE_BILLS_FLOOR (forCount + againstCount).
+        where: { publishedAt: { not: null }, methodologyVersion: VOTING_DISPLAY_METHODOLOGY },
+        select: { score: true, forCount: true, againstCount: true, plank: { select: { number: true, name: true } } },
       },
     },
     orderBy: [{ party: 'asc' }, { isActive: 'desc' }, { lastName: 'asc' }],
