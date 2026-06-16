@@ -56,7 +56,11 @@ const METHODOLOGY_VERSION = 'v1.7.1';
 // Set ROLL_CALL_TRUST_GATE=false (env) to disable the gate and score the full
 // classified universe (legacy behavior) for comparison.
 const ROLL_CALL_TRUST_GATE = process.env.ROLL_CALL_TRUST_GATE !== 'false';
-const TRUSTWORTHY_CONFIDENCE_FLOOR = 0.8;
+// 0.95: only count roll-call bills the content classifier is highly confident
+// belong to the plank (or that a human reviewed). The topic-based net at 0.8
+// pulled in ~492 topically-adjacent bills; 0.95 narrows the Voting Record to a
+// focused, defensible set of clear matches + curated markers.
+const TRUSTWORTHY_CONFIDENCE_FLOOR = 0.95;
 const REVIEWED_SOURCES = new Set(['human', 'auto-then-human']);
 
 function isTrustworthyClassification(source: string | null, confidence: number | null): boolean {
