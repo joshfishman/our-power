@@ -599,6 +599,17 @@ model Marker {
   parallelMarkerId        String?
   parallels               Marker[]     @relation("ParallelMarker")
 
+  // Popular-support floor (methodology v1.9.2). National public-opinion
+  // support for the policy this marker captures, as a percentage in [0, 100].
+  // Null = not yet assessed (the marker still counts toward scoring). When
+  // populated and below POPULAR_SUPPORT_FLOOR (55), the marker is excluded
+  // from scoring — we only hold legislators accountable to broadly popular
+  // commitments. Populated by scripts/seed-marker-support.ts from curated polls.
+  popularSupport     Float?  // National support %, 0–100. Null = unassessed.
+  // Citation for the popularSupport figure: pollster, field date, source URL,
+  // and the exact question wording. Free text, stored as TEXT.
+  popularSupportPoll String? @db.Text
+
   bills        MarkerBill[]
   achievements MarkerAchievement[]
 

@@ -200,6 +200,7 @@ Visual conventions on `/scorecard*` pages:
 - **Never modify `.env.local`** unless the user explicitly asks.
 - Treat `.env.local` as sensitive; avoid reading or copying values unless required.
 - **Never deploy to Vercel unless the user explicitly tells you to.** Automatic git deployments are disabled — production ships on command only. Do not run `vercel`, `vercel deploy`, `vercel --prod`, `vercel promote`, or trigger a deploy hook on your own initiative; wait for an explicit instruction to deploy. Building locally (`npm run build`) to verify is always fine.
+- **Commit and push to the repo often — no need to ask.** `git commit` + `git push` to a working branch are encouraged; land work in small, coherent, green commits as you go rather than holding one big batch. Pushing to a branch is NOT deploying — only the Vercel rule above gates production. Never commit secrets or `.env.local`.
 - When reviewing or modifying forms, check for injection (SQL/NoSQL/ORM misuse), XSS (stored, reflected, DOM-based), and hardcoded secrets. Prefer minimal, targeted fixes.
 
 ## Workflow preferences

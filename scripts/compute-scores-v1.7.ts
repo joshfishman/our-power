@@ -25,6 +25,7 @@
 import './load-env';
 import { PrismaClient } from '../src/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { markerMeetsPopularSupportFloor, POPULAR_SUPPORT_FLOOR } from '../src/lib/scorecard/scoring';
 
 const METHODOLOGY_VERSION = 'v1.7.1';
 
@@ -221,6 +222,7 @@ async function main(): Promise<void> {
   const markers = await prisma.marker.findMany({
     include: {
       plank: { select: { number: true, jurisdiction: true } },
+      // popularSupport pulled in for the popular-support-floor gate below.
       bills: {
         select: {
           id: true,
@@ -258,8 +260,15 @@ async function main(): Promise<void> {
     return m ? m[0] : null;
   }
   const markerSlots: MarkerSlot[] = [];
+  let belowFloorSkipped = 0;
   for (const m of markers) {
     if (m.bills.length === 0) continue; // bill-less markers (PAC) handled elsewhere
+    // Popular-support floor (v1.9.2): markers assessed below the national
+    // support floor are excluded from scoring. Null support still counts.
+    if (!markerMeetsPopularSupportFloor(m)) {
+      belowFloorSkipped += 1;
+      continue;
+    }
     const jur = m.plank.jurisdiction as Jurisdiction;
     const aligned = new Set<string>();
     // Source A: legacy BillSponsorship (curated, partial coverage)
@@ -288,8 +297,8 @@ async function main(): Promise<void> {
   }
   console.log(
     `[compute-v17] ${markerSlots.length} marker scoring slots loaded (${
-      markers.length - markerSlots.length
-    } bill-less markers skipped)`,
+      markers.length - markerSlots.length - belowFloorSkipped
+    } bill-less markers skipped, ${belowFloorSkipped} below popular-support floor of ${POPULAR_SUPPORT_FLOOR}%)`,
   );
 
   // 5. For each (leg, plank): count aligned_bills / total_bills.
