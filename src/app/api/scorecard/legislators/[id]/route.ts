@@ -1,6 +1,6 @@
 import { apiError, corsOptionsResponse, enforceRateLimit, requestId, withCors } from '@/lib/api-utils';
 import { logError } from '@/lib/logger';
-import { findLegislatorByAnyId, computePublishedTotal } from '@/lib/scorecard/queries';
+import { findLegislatorByAnyId, computePublishedTotal, VOTING_RECORD_PUBLISHED } from '@/lib/scorecard/queries';
 import { METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
 
 // GET /api/scorecard/legislators/:id
@@ -42,6 +42,14 @@ export async function GET(request: Request, props: { params: Promise<{ id: strin
           },
           total,
           maxScore,
+          // The Voting Record (per-plank alignment + the `total` mean) rests on
+          // auto-classified bills whose aligned direction is not yet
+          // human-verified, so it is temporarily not published on the public
+          // site. The API still returns the data for transparency, but flags it
+          // so consumers don't treat the voting numbers as final. Flip
+          // VOTING_RECORD_PUBLISHED in queries.ts to restore published status.
+          votingPublished: VOTING_RECORD_PUBLISHED,
+          votingStatus: VOTING_RECORD_PUBLISHED ? 'published' : 'under-revision',
           scores: legislator.scores.map((s) => ({
             plankId: s.plankId,
             plankNumber: s.plank.number,

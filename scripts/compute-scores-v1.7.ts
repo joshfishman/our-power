@@ -25,8 +25,45 @@
 import './load-env';
 import { PrismaClient } from '../src/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { markerMeetsPopularSupportFloor, POPULAR_SUPPORT_FLOOR } from '../src/lib/scorecard/scoring';
 
 const METHODOLOGY_VERSION = 'v1.7.1';
+
+// ---------------------------------------------------------------------------
+// ROLL-CALL TRUST GATE (default conservative)
+// ---------------------------------------------------------------------------
+// A roll-call bill only counts toward a legislator's per-plank Voting Record
+// if its classification is TRUSTWORTHY:
+//   (a) it was reviewed by a human — classificationSource is 'human' or
+//       'auto-then-human', OR
+//   (b) its classificationConfidence meets TRUSTWORTHY_CONFIDENCE_FLOOR.
+//
+// Why: the rule classifier derives a bill's ALIGNED DIRECTION purely from the
+// sponsor's party (D→YES / R→NO). That heuristic is a coin-flip on bipartisan,
+// Option-C, and messaging bills, so the classifier now caps those rows'
+// confidence (DIRECTION_HEURISTIC_CONF_CAP=0.55 in plank-classifier.ts) and
+// flags them needsReview. Counting them would launder a guess into a published
+// score. The methodology promises every published score traces to
+// human-verified evidence, so until the Phase-6 review UI populates verified
+// rows, unreviewed low-confidence bills are EXCLUDED from both numerator and
+// denominator.
+//
+// Curated MARKER scoring slots are unaffected — their plank+direction are
+// authoritative (sourced from MarkerBill sponsorships, not RollCallVote
+// classification) and always count. This gate applies ONLY to the roll-call
+// bill universe.
+//
+// Set ROLL_CALL_TRUST_GATE=false (env) to disable the gate and score the full
+// classified universe (legacy behavior) for comparison.
+const ROLL_CALL_TRUST_GATE = process.env.ROLL_CALL_TRUST_GATE !== 'false';
+const TRUSTWORTHY_CONFIDENCE_FLOOR = 0.8;
+const REVIEWED_SOURCES = new Set(['human', 'auto-then-human']);
+
+function isTrustworthyClassification(source: string | null, confidence: number | null): boolean {
+  if (!ROLL_CALL_TRUST_GATE) return true;
+  if (source && REVIEWED_SOURCES.has(source)) return true;
+  return (confidence ?? 0) >= TRUSTWORTHY_CONFIDENCE_FLOOR;
+}
 
 const adapter = new PrismaPg({
   connectionString: process.env.DIRECT_URL || process.env.DATABASE_URL!,
@@ -78,10 +115,25 @@ async function main(): Promise<void> {
       billNumber: true,
       plankNumbers: true,
       alignedPosition: true,
+      classificationSource: true,
+      classificationConfidence: true,
       positions: { select: { legislatorId: true, position: true } },
     },
   });
   console.log(`[compute-v17] ${scorableVotes.length} scorable plank-relevant votes loaded`);
+
+  // Apply the roll-call trust gate (see ROLL_CALL_TRUST_GATE above). Untrusted
+  // rows are dropped from the scoring universe entirely — they contribute to
+  // neither numerator nor denominator. Marker slots are added later and are
+  // never gated.
+  const trustedVotes = scorableVotes.filter((v) =>
+    isTrustworthyClassification(v.classificationSource, v.classificationConfidence),
+  );
+  console.log(
+    `[compute-v17] trust gate: ${ROLL_CALL_TRUST_GATE ? 'ON' : 'OFF'} ` +
+      `(reviewed OR conf>=${TRUSTWORTHY_CONFIDENCE_FLOOR}) — ` +
+      `${trustedVotes.length}/${scorableVotes.length} roll-call votes pass`,
+  );
 
   // 2. Reduce votes → per-bill: unique (chamber, billType, billNumber) → {
   //    plankSet, alignedPosition (most common), legislators_who_voted_aligned: Set<legId>
@@ -96,7 +148,7 @@ async function main(): Promise<void> {
     legsAligned: Set<string>;
   }
   const bills = new Map<string, BillState>();
-  for (const v of scorableVotes) {
+  for (const v of trustedVotes) {
     if (!v.billType || !v.billNumber || !v.alignedPosition) continue;
     const key = `${v.chamber}|${v.billType}|${v.billNumber}`;
     let bill = bills.get(key);
@@ -170,6 +222,7 @@ async function main(): Promise<void> {
   const markers = await prisma.marker.findMany({
     include: {
       plank: { select: { number: true, jurisdiction: true } },
+      // popularSupport pulled in for the popular-support-floor gate below.
       bills: {
         select: {
           id: true,
@@ -207,8 +260,15 @@ async function main(): Promise<void> {
     return m ? m[0] : null;
   }
   const markerSlots: MarkerSlot[] = [];
+  let belowFloorSkipped = 0;
   for (const m of markers) {
     if (m.bills.length === 0) continue; // bill-less markers (PAC) handled elsewhere
+    // Popular-support floor (v1.9.2): markers assessed below the national
+    // support floor are excluded from scoring. Null support still counts.
+    if (!markerMeetsPopularSupportFloor(m)) {
+      belowFloorSkipped += 1;
+      continue;
+    }
     const jur = m.plank.jurisdiction as Jurisdiction;
     const aligned = new Set<string>();
     // Source A: legacy BillSponsorship (curated, partial coverage)
@@ -237,8 +297,8 @@ async function main(): Promise<void> {
   }
   console.log(
     `[compute-v17] ${markerSlots.length} marker scoring slots loaded (${
-      markers.length - markerSlots.length
-    } bill-less markers skipped)`,
+      markers.length - markerSlots.length - belowFloorSkipped
+    } bill-less markers skipped, ${belowFloorSkipped} below popular-support floor of ${POPULAR_SUPPORT_FLOOR}%)`,
   );
 
   // 5. For each (leg, plank): count aligned_bills / total_bills.

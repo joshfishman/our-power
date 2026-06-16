@@ -27,6 +27,40 @@
 
 export const METHODOLOGY_VERSION = 'v1.9.1';
 
+/**
+ * Popular-support floor (methodology v1.9.2).
+ *
+ * A marker is only used to score legislators if the policy it captures has
+ * broad national support. We exclude any marker whose assessed national
+ * public-opinion support is below this percentage — Common Ground holds
+ * legislators accountable to commitments the public broadly shares, not to
+ * narrowly-supported positions.
+ *
+ * 55 = simple majority plus a margin, sourced from curated public-opinion
+ * polling stored per-marker (Marker.popularSupport + Marker.popularSupportPoll,
+ * populated by scripts/seed-marker-support.ts).
+ */
+export const POPULAR_SUPPORT_FLOOR = 55;
+
+/**
+ * Pure predicate: does this marker meet the popular-support floor and therefore
+ * count toward scoring?
+ *
+ * Rules:
+ *   - popularSupport == null  → PASS. The marker has not been assessed yet, so
+ *     we must not drop it (otherwise every marker disappears before the curated
+ *     poll data lands).
+ *   - popularSupport <  FLOOR → FAIL. Assessed and below the floor → excluded.
+ *   - popularSupport >= FLOOR → PASS.
+ *
+ * Kept Prisma-free (takes a plain shape) so it is trivially unit-testable and
+ * usable from both the scoring engine and the compute scripts.
+ */
+export function markerMeetsPopularSupportFloor(marker: { popularSupport: number | null }): boolean {
+  if (marker.popularSupport == null) return true;
+  return marker.popularSupport >= POPULAR_SUPPORT_FLOOR;
+}
+
 export type MarkerTypeForScoring = 'PRIMARY' | 'SECONDARY';
 export type AchievementStatus = 'ACTED_FOR' | 'ACTED_AGAINST' | 'NO_RECORD';
 

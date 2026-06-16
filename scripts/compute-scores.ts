@@ -23,6 +23,7 @@ import { PrismaClient } from '../src/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import {
   METHODOLOGY_VERSION,
+  markerMeetsPopularSupportFloor,
   pacScoreFromRatio,
   scoreLegislator,
   type ScoringPlank,
@@ -223,7 +224,11 @@ async function main(): Promise<void> {
     list.push({
       id: p.id,
       number: p.number,
-      markers: p.markers.map((m) => ({ id: m.id, markerType: m.markerType as 'PRIMARY' | 'SECONDARY' })),
+      // Popular-support floor (v1.9.2): drop markers assessed below the
+      // national support floor. Markers with null popularSupport still count.
+      markers: p.markers
+        .filter((m) => markerMeetsPopularSupportFloor(m))
+        .map((m) => ({ id: m.id, markerType: m.markerType as 'PRIMARY' | 'SECONDARY' })),
     });
     planksByJurisdiction.set(key, list);
   }

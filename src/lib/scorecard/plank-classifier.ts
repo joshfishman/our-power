@@ -39,7 +39,22 @@ export interface Classification {
   confidence: number; // 0.0-1.0
   reasoning: string;
   needsReview: boolean; // true when confidence < 0.9 or rule-based hit ambiguity
+  // True when the aligned DIRECTION came from the party-sponsor heuristic
+  // (D→YES / R→NO) rather than a content signal. Direction-by-party is a
+  // coin-flip on bipartisan / Option-C / messaging bills, so callers and the
+  // scoring gate should treat these rows as low-trust until human review.
+  // The direction VALUE is still returned (so the row stays scorable in the
+  // legacy path) but confidence is capped — see DIRECTION_HEURISTIC_CONF_CAP.
+  directionFromHeuristic: boolean;
 }
+
+// When the aligned direction is inferred purely from the sponsor's party
+// (not from any content signal in the title/subjects), we cap confidence at
+// this ceiling so these rows sort below content-derived classifications and
+// fall under the scoring trust gate (TRUSTWORTHY_CONFIDENCE_FLOOR in
+// compute-scores-v1.7.ts, default 0.8). This makes the classifier HONEST
+// about direction uncertainty without changing the direction value itself.
+const DIRECTION_HEURISTIC_CONF_CAP = 0.55;
 
 // Procedural vote questions we exclude from scoring entirely. These don't
 // represent positions on substantive policy.
@@ -190,6 +205,41 @@ const SUBJECT_HINTS: Array<{ pattern: RegExp; plank: PlankNumber; reasoning: str
   },
 ];
 
+// ---------------------------------------------------------------------------
+// OFF-THEME GUARD (fix #2)
+// ---------------------------------------------------------------------------
+// Commemorative / symbolic legislation routinely carries a substantive policy
+// area (e.g. a "Medal of Honor Monument" bill is policy-area "Armed Forces",
+// a national-park renaming is "Public Lands" → P2) and so was being scored as
+// if it were a substantive vote on that plank. These bills take no position on
+// any Common Ground plank. This guard forces plankNumbers=[] (non-scorable)
+// BEFORE any topic rule fires, so naming/medal/monument votes never count.
+//
+// Matches: memorials, monuments, commemorations, building/post-office namings
+// and renamings, medals, commemorative coins, land redesignations, and
+// "National X Day/Week/Month" observances.
+const OFF_THEME_GUARD =
+  /\b(memorial|monument|commemorat\w*|renam\w*|redesignat\w*|medal|commemorative coin)\b|post office|\bNational\b.*\b(Day|Week|Month)\b/i;
+
+function isOffThemeCommemorative(title: string, subjects: string[]): boolean {
+  const haystack = `${title} ${subjects.join(' ')}`;
+  return OFF_THEME_GUARD.test(haystack);
+}
+
+// ---------------------------------------------------------------------------
+// VETERANS REROUTE (fix #1)
+// ---------------------------------------------------------------------------
+// "Armed Forces and National Security" is a single Congress.gov policy area
+// that mixes two distinct Common Ground themes: veterans' CARE/benefits/health
+// (Plank 4 — The Care We Owe) and war-powers / defense-posture / Pentagon
+// accountability (Plank 5 — Peace and Strength). Routing the whole area to P5
+// dumped VA-claims, survivor-benefits, and veteran-employment bills into the
+// wrong plank. These signals split the area by title/subject content.
+const VETERANS_CARE_SIGNAL =
+  /\bveteran|\bVA\b|VA[ .]|GI Bill|survivor|burn pit|\bPACT\b|toxic exposure|veterans? (claim|benefit|health|care)/i;
+const DEFENSE_POSTURE_SIGNAL =
+  /war powers|\bAUMF\b|use of military force|\btroop|Pentagon audit|defense.*audit|arms sale|national defense authorization|\bNDAA\b|nuclear (weapon|posture)|missile defense|military construction/i;
+
 // Vote-question filter — is this a substantive vote we should score on?
 // voteType is accepted but currently not used; reserved for future
 // disambiguation (e.g., "On Final Passage" voteType is always substantive,
@@ -224,23 +274,48 @@ export function classifyVote(input: ClassifyInput): Classification {
       confidence: 0.95,
       reasoning: `Procedural vote: ${input.voteQuestion}`,
       needsReview: false,
+      directionFromHeuristic: false,
     };
+  }
+
+  // 0. Off-theme guard (fix #2) — commemorative / symbolic bills are not
+  //    scorable on any plank. Runs BEFORE topic rules so a "Medal of Honor
+  //    Monument" (Armed Forces area) or a national-park renaming (Public
+  //    Lands → P2) never gets counted as a substantive plank vote.
+  if (isOffThemeCommemorative(input.title, input.subjects)) {
+    return {
+      plankNumbers: [],
+      alignedPosition: null,
+      confidence: 0.9,
+      reasoning: 'Off-theme commemorative/symbolic bill (naming/medal/monument/observance) — not plank-relevant',
+      needsReview: false,
+      directionFromHeuristic: false,
+    };
+  }
+
+  // 0b. Veterans reroute (fix #1) — split the "Armed Forces and National
+  //     Security" policy area before the generic policy-area rule routes the
+  //     whole area to P5. Veterans care/benefits/health → P4; genuine
+  //     war-powers / defense-posture / Pentagon-audit bills → P5.
+  if (input.policyArea === 'Armed Forces and National Security') {
+    const haystack = `${input.title} ${input.subjects.join(' ')}`;
+    // Defense-posture signal wins when present (e.g. an NDAA that also
+    // mentions veterans is still a Plank 5 defense-posture vote).
+    if (DEFENSE_POSTURE_SIGNAL.test(haystack)) {
+      return buildSinglePlank(5, input, 0.85, 'Armed Forces → P5 (war-powers / defense-posture / Pentagon)');
+    }
+    if (VETERANS_CARE_SIGNAL.test(haystack)) {
+      return buildSinglePlank(4, input, 0.85, 'Armed Forces → P4 (veterans care / benefits / health) [reroute]');
+    }
+    // No clear signal either way — fall through to the policy-area mapping
+    // (defaults to P5) below.
   }
 
   // 1. Subject-level keyword check — strongest signal
   for (const hint of SUBJECT_HINTS) {
     const haystack = `${input.title} ${input.subjects.join(' ')}`;
     if (hint.pattern.test(haystack)) {
-      const direction = inferAlignedPosition(input.sponsorParty, hint.plank);
-      const dirAdj = confidenceAdjustmentForDirection(input.sponsorParty, hint.plank);
-      const confidence = 0.95 * dirAdj;
-      return {
-        plankNumbers: [hint.plank],
-        alignedPosition: direction,
-        confidence,
-        reasoning: `Subject hint: ${hint.reasoning}${dirAdj < 1 ? ' (direction reduced-confidence)' : ''}`,
-        needsReview: direction === null || confidence < 0.8,
-      };
+      return buildSinglePlank(hint.plank, input, 0.95, `Subject hint: ${hint.reasoning}`);
     }
   }
 
@@ -253,6 +328,7 @@ export function classifyVote(input: ClassifyInput): Classification {
       confidence: 0.3,
       reasoning: 'No policy area on bill — cannot classify without LLM',
       needsReview: true,
+      directionFromHeuristic: false,
     };
   }
   const mapping = POLICY_AREA_TO_PLANKS[area];
@@ -263,6 +339,7 @@ export function classifyVote(input: ClassifyInput): Classification {
       confidence: 0.3,
       reasoning: `Unknown policy area: ${area} — falls through to LLM`,
       needsReview: true,
+      directionFromHeuristic: false,
     };
   }
   if (mapping.planks.length === 0) {
@@ -272,21 +349,16 @@ export function classifyVote(input: ClassifyInput): Classification {
       confidence: mapping.confidence,
       reasoning: `Policy area "${area}" doesn't map to any plank${mapping.note ? ` (${mapping.note})` : ''}`,
       needsReview: mapping.confidence < 0.9,
+      directionFromHeuristic: false,
     };
   }
   if (mapping.planks.length === 1) {
-    const direction = inferAlignedPosition(input.sponsorParty, mapping.planks[0]);
-    const dirAdj = confidenceAdjustmentForDirection(input.sponsorParty, mapping.planks[0]);
-    const confidence = mapping.confidence * dirAdj;
-    return {
-      plankNumbers: [mapping.planks[0]],
-      alignedPosition: direction,
-      confidence,
-      reasoning: `Policy area "${area}" → P${mapping.planks[0]}${mapping.note ? ` (${mapping.note})` : ''}${
-        dirAdj < 1 ? ' (direction reduced-confidence)' : ''
-      }`,
-      needsReview: direction === null || confidence < 0.8,
-    };
+    return buildSinglePlank(
+      mapping.planks[0],
+      input,
+      mapping.confidence,
+      `Policy area "${area}" → P${mapping.planks[0]}${mapping.note ? ` (${mapping.note})` : ''}`,
+    );
   }
   // Multi-plank: flag for LLM
   return {
@@ -297,6 +369,51 @@ export function classifyVote(input: ClassifyInput): Classification {
       .map((p) => `P${p}`)
       .join(', ')}) — needs LLM disambiguation`,
     needsReview: true,
+    directionFromHeuristic: false,
+  };
+}
+
+// Build a single-plank classification, applying the aligned-direction
+// heuristic and the direction-uncertainty confidence floor (fix #3).
+//
+// IMPORTANT: today the ONLY source of aligned direction is the party-sponsor
+// heuristic (inferAlignedPosition). There is no content-derived direction
+// signal in the rule engine — that requires the LLM/human pass. So whenever a
+// direction is assigned here it is heuristic-derived: we set
+// directionFromHeuristic=true, CAP confidence at DIRECTION_HEURISTIC_CONF_CAP,
+// and force needsReview=true. The direction VALUE itself is left untouched
+// (the task explicitly forbids changing it) — we only make the classifier
+// honest about how shaky that value is, so the scoring gate can exclude these
+// rows until a human verifies them. When sponsorParty is unknown/Independent
+// the direction is null (already non-scorable) and no cap applies.
+function buildSinglePlank(
+  plank: PlankNumber,
+  input: ClassifyInput,
+  baseConfidence: number,
+  reasoning: string,
+): Classification {
+  const direction = inferAlignedPosition(input.sponsorParty, plank);
+  if (direction === null) {
+    // No usable direction (unknown / Independent sponsor) — not scorable,
+    // flag for review. Topic plank is still recorded for the review UI.
+    return {
+      plankNumbers: [plank],
+      alignedPosition: null,
+      confidence: Math.min(baseConfidence, 0.5),
+      reasoning: `${reasoning} — direction unknown (sponsor party ${input.sponsorParty ?? 'null'}), needs review`,
+      needsReview: true,
+      directionFromHeuristic: false,
+    };
+  }
+  // Direction came from the party heuristic → cap confidence + flag.
+  const confidence = Math.min(baseConfidence, DIRECTION_HEURISTIC_CONF_CAP);
+  return {
+    plankNumbers: [plank],
+    alignedPosition: direction,
+    confidence,
+    reasoning: `${reasoning} — direction=${direction} from party-sponsor heuristic (low trust; capped at ${DIRECTION_HEURISTIC_CONF_CAP}, needs review)`,
+    needsReview: true,
+    directionFromHeuristic: true,
   };
 }
 
@@ -305,30 +422,15 @@ export function classifyVote(input: ClassifyInput): Classification {
 // Default heuristic for ALL planks: D-sponsored bills aligned=YES (the
 // Common Ground platform leans toward Democratic-led legislation on the
 // 5 planks); R-sponsored bills aligned=NO (R bills generally cut against
-// platform direction). This gets the direction right on the majority of
-// floor votes — and accepting it with reduced CONFIDENCE on edge cases
-// (P1 bipartisan ethics; P3/P4 Option C R-alternatives) means the
-// scoring still works while flagging those rows for human review in
-// the admin queue.
-//
-// Confidence adjustments:
-//   - P1 + R-sponsor: confidence multiplier 0.6 (often bipartisan)
-//   - P3/P4 + R-sponsor: confidence multiplier 0.6 (Option C possible)
-//   - Otherwise: full confidence from policy-area mapping
+// platform direction). This is correct on the majority of straight
+// party-line floor votes but a COIN FLIP on bipartisan good-government
+// bills, Option-C R-alternatives, and messaging votes — which is exactly
+// why buildSinglePlank now caps confidence and flags these for review
+// rather than trusting the value.
 // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
 function inferAlignedPosition(sponsorParty: string | null, _plank: PlankNumber): AlignedPosition {
   if (!sponsorParty || sponsorParty === 'I') return null;
   // D-sponsored → platform-aligned = YES (vote yes on the bill = aligned)
   // R-sponsored → platform-aligned = NO  (vote no on the bill = aligned)
   return sponsorParty === 'D' ? 'YES' : 'NO';
-}
-
-// Confidence adjustment for ambiguous (plank, sponsorParty) combos —
-// these are correct on average but may misfire on specific bills, so we
-// tag them lower-confidence and flag for review.
-function confidenceAdjustmentForDirection(sponsorParty: string | null, plank: PlankNumber): number {
-  if (!sponsorParty) return 0.7; // unknown sponsor → reduce confidence
-  if (plank === 1 && sponsorParty === 'R') return 0.7; // bipartisan ethics possible
-  if ((plank === 3 || plank === 4) && sponsorParty === 'R') return 0.7; // Option C possible
-  return 1.0;
 }

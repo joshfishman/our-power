@@ -10,6 +10,7 @@ import {
   getPacScoresByLegislator,
   getPacScoresByLegislatorV171,
   computeTwoScoreAverage,
+  VOTING_RECORD_PUBLISHED,
 } from '@/lib/scorecard/queries';
 import { METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
 import { LegislatorAvatar } from '@/components/scorecard/LegislatorAvatar';
@@ -110,15 +111,27 @@ export default async function ScorecardIndexPage(props: { searchParams: Promise<
       <header className="border-b-2 border-border pb-4">
         <p className="font-mono text-xs uppercase tracking-widest text-subtle-foreground">The Scorecard</p>
         <h1 className="mt-1 font-serif text-4xl font-bold text-foreground">We the People</h1>
-        <p className="mt-2 max-w-2xl text-base text-muted-foreground">
-          Two scores per legislator, each 0&ndash;100%: <strong>PAC</strong> measures freedom from corporate-PAC money,{' '}
-          <strong>Voting</strong> measures alignment across every plank-relevant bill in this Congress (vote +
-          cosponsorship). The <strong>Average</strong> of the two is the headline number. Same rubric for everyone,
-          every score backed by a public source.{' '}
-          <Link href="/scorecard/methodology" className="underline hover:text-accent">
-            Read the full methodology →
-          </Link>
-        </p>
+        {VOTING_RECORD_PUBLISHED ? (
+          <p className="mt-2 max-w-2xl text-base text-muted-foreground">
+            Two scores per legislator, each 0&ndash;100%: <strong>PAC</strong> measures freedom from corporate-PAC
+            money, <strong>Voting</strong> measures alignment across every plank-relevant bill in this Congress (vote +
+            cosponsorship). The <strong>Average</strong> of the two is the headline number. Same rubric for everyone,
+            every score backed by a public source.{' '}
+            <Link href="/scorecard/methodology" className="underline hover:text-accent">
+              Read the full methodology →
+            </Link>
+          </p>
+        ) : (
+          <p className="mt-2 max-w-2xl text-base text-muted-foreground">
+            The headline is the <strong>PAC Score</strong> (0&ndash;100%): freedom from corporate-PAC money, drawn
+            directly from public FEC and Cal-Access filings. The <strong>Voting Record</strong> is being re-verified
+            against source roll-call and cosponsorship records and is temporarily unpublished. Same rubric for everyone,
+            every published score backed by a public source.{' '}
+            <Link href="/scorecard/methodology" className="underline hover:text-accent">
+              Read the full methodology →
+            </Link>
+          </p>
+        )}
       </header>
 
       <nav className="mt-6 flex flex-wrap items-center gap-2 text-sm">
@@ -233,19 +246,26 @@ export default async function ScorecardIndexPage(props: { searchParams: Promise<
             // v1.7 alignment percentages (already 0-100). PAC Score is the
             // (1 − combined_corp_ratio) × 100 from the legislator's
             // most-recent PacMoneyData row. Average is the simple mean.
-            const votingScore = computePublishedTotal(leg.scores);
+            //
+            // When the Voting Record is held (VOTING_RECORD_PUBLISHED === false),
+            // we do not surface a voting number or a PAC+Voting average — the
+            // headline is the PAC Score alone and the ranking sorts on it.
             const pacScore = pacScoresById.get(leg.id) ?? null;
-            const avg = computeTwoScoreAverage(pacScore, votingScore);
-            return { leg, votingScore, pacScore, avg };
+            const votingScore = VOTING_RECORD_PUBLISHED ? computePublishedTotal(leg.scores) : null;
+            const avg = VOTING_RECORD_PUBLISHED ? computeTwoScoreAverage(pacScore, votingScore) : null;
+            // Value the ranking sorts on: the Average when voting is published,
+            // the PAC Score alone while it is held.
+            const rankValue = VOTING_RECORD_PUBLISHED ? avg : pacScore;
+            return { leg, votingScore, pacScore, avg, rankValue };
           })
           .sort((a, b) => {
-            // Pending (null) averages always fall to the bottom regardless of
+            // Pending (null) values always fall to the bottom regardless of
             // toggle direction — we want "scored" content first either way.
-            const aHas = a.avg !== null;
-            const bHas = b.avg !== null;
+            const aHas = a.rankValue !== null;
+            const bHas = b.rankValue !== null;
             if (aHas !== bHas) return aHas ? -1 : 1;
-            if (a.avg === null || b.avg === null) return 0;
-            const cmp = sortOrder === 'best' ? b.avg - a.avg : a.avg - b.avg;
+            if (a.rankValue === null || b.rankValue === null) return 0;
+            const cmp = sortOrder === 'best' ? b.rankValue - a.rankValue : a.rankValue - b.rankValue;
             if (cmp !== 0) return cmp;
             return a.leg.lastName.localeCompare(b.leg.lastName);
           })
@@ -271,9 +291,12 @@ export default async function ScorecardIndexPage(props: { searchParams: Promise<
                   </div>
                 </Link>
                 <div className="ml-4 flex shrink-0 items-center gap-3 text-right">
-                  <ScoreCell label="PAC" value={pacScore} />
-                  <ScoreCell label="Voting" value={votingScore} />
-                  <ScoreCell label="Avg" value={avg} large />
+                  <ScoreCell label="PAC" value={pacScore} large={!VOTING_RECORD_PUBLISHED} />
+                  {/* When the Voting Record is held, the Voting + Average columns
+                      render a muted "Under revision" label instead of a held
+                      number. Flip VOTING_RECORD_PUBLISHED to restore the values. */}
+                  <ScoreCell label="Voting" value={votingScore} underRevision={!VOTING_RECORD_PUBLISHED} />
+                  {VOTING_RECORD_PUBLISHED && <ScoreCell label="Avg" value={avg} large />}
                 </div>
               </li>
             );
@@ -316,10 +339,14 @@ function ScoreCell({
   label,
   value: rawValue,
   large = false,
+  underRevision = false,
 }: {
   label: string;
   value: number | null;
   large?: boolean;
+  // When true, the cell shows a muted "Under revision" label instead of a
+  // number — used for the Voting column while VOTING_RECORD_PUBLISHED is held.
+  underRevision?: boolean;
 }) {
   // v1.8.6 — clamp the displayed score to ≥0 so the index never reads as
   // "Voting −2%" or "Plank 1 −1%". The raw stored RepresentativeScore is
@@ -328,6 +355,14 @@ function ScoreCell({
   // Each cell is a labeled column: tiny uppercase label on top, big % below.
   // `large` flag makes the Average cell a step bigger so the eye lands on it.
   const sizeClass = large ? 'text-3xl' : 'text-xl';
+  if (underRevision) {
+    return (
+      <div className="w-20">
+        <p className="font-mono text-[9px] uppercase tracking-wide text-subtle-foreground">{label}</p>
+        <p className="font-mono text-[10px] italic leading-tight text-subtle-foreground">Under revision</p>
+      </div>
+    );
+  }
   if (value === null) {
     return (
       <div className="w-14">
