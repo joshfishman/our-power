@@ -51,6 +51,7 @@
     "scorecard:classify-rollcalls": "npx tsx ./scripts/classify-roll-call-votes.ts",
     "scorecard:compute-v16": "npx tsx ./scripts/compute-scores-v1.6.ts",
     "scorecard:classify-llm": "npx tsx ./scripts/classify-with-llm.ts",
+    "scorecard:classify-committees-llm": "npx tsx ./scripts/classify-committees-with-llm.ts",
     "scorecard:ingest-senate": "npx tsx ./scripts/ingest-senate-rollcalls.ts",
     "scorecard:ingest-ca-rollcalls": "npx tsx ./scripts/ingest-ca-rollcalls.ts",
     "scorecard:ingest-ca-bulk": "npx tsx ./scripts/ingest-ca-bulk-rollcalls.ts",
