@@ -78,7 +78,12 @@ export default async function ScorecardAdminQueuePage({ searchParams }: { search
         <h1 className="mt-1 font-serif text-3xl font-bold text-foreground">Classification review queue</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Roll-call votes whose plank classification is below 0.8 confidence (or not scorable yet). Approve or edit each
-          to lock in the right classification. Reviewed rows feed into the next compute pass.
+          to lock in the right classification. Reviewed rows feed into the next compute pass. For a bill-level view that
+          batches every roll-call row of a bill at once, use{' '}
+          <Link href="/admin/scorecard/classify" className="text-foreground underline">
+            bill classification review
+          </Link>
+          .
         </p>
       </header>
 
