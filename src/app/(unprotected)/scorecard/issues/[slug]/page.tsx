@@ -6,6 +6,7 @@ import {
   getPlankBySlug,
   getPlankScoresByLegislator,
   parseJurisdictionParam,
+  VOTING_RECORD_PUBLISHED,
   type PlankLegislatorScoreRow,
 } from '@/lib/scorecard/queries';
 import { getArticlesForPlank } from '@/lib/scorecard/articles';
@@ -173,29 +174,43 @@ export default async function IssueScorecardPage(props: Props) {
 
       <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
-          {scoredCount} of {rows.length} {jurisdiction === 'FEDERAL' ? 'federal' : 'California'} legislators scored on
-          this plank.
+          {VOTING_RECORD_PUBLISHED ? (
+            <>
+              {scoredCount} of {rows.length} {jurisdiction === 'FEDERAL' ? 'federal' : 'California'} legislators scored
+              on this plank.
+            </>
+          ) : (
+            <>
+              {rows.length} {jurisdiction === 'FEDERAL' ? 'federal' : 'California'} legislators tracked on this plank.
+              Per-legislator voting alignment is under revision and temporarily unpublished.
+            </>
+          )}
         </p>
-        <div className="inline-flex rounded-md border border-border bg-surface p-1">
-          <Link
-            href={buildHref({ sort: undefined })}
-            className={
-              sortOrder === 'best'
-                ? 'rounded bg-accent px-3 py-1 font-mono text-xs uppercase tracking-wide text-accent-foreground'
-                : 'rounded border border-border px-3 py-1 font-mono text-xs uppercase tracking-wide text-foreground shadow-sm hover:bg-surface-elevated'
-            }>
-            Best first
-          </Link>
-          <Link
-            href={buildHref({ sort: 'worst' })}
-            className={
-              sortOrder === 'worst'
-                ? 'rounded bg-accent px-3 py-1 font-mono text-xs uppercase tracking-wide text-accent-foreground'
-                : 'rounded border border-border px-3 py-1 font-mono text-xs uppercase tracking-wide text-foreground shadow-sm hover:bg-surface-elevated'
-            }>
-            Worst first
-          </Link>
-        </div>
+        {/* Best/worst sort is keyed on the voting alignment %, which is hidden
+            while the Voting Record is held — so the controls only appear once
+            VOTING_RECORD_PUBLISHED is flipped back on. */}
+        {VOTING_RECORD_PUBLISHED && (
+          <div className="inline-flex rounded-md border border-border bg-surface p-1">
+            <Link
+              href={buildHref({ sort: undefined })}
+              className={
+                sortOrder === 'best'
+                  ? 'rounded bg-accent px-3 py-1 font-mono text-xs uppercase tracking-wide text-accent-foreground'
+                  : 'rounded border border-border px-3 py-1 font-mono text-xs uppercase tracking-wide text-foreground shadow-sm hover:bg-surface-elevated'
+              }>
+              Best first
+            </Link>
+            <Link
+              href={buildHref({ sort: 'worst' })}
+              className={
+                sortOrder === 'worst'
+                  ? 'rounded bg-accent px-3 py-1 font-mono text-xs uppercase tracking-wide text-accent-foreground'
+                  : 'rounded border border-border px-3 py-1 font-mono text-xs uppercase tracking-wide text-foreground shadow-sm hover:bg-surface-elevated'
+              }>
+              Worst first
+            </Link>
+          </div>
+        )}
       </div>
 
       {ranked.length === 0 ? (
@@ -247,7 +262,7 @@ function LegislatorRow({ row, jurisdiction }: { row: PlankLegislatorScoreRow; ju
         </div>
       </Link>
       <div className="ml-4 flex shrink-0 items-center gap-3 text-right">
-        <ScoreCell label="This plank" value={row.score} large />
+        <ScoreCell label="This plank" value={row.score} large underRevision={!VOTING_RECORD_PUBLISHED} />
       </div>
     </li>
   );
@@ -263,12 +278,26 @@ function colorClassFor(percent: number): string {
   return 'text-score-1';
 }
 
-function ScoreCell({ label, value, large = false }: { label: string; value: number | null; large?: boolean }) {
+function ScoreCell({
+  label,
+  value,
+  large = false,
+  underRevision = false,
+}: {
+  label: string;
+  value: number | null;
+  large?: boolean;
+  // When true, render a muted "Under revision" label instead of the plank
+  // alignment % — used while VOTING_RECORD_PUBLISHED is held.
+  underRevision?: boolean;
+}) {
   const sizeClass = large ? 'text-3xl' : 'text-xl';
   return (
-    <div className="w-20">
+    <div className="w-24">
       <p className="font-mono text-[9px] uppercase tracking-wide text-subtle-foreground">{label}</p>
-      {value === null ? (
+      {underRevision ? (
+        <p className="font-mono text-[10px] italic leading-tight text-subtle-foreground">Under revision</p>
+      ) : value === null ? (
         <p className={`font-serif font-bold tabular-nums text-subtle-foreground ${sizeClass}`}>—</p>
       ) : (
         <p className={`font-serif font-bold tabular-nums ${colorClassFor(value)} ${sizeClass}`}>{value}%</p>

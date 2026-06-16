@@ -18,6 +18,7 @@ import {
   getLegislatorPacInfluence20222024,
   getLegislatorDimeProfile,
   getOutsideMoneyForLegislator,
+  VOTING_RECORD_PUBLISHED,
 } from '@/lib/scorecard/queries';
 import type {
   BillBreakdownRow,
@@ -75,7 +76,12 @@ export default async function LegislatorScorecardPage(props: Props) {
   // breakdown both come out of getLegislatorMoneyTrail.
   // For CA legislators we don't have PacContribution data — fall back to the
   // legacy v1.7 PAC score from PacMoneyData.
-  const votingScore = computePublishedTotal(legislator.scores);
+  // When the Voting Record is held (VOTING_RECORD_PUBLISHED === false), the
+  // per-plank voting alignment is not published: votingScore stays null, the
+  // headline is the PAC Score alone, and the Voting + Average tiles render an
+  // "Under revision" state. Flipping the flag to true restores the full
+  // two-score average.
+  const votingScore = VOTING_RECORD_PUBLISHED ? computePublishedTotal(legislator.scores) : null;
   const [
     moneyTrail,
     topDonors,
@@ -124,7 +130,14 @@ export default async function LegislatorScorecardPage(props: Props) {
   // different PAC score than the index page (and a "no data" guard that
   // wasn't actually no-data on the detail surface).
   const pacScore = jurisdiction === 'FEDERAL' ? moneyTrail?.pacScore ?? null : legacyPacScore;
+  // While the Voting Record is held, votingScore is null, so this collapses to
+  // the PAC Score alone — the published headline. When the flag is flipped on,
+  // it returns to the simple mean of PAC + Voting.
   const avgScore = computeTwoScoreAverage(pacScore, votingScore);
+  // The headline "pending" guard should only fire when there is genuinely no
+  // published number to show. While voting is held the headline is the PAC
+  // Score, so we treat a present PAC Score as "not pending" regardless.
+  const headlinePending = VOTING_RECORD_PUBLISHED ? avgScore === null : pacScore === null;
   const chamberLabel =
     jurisdiction === 'FEDERAL' ? CHAMBER_LABEL_FEDERAL[legislator.chamber] : CHAMBER_LABEL_STATE[legislator.chamber];
 
@@ -183,7 +196,7 @@ export default async function LegislatorScorecardPage(props: Props) {
           </p>
         </div>
         <div className="text-right">
-          {avgScore === null ? (
+          {headlinePending ? (
             <div>
               <p className="font-mono text-xs uppercase tracking-widest text-subtle-foreground">Score pending</p>
               <p className="mt-1 text-sm text-muted-foreground">Methodology {METHODOLOGY_VERSION} — no data yet</p>
@@ -199,7 +212,7 @@ export default async function LegislatorScorecardPage(props: Props) {
         </div>
       </header>
 
-      {avgScore === null && (
+      {headlinePending && (
         <div className="mt-6 rounded border border-warning bg-warning/15 px-4 py-3 text-sm text-warning-foreground">
           <p className="font-semibold">Scoring is in development.</p>
           <p className="mt-1">
@@ -207,6 +220,22 @@ export default async function LegislatorScorecardPage(props: Props) {
             and PAC-money data has not yet been verified for{' '}
             {jurisdiction === 'FEDERAL' ? 'the 119th Congress' : 'the 2025-2026 California session'}, so no score is
             published. Markers below show the structure that will be scored.
+          </p>
+        </div>
+      )}
+
+      {/* While the Voting Record is held, a brief factual note explains why the
+          Voting Record + Average read "Under revision." Flipping
+          VOTING_RECORD_PUBLISHED to true removes this note and restores the
+          published voting numbers. */}
+      {!VOTING_RECORD_PUBLISHED && !headlinePending && (
+        <div className="mt-6 rounded border border-border bg-secondary px-4 py-3 text-sm text-foreground">
+          <p className="font-semibold">Voting Record under revision.</p>
+          <p className="mt-1 text-muted-foreground">
+            The Voting Record is being re-verified against source roll-call and cosponsorship records and is temporarily
+            unpublished, so the headline shown here is the PAC Score alone. The PAC Score is drawn directly from public
+            FEC and Cal-Access filings and is unaffected. Bill-by-bill detail below remains visible for the public
+            record.
           </p>
         </div>
       )}
@@ -250,7 +279,12 @@ export default async function LegislatorScorecardPage(props: Props) {
                 <span
                   className={isLowCoverage ? 'opacity-50' : ''}
                   title={isLowCoverage ? 'Score is based on limited data — see coverage note below' : undefined}>
-                  {plankScore ? (
+                  {/* The per-plank number is the voting alignment %. While the
+                      Voting Record is held it reads "Under revision"; the
+                      bill-by-bill breakdown below stays visible. */}
+                  {!VOTING_RECORD_PUBLISHED ? (
+                    <span className="font-mono text-xs italic text-subtle-foreground">Under revision</span>
+                  ) : plankScore ? (
                     <ScoreNumber value={plankScore.score} size="plank" />
                   ) : (
                     <span className="font-serif text-2xl font-bold text-subtle-foreground">—</span>
@@ -377,9 +411,23 @@ function HeroTwoScore({
 }: {
   pacScore: number | null;
   votingScore: number | null;
-  avgScore: number;
+  // Nullable because the held-Voting branch below renders the PAC Score as the
+  // headline and never reads avgScore. When voting is published the caller only
+  // mounts this component once a non-null average exists.
+  avgScore: number | null;
   planksCount: number;
 }) {
+  // While the Voting Record is held, the PAC Score IS the headline — render it
+  // large and show the Voting tile as "Under revision" with no Average tile.
+  // Flip VOTING_RECORD_PUBLISHED to restore the three-tile PAC / Voting / Avg.
+  if (!VOTING_RECORD_PUBLISHED) {
+    return (
+      <div className="flex items-end justify-end gap-3">
+        <HeroCell label="PAC" value={pacScore} large />
+        <HeroCell label="Voting" value={null} underRevision />
+      </div>
+    );
+  }
   return (
     <div className="flex items-end justify-end gap-3">
       <HeroCell label="PAC" value={pacScore} />
@@ -394,12 +442,24 @@ function HeroCell({
   value: rawValue,
   large = false,
   subline,
+  underRevision = false,
 }: {
   label: string;
   value: number | null;
   large?: boolean;
   subline?: string;
+  // When true, render a muted "Under revision" label instead of a percentage —
+  // used for the Voting tile while VOTING_RECORD_PUBLISHED is held.
+  underRevision?: boolean;
 }) {
+  if (underRevision) {
+    return (
+      <div className={large ? 'min-w-[6rem]' : 'min-w-[4rem]'}>
+        <p className="font-mono text-[10px] uppercase tracking-widest text-subtle-foreground">{label}</p>
+        <p className="mt-1 font-mono text-[11px] italic leading-tight text-subtle-foreground">Under revision</p>
+      </div>
+    );
+  }
   // v1.8.6 — clamp the displayed value to ≥0 so the hero tiles never read as
   // a "−2% Voting" (a few legislators have plank-level scores that arithmetic
   // out below zero in edge cases). The raw stored score is untouched; this is

@@ -116,6 +116,29 @@ export const VOTING_DISPLAY_METHODOLOGY = 'v1.7';
 // scored on thin 2–3 bill planks. Bump to 3 or 4 once that re-ingest lands.
 export const MIN_ELIGIBLE_BILLS_FLOOR = 2;
 
+// ─── Voting Record publication kill-switch ──────────────────────────────────
+//
+// SINGLE source of truth for whether the public scorecard PUBLISHES the Voting
+// Record (the per-plank alignment %, the legislator's Voting Record mean) and
+// the PAC+Voting headline Average.
+//
+// WHY held: the Voting Record rests on auto-classified bills whose
+// aligned-direction is not yet human-verified, so we are temporarily NOT
+// publishing voting scores. The PAC Score (computed read-time from
+// PacMoneyData / PacContribution against public FEC / Cal-Access filings) IS
+// trustworthy and stays live. Once classification-review coverage is
+// sufficient, flip this back to `true` to restore the full two-score display.
+//
+// While `false`:
+//   - public index, legislator detail, and issue pages show the PAC Score as
+//     the headline and render the Voting Record + Average as an "Under
+//     revision" state (no held numbers shown);
+//   - the public API still returns the voting data but flags it
+//     `votingPublished: false` / `votingStatus: 'under-revision'`.
+// Flipping this to `true` is the ONLY change needed to re-enable everything —
+// every public surface branches on this constant.
+export const VOTING_RECORD_PUBLISHED = false;
+
 /**
  * v1.9.3 — true when a v1.7 plank score rests on enough eligible bills to be
  * displayed. Eligible-bill count = forCount + againstCount (see the constant

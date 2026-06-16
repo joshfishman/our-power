@@ -10,6 +10,7 @@ import {
   computePublishedTotal,
   getGhostBeneficiariesForSeat,
   VOTING_DISPLAY_METHODOLOGY,
+  VOTING_RECORD_PUBLISHED,
 } from '@/lib/scorecard/queries';
 
 type Props = { params: Promise<{ seat: string }> };
@@ -123,7 +124,10 @@ export default async function RaceScorecardPage(props: Props) {
         topIndustry: top ? { label: top.label, pct: top.pctOfClassified } : null,
         dimeScore: dime?.contributorCfscore ?? null,
         smallDollarPct: dime?.smallDollarPct ?? null,
-        votingScore: c.isActive ? computePublishedTotal(c.scores) : null,
+        // Voting Record held: votingScore stays null and the tile reads "Under
+        // revision". Flip VOTING_RECORD_PUBLISHED to restore per-candidate
+        // voting alignment for sitting members.
+        votingScore: VOTING_RECORD_PUBLISHED && c.isActive ? computePublishedTotal(c.scores) : null,
       };
     }),
   );
@@ -217,8 +221,18 @@ export default async function RaceScorecardPage(props: Props) {
                       <Stat label="PAC Score" value={p.pacScore !== null ? `${p.pacScore}%` : '—'} />
                       <Stat
                         label="Voting"
-                        value={p.votingScore !== null ? `${p.votingScore}%` : c.isActive ? '—' : 'no record'}
-                        hint={c.isActive ? undefined : 'not sitting'}
+                        value={
+                          !VOTING_RECORD_PUBLISHED
+                            ? 'Under revision'
+                            : p.votingScore !== null
+                            ? `${p.votingScore}%`
+                            : c.isActive
+                            ? '—'
+                            : 'no record'
+                        }
+                        hint={
+                          !VOTING_RECORD_PUBLISHED ? 'temporarily unpublished' : c.isActive ? undefined : 'not sitting'
+                        }
                       />
                       <Stat
                         label="Top donor industry"
