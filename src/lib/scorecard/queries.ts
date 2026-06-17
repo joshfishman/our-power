@@ -139,6 +139,88 @@ export const MIN_ELIGIBLE_BILLS_FLOOR = 2;
 // every public surface branches on this constant.
 export const VOTING_RECORD_PUBLISHED = false;
 
+// ─── 2026 candidate viability filter (the "no-chance" filter) ────────────────
+//
+// The FEC candidate file (cn26.txt) contains thousands of statutory filers per
+// cycle — most of whom have no campaign, raise no money, and stand no chance of
+// appearing on a competitive ballot. Listing every one of them buries the
+// candidates a voter actually has to choose between. This filter keeps the
+// public race pages honest and useful: same rubric for everyone who is actually
+// running, no padding the field with paper candidates.
+//
+// A 2026 candidate is VIABLE iff EITHER:
+//   (a) they are a sitting incumbent (`isActive === true`) — always shown,
+//       regardless of receipts, because the public is owed an accounting of the
+//       person currently holding the seat; OR
+//   (b) they belong to a major party (Democratic / Republican / Independent —
+//       i.e. Party enum D | R | I) AND have raised at least
+//       VIABILITY_MIN_RECEIPTS dollars this cycle.
+//
+// Everyone else — no receipts, negligible receipts, or a fringe/minor party —
+// is filtered out. The dollar floor is a single tunable constant so the
+// threshold can be retuned without touching call sites.
+//
+// NOTE on graceful degradation: 2026 challenger receipts are still being
+// backfilled (a background FEC job is populating `PacMoneyData.totalReceipts`
+// for cycleYear=2026, dataSource='FEC_DIRECT'). Until a challenger's row lands,
+// their receipts read as null/0 and they will (correctly) fail the dollar floor
+// and be hidden — they surface automatically once their receipts are ingested.
+// Incumbents are never gated on receipts, so they are unaffected by the backfill.
+export const VIABILITY_MIN_RECEIPTS = 50_000;
+
+// Major parties for the viability test. The Party enum is exactly D | R | I, so
+// every stored party qualifies today; this set is kept explicit so that if the
+// schema ever widens to carry minor-party codes, fringe filers are excluded by
+// default rather than silently let through.
+const MAJOR_PARTIES = new Set(['D', 'R', 'I']);
+
+/**
+ * Shape needed to decide viability. Any object carrying these fields works
+ * (a Prisma `Legislator` row, a partial `select`, etc.).
+ */
+export interface ViabilityCandidate {
+  isActive: boolean;
+  party: string;
+  /** This candidate's 2026 receipts (PacMoneyData.totalReceipts). null/0 = unknown/none. */
+  cycleReceipts: number | null;
+}
+
+/**
+ * Pure predicate — true when a 2026 candidate clears the "no-chance" filter.
+ * See `VIABILITY_MIN_RECEIPTS` for the full rationale. Sitting incumbents are
+ * always viable; everyone else must be a major-party candidate with receipts at
+ * or above the floor. Degrades gracefully when receipts are still null/0.
+ */
+export function isViableCandidate(cand: ViabilityCandidate): boolean {
+  if (cand.isActive) return true;
+  if (!MAJOR_PARTIES.has(cand.party)) return false;
+  return (cand.cycleReceipts ?? 0) >= VIABILITY_MIN_RECEIPTS;
+}
+
+/**
+ * Bulk read of current-cycle (2026) FEC receipts for a set of legislators,
+ * keyed by legislatorId. Reads `Legislator.currentCycleReceipts` — populated by
+ * scripts/ingest-2026-receipts.ts from FEC /candidates/totals/. We store it on
+ * Legislator (not PacMoneyData) because challengers have a receipts total but
+ * NOT the itemized corporate-PAC breakdown a real PAC Score needs — so a
+ * PacMoneyData row would falsely imply a 0%-corporate (100%) PAC Score.
+ * Legislators with no figure yet are absent from the map; callers treat a
+ * missing key as null, which the viability filter handles gracefully.
+ */
+export async function getCycleReceiptsByLegislator(legislatorIds: string[]): Promise<Map<string, number>> {
+  if (legislatorIds.length === 0) return new Map();
+  const rows = await prisma.legislator.findMany({
+    where: { id: { in: legislatorIds }, currentCycleReceipts: { not: null } },
+    select: { id: true, currentCycleReceipts: true },
+  });
+  const out = new Map<string, number>();
+  for (const r of rows) {
+    const v = Number(r.currentCycleReceipts);
+    if (Number.isFinite(v)) out.set(r.id, v);
+  }
+  return out;
+}
+
 /**
  * v1.9.3 — true when a v1.7 plank score rests on enough eligible bills to be
  * displayed. Eligible-bill count = forCount + againstCount (see the constant

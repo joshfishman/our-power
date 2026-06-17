@@ -824,6 +824,11 @@ model Legislator {
   // isActive=true. Defeated-prior-cycle challengers stay isActive=false with
   // this null unless they file again. Populated by scripts/ingest-current-candidates.ts.
   currentCandidateCycle Int?
+  // Total FEC receipts for the currentCandidateCycle (whole dollars). Used for
+  // the election-page viability filter + a money-raised figure for challengers,
+  // who lack the itemized corporate-PAC breakdown needed for a real PAC Score.
+  // Populated by scripts/ingest-2026-receipts.ts from FEC /candidates/totals/.
+  currentCycleReceipts  Int?
 
   scores             RepresentativeScore[]
   achievements       MarkerAchievement[]

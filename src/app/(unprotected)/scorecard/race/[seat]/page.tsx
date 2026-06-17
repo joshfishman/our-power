@@ -7,6 +7,8 @@ import {
   getLegislatorMoneyTrail,
   getLegislatorIndividualMoney,
   getLegislatorDimeProfile,
+  getCycleReceiptsByLegislator,
+  isViableCandidate,
   computePublishedTotal,
   getGhostBeneficiariesForSeat,
   VOTING_DISPLAY_METHODOLOGY,
@@ -58,7 +60,7 @@ export default async function RaceScorecardPage(props: Props) {
   if (!seat) notFound();
 
   // All candidates filed for this seat in 2026.
-  const candidates = await prisma.legislator.findMany({
+  const filedCandidates = await prisma.legislator.findMany({
     where: {
       jurisdiction: 'FEDERAL',
       currentCandidateCycle: 2026,
@@ -85,8 +87,24 @@ export default async function RaceScorecardPage(props: Props) {
         select: { score: true, forCount: true, againstCount: true, plank: { select: { number: true, name: true } } },
       },
     },
-    orderBy: [{ party: 'asc' }, { isActive: 'desc' }, { lastName: 'asc' }],
+    // Incumbent first, then by party, then alphabetically.
+    orderBy: [{ isActive: 'desc' }, { party: 'asc' }, { lastName: 'asc' }],
   });
+
+  if (filedCandidates.length === 0) notFound();
+
+  // 2026 cycle receipts (PacMoneyData FEC_DIRECT). Used both for the viability
+  // filter and for the "money raised" figure shown per candidate. The
+  // challenger-receipts backfill is in flight, so a missing row means "unknown"
+  // — the viability filter (incumbents always shown; challengers need the floor)
+  // degrades gracefully, and the money figure renders as "not yet on file."
+  const cycleReceipts = await getCycleReceiptsByLegislator(filedCandidates.map((c) => c.id));
+
+  // Apply the "no-chance" filter: keep sitting incumbents plus major-party
+  // candidates who clear the receipts floor. See isViableCandidate in queries.ts.
+  const candidates = filedCandidates.filter((c) =>
+    isViableCandidate({ isActive: c.isActive, party: c.party, cycleReceipts: cycleReceipts.get(c.id) ?? null }),
+  );
 
   if (candidates.length === 0) notFound();
 
@@ -120,7 +138,10 @@ export default async function RaceScorecardPage(props: Props) {
       const top = indiv?.industryMix[0];
       return {
         pacScore: trail?.pacScore ?? null,
-        totalReceipts: trail?.totalReceipts ?? null,
+        // Money raised this cycle (2026 FEC_DIRECT). Null when the FEC receipts
+        // backfill hasn't reached this candidate yet — render as "not yet on file"
+        // rather than implying $0 raised.
+        totalReceipts: cycleReceipts.get(c.id) ?? null,
         topIndustry: top ? { label: top.label, pct: top.pctOfClassified } : null,
         dimeScore: dime?.contributorCfscore ?? null,
         smallDollarPct: dime?.smallDollarPct ?? null,
@@ -137,7 +158,15 @@ export default async function RaceScorecardPage(props: Props) {
   candidates.forEach((c, i) => {
     (byParty[c.party] ??= []).push({ c, p: profiles[i] });
   });
-  const partyOrder = ['D', 'R', 'I'] as const;
+  // Incumbent first: lead with the sitting member's party group, then the rest
+  // in the usual D · R · I order. (Within each group the candidate sort already
+  // put the incumbent first.)
+  const incumbentParty = candidates.find((c) => c.isActive)?.party;
+  const basePartyOrder = ['D', 'R', 'I'] as const;
+  const partyOrder = [
+    ...(incumbentParty ? [incumbentParty] : []),
+    ...basePartyOrder.filter((p) => p !== incumbentParty),
+  ] as Array<(typeof basePartyOrder)[number]>;
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
@@ -149,7 +178,7 @@ export default async function RaceScorecardPage(props: Props) {
         <p className="font-mono text-xs uppercase tracking-widest text-subtle-foreground">2026 race</p>
         <h1 className="mt-1 font-serif text-3xl font-bold text-foreground">{seatLabel(seat)}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          {candidates.length} filed candidate{candidates.length === 1 ? '' : 's'} —{' '}
+          {candidates.length} viable candidate{candidates.length === 1 ? '' : 's'} —{' '}
           {partyOrder
             .map((p) => {
               const n = byParty[p]?.length ?? 0;
@@ -157,7 +186,7 @@ export default async function RaceScorecardPage(props: Props) {
             })
             .filter(Boolean)
             .join(' · ')}
-          . Same money lenses we apply to sitting members — applied to every candidate.
+          . Same rubric we apply to sitting members — applied to every candidate on the ballot.
         </p>
       </header>
 
@@ -205,11 +234,9 @@ export default async function RaceScorecardPage(props: Props) {
                           className="font-serif text-lg font-bold text-foreground hover:underline">
                           {c.fullName}
                         </Link>
-                        {c.isActive ? (
-                          <span className="ml-2 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-                            Incumbent
-                          </span>
-                        ) : null}
+                        <span className="ml-2 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+                          {c.isActive ? 'Incumbent' : 'Challenger'}
+                        </span>
                       </div>
                       <span className="font-mono text-xs text-subtle-foreground">
                         {PARTY_LABEL[c.party]} · {c.state}
@@ -218,7 +245,11 @@ export default async function RaceScorecardPage(props: Props) {
                     </div>
 
                     <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                      <Stat label="PAC Score" value={p.pacScore !== null ? `${p.pacScore}%` : '—'} />
+                      <Stat
+                        label="PAC Score"
+                        value={p.pacScore !== null ? `${p.pacScore}%` : '—'}
+                        hint={p.pacScore !== null ? 'corporate-PAC refusal' : 'no PAC data'}
+                      />
                       <Stat
                         label="Voting"
                         value={
@@ -254,11 +285,11 @@ export default async function RaceScorecardPage(props: Props) {
 
                     {(p.totalReceipts ?? 0) > 0 ? (
                       <p className="mt-3 font-mono text-xs text-muted-foreground">
-                        Receipts to date: ${Math.round(p.totalReceipts!).toLocaleString()}
+                        2026 money raised: ${Math.round(p.totalReceipts!).toLocaleString()}
                       </p>
                     ) : (
                       <p className="mt-3 font-mono text-xs text-subtle-foreground">
-                        No FEC receipts yet for this cycle.
+                        2026 receipts not yet on file with the FEC.
                       </p>
                     )}
                   </li>

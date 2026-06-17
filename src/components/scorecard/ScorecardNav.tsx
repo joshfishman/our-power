@@ -17,16 +17,24 @@ interface NavItem {
    * it is active for the path and any descendant (e.g. /scorecard/issues/...).
    */
   exact?: boolean;
+  /**
+   * Extra path prefixes that should also light up this item. Used so the
+   * "Races" item is active on the singular per-seat pages (/scorecard/race/...)
+   * in addition to its own /scorecard/races index.
+   */
+  alsoActiveOn?: string[];
 }
 
 const NAV_ITEMS: NavItem[] = [
   { href: '/scorecard', label: 'Scorecard', exact: true },
+  { href: '/scorecard/races', label: 'Races', alsoActiveOn: ['/scorecard/race/'] },
   { href: '/scorecard/pac', label: 'PAC' },
   { href: '/scorecard/issues', label: 'Issues' },
   { href: '/scorecard/methodology', label: 'Methodology' },
 ];
 
 function isActive(pathname: string, item: NavItem): boolean {
+  if (item.alsoActiveOn?.some((prefix) => pathname === prefix || pathname.startsWith(prefix))) return true;
   if (item.exact) return pathname === item.href;
   return pathname === item.href || pathname.startsWith(`${item.href}/`);
 }
