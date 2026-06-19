@@ -150,6 +150,11 @@ async function main(): Promise<void> {
     alignedYes: number;
     alignedNo: number;
     legsAligned: Set<string>;
+    // Every legislator who cast ANY recorded position on this bill's roll call(s).
+    // Proves they were in office and had the chance to vote — the denominator is
+    // gated on this so a member is never scored on a vote they couldn't cast
+    // (wrong term / not yet elected / absent).
+    legsVoted: Set<string>;
   }
   const bills = new Map<string, BillState>();
   for (const v of trustedVotes) {
@@ -165,6 +170,7 @@ async function main(): Promise<void> {
         alignedYes: 0,
         alignedNo: 0,
         legsAligned: new Set(),
+        legsVoted: new Set(),
       };
       bills.set(key, bill);
     }
@@ -172,6 +178,7 @@ async function main(): Promise<void> {
     if (v.alignedPosition === 'YES') bill.alignedYes += 1;
     else if (v.alignedPosition === 'NO') bill.alignedNo += 1;
     for (const pos of v.positions) {
+      bill.legsVoted.add(pos.legislatorId);
       if (pos.position === v.alignedPosition) bill.legsAligned.add(pos.legislatorId);
     }
   }
@@ -340,6 +347,12 @@ async function main(): Promise<void> {
 
       const cosponsorKey = `${legJur}|${bill.billType}|${bill.billNumber}`;
       const cosponsored = cosponsorsByBill.get(cosponsorKey)?.has(leg.id) ?? false;
+      const voted = bill.legsVoted.has(leg.id);
+      // Opportunity gate (v1.9.5): only score this bill against the leg if they
+      // actually cast a vote on it (proves in-office + had the chance) OR
+      // cosponsored it. No vote + no cosponsorship = no opportunity acted on →
+      // skip, so a member is never penalized for a vote they could not cast.
+      if (!voted && !cosponsored) continue;
       const votedAligned = bill.legsAligned.has(leg.id);
       const isAlignedOnBill = votedAligned || cosponsored;
 
@@ -368,11 +381,16 @@ async function main(): Promise<void> {
       const plankId = plankIdByJurNum.get(`${legJur}|${slot.plankNumber}`);
       if (!plankId) continue;
       const aligned = slot.alignedLegIds.has(leg.id);
+      // Opportunity gate (v1.9.5): a marker bill that never reached a roll call
+      // gave the member no vote to cast — cosponsorship is the only way to act
+      // on it. So it counts ONLY for cosponsors (pure positive credit) and is
+      // never charged against a non-cosponsor who had no chance to vote.
+      if (!aligned) continue;
       overallTotal += 1;
-      if (aligned) overallAligned += 1;
+      overallAligned += 1;
       const cur = perPlank[slot.plankNumber] ?? { aligned: 0, total: 0 };
       cur.total += 1;
-      if (aligned) cur.aligned += 1;
+      cur.aligned += 1;
       perPlank[slot.plankNumber] = cur;
     }
 
