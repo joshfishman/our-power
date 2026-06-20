@@ -64,6 +64,7 @@ export default async function RacesIndexPage() {
     district: number | null;
     incumbent: { fullName: string; party: string; pacScore: number | null } | null;
     challengerCount: number;
+    raisedTotal: number; // sum of 2026 receipts across all viable candidates in the seat
   }
   const seats = new Map<string, SeatRow>();
   for (const c of viable) {
@@ -71,15 +72,26 @@ export default async function RacesIndexPage() {
     const slug = seatSlug(chamber, c.state, c.district);
     let seat = seats.get(slug);
     if (!seat) {
-      seat = { slug, state: c.state, chamber, district: c.district, incumbent: null, challengerCount: 0 };
+      seat = {
+        slug,
+        state: c.state,
+        chamber,
+        district: c.district,
+        incumbent: null,
+        challengerCount: 0,
+        raisedTotal: 0,
+      };
       seats.set(slug, seat);
     }
+    seat.raisedTotal += receipts.get(c.id) ?? 0;
     if (c.isActive) {
       seat.incumbent = { fullName: c.fullName, party: c.party, pacScore: pacScores.get(c.id) ?? null };
     } else {
       seat.challengerCount += 1;
     }
   }
+  const fmtMoney = (n: number): string =>
+    n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(1)}M` : n >= 1_000 ? `$${Math.round(n / 1_000)}K` : `$${n}`;
 
   // Group seats by state for the page.
   const byState = new Map<string, SeatRow[]>();
@@ -161,6 +173,12 @@ export default async function RacesIndexPage() {
                           )}
                           {' · '}
                           {seat.challengerCount} viable challenger{seat.challengerCount === 1 ? '' : 's'}
+                          {seat.raisedTotal > 0 ? (
+                            <span className="font-semibold text-foreground">
+                              {' · '}
+                              {fmtMoney(seat.raisedTotal)} raised in race
+                            </span>
+                          ) : null}
                         </span>
                       </Link>
                     </li>
