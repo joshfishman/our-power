@@ -610,9 +610,10 @@ export async function getPacScoresByLegislatorV171(legislatorIds: string[]): Pro
     const legId = key.slice(0, key.lastIndexOf('|'));
     const { ca, ie, ben } = itemizedByCycle.get(key) ?? { ca: 0, ie: 0, ben: 0 };
     const receipts = receiptsByCycle.get(key) ?? 0;
-    // v1.7.7 guard: receipts absent but counts-against present → misleading
-    // IE-only ratio; skip. denom 0 also skipped.
-    if (receipts <= 0 && ca > 0) continue;
+    // v1.9.7: skip any cycle without principal-committee receipts — IE-only /
+    // dust cycles have a tiny-or-zero denominator that, combined with refund
+    // (negative) counts-against, yields extreme ratios that poison the mean.
+    if (receipts <= 0) continue;
     // v1.9.4 denominator = receipts + IE_SUPPORT + IE_OPPOSE_BENEFICIARY.
     const denom = receipts + (Number.isFinite(ie) ? ie : 0) + (Number.isFinite(ben) ? ben : 0);
     if (!Number.isFinite(denom) || denom <= 0) continue;
@@ -623,7 +624,12 @@ export async function getPacScoresByLegislatorV171(legislatorIds: string[]): Pro
     // corporate ratio — otherwise a member whose itemized donors weren't
     // ingested renders a false 100% ("refuses all corporate money").
     const fecRatio = fecCorpRatioByCycle.get(key);
-    const ratio = ca < 0.01 * denom && fecRatio != null && fecRatio > itemizedRatio ? fecRatio : itemizedRatio;
+    // Clamp to [0,1]: refunds make ca negative and dust cycles make denom tiny,
+    // either of which would otherwise yield a wild ratio that skews the mean.
+    const ratio = Math.max(
+      0,
+      Math.min(1, ca < 0.01 * denom && fecRatio != null && fecRatio > itemizedRatio ? fecRatio : itemizedRatio),
+    );
     const acc = sums.get(legId) ?? { sum: 0, n: 0 };
     acc.sum += ratio;
     acc.n += 1;
@@ -725,12 +731,20 @@ export async function getLegislatorMoneyTrail(legislatorId: string): Promise<Pac
   for (const cycle of new Set<number>([...receiptsByCycle.keys(), ...itemizedByCycle.keys()])) {
     const { ca, ie, ben } = itemizedByCycle.get(cycle) ?? { ca: 0, ie: 0, ben: 0 };
     const receipts = receiptsByCycle.get(cycle) ?? 0;
-    if (receipts <= 0 && ca > 0) continue;
+    // v1.9.7: skip any cycle without principal-committee receipts — IE-only /
+    // dust cycles have a tiny-or-zero denominator that, combined with refund
+    // (negative) counts-against, yields extreme ratios that poison the mean.
+    if (receipts <= 0) continue;
     const denomCycle = receipts + ie + ben;
     if (denomCycle <= 0) continue;
     const itemizedRatio = ca / denomCycle;
     const fecRatio = fecCorpRatioByCycle.get(cycle);
-    const ratio = ca < 0.01 * denomCycle && fecRatio != null && fecRatio > itemizedRatio ? fecRatio : itemizedRatio;
+    // Clamp to [0,1]: refunds make ca negative and dust cycles make denom tiny,
+    // either of which would otherwise yield a wild ratio that skews the mean.
+    const ratio = Math.max(
+      0,
+      Math.min(1, ca < 0.01 * denomCycle && fecRatio != null && fecRatio > itemizedRatio ? fecRatio : itemizedRatio),
+    );
     scoreRatioSum += ratio;
     scoreRatioN += 1;
   }
