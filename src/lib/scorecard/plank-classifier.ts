@@ -221,9 +221,20 @@ const SUBJECT_HINTS: Array<{ pattern: RegExp; plank: PlankNumber; reasoning: str
 const OFF_THEME_GUARD =
   /\b(memorial|monument|commemorat\w*|renam\w*|redesignat\w*|medal|commemorative coin)\b|post office|\bNational\b.*\b(Day|Week|Month)\b/i;
 
+// REGULATORY-ROLLBACK GUARD: Congressional Review Act (CRA) "disapproval"
+// joint resolutions repeal an already-issued agency rule. A vote to cancel a
+// regulation is not an affirmative Common Ground plank commitment, and the
+// resolution titles ("...congressional disapproval under chapter 8 of title 5
+// ... of the rule submitted by [agency]") name no policy, so they're
+// unreviewable on their face. Force non-scorable. Scoped to REGULATORY CRA
+// disapprovals — arms-export ("disapproval of the proposed foreign military
+// sale") resolutions are intentionally NOT matched here.
+const REGULATORY_DISAPPROVAL_GUARD =
+  /congressional disapproval under chapter 8 of title 5|disapprov(e|ing)\b[^.]{0,60}\brule submitted by/i;
+
 function isOffThemeCommemorative(title: string, subjects: string[]): boolean {
   const haystack = `${title} ${subjects.join(' ')}`;
-  return OFF_THEME_GUARD.test(haystack);
+  return OFF_THEME_GUARD.test(haystack) || REGULATORY_DISAPPROVAL_GUARD.test(title);
 }
 
 // ---------------------------------------------------------------------------

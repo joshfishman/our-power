@@ -64,8 +64,13 @@ The scorecard scores legislators on five planks:
 5. **Peace and Strength** — war powers reassertion (Congress, not exec), Pentagon audit, antitrust against monopolies, State Department / diplomatic funding, trade-agreement labor protections.
 
 For each bill, classify:
-- Which plank(s) does this bill belong to? Most belong to 0 or 1 plank. Some bills cross planks (e.g., a child-tax-credit bill touches P3 and P4). Bills wholly outside the five planks (immigration enforcement, judicial nominations, censures, naming post offices, ceremonial resolutions) get []. Procedural bills (rules for considering other bills) also get [].
-- What's the platform-aligned position (YES or NO)? Platform-aligned = the position a legislator who agrees with the Common Ground platform should take. Most pro-plank bills are aligned=YES; bills that cut against the planks are aligned=NO. Republican-led "Option C" alternatives in Planks 3 & 4 (e.g., Hawley's Higher Wages Act, Bice-Houlahan paid leave) are platform-aligned even though R-sponsored.
+- Which plank(s) does this bill belong to? CRITICAL — assign a plank ONLY when a YES vote on the bill is an AFFIRMATIVE advancement of that plank's commitment (the major investment, protection, or reform the platform calls for). The scorecard measures commitments kept, not mere topic. A bill gets [] (no plank) when it is:
+  • merely topically adjacent but not a real commitment (narrow/technical bills, studies, reports, reauthorizations, local land transfers, naming/commemorative);
+  • a measure that CUTS AGAINST the plank — e.g. pro-fossil-fuel or anti-environment energy bills, deregulation / permitting rollbacks, repeals of efficiency/environmental/consumer standards, CRA "congressional disapproval" resolutions repealing a rule, cuts to Medicare/Medicaid/Social Security;
+  • general foreign-policy/national-security messaging that is not specifically war-powers reassertion, Pentagon audit, antitrust, diplomacy funding, or trade-labor protections;
+  • wholly outside the five planks (immigration enforcement, judicial nominations, censures), or procedural (rules for considering other bills).
+  Do NOT assign a plank to an anti-plank bill just to mark it aligned=NO — leave it []. Republican-led "Option C" AFFIRMATIVE alternatives in Planks 3 & 4 (e.g., Hawley's Higher Wages Act, Bice-Houlahan paid leave) DO count.
+- What's the platform-aligned position (YES or NO)? Because a plank is assigned only to affirmative-commitment bills, the aligned position is almost always YES (support the commitment / its final passage). Reserve NO for the rare affirmative-commitment bill where the platform-aligned vote is against passage of a specific version.
 - Confidence: 0.0-1.0. Use 0.5 only when genuinely uncertain.
 - Reasoning: one short sentence explaining the call.
 
