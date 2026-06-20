@@ -212,31 +212,52 @@ Output via the classifyCommittee tool.`;
     messages: [{ role: 'user', content: userText }],
   };
 
-  const res = await fetch(KIE_URL, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${KIE_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    console.warn(`  [llm] HTTP ${res.status} for ${c.committeeId}: ${text.slice(0, 200)}`);
-    return null;
-  }
-  const json = (await res.json()) as { content?: Array<{ type: string; input?: unknown }> };
-  const toolBlock = json.content?.find((b) => b.type === 'tool_use');
-  if (!toolBlock?.input) return null;
-  const out = toolBlock.input as Record<string, unknown>;
+  // KIE is intermittently flaky (occasional `fetch failed`, 429s, 5xx). Retry
+  // with backoff so a transient failure doesn't drop a committee. Anything that
+  // still fails after retries returns null and is left for a resumable re-run.
+  let lastErr = '';
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      const res = await fetch(KIE_URL, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${KIE_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (res.status === 429 || res.status >= 500) {
+        lastErr = `HTTP ${res.status}`;
+        await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+        continue;
+      }
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        lastErr = `HTTP ${res.status} ${text.slice(0, 160)}`;
+        break;
+      }
+      const json = (await res.json()) as { content?: Array<{ type: string; input?: unknown }> };
+      const toolBlock = json.content?.find((b) => b.type === 'tool_use');
+      if (!toolBlock?.input) {
+        lastErr = 'no tool_use block';
+        break;
+      }
+      const out = toolBlock.input as Record<string, unknown>;
 
-  const rawClass = typeof out.class === 'string' ? out.class.trim().toUpperCase() : '';
-  const cls = (VALID_CLASSES as readonly string[]).includes(rawClass) ? (rawClass as PacClassName) : null;
-  if (cls === null) {
-    console.warn(`  [llm] invalid class "${rawClass}" for ${c.committeeId} — skipping`);
-    return null;
+      const rawClass = typeof out.class === 'string' ? out.class.trim().toUpperCase() : '';
+      const cls = (VALID_CLASSES as readonly string[]).includes(rawClass) ? (rawClass as PacClassName) : null;
+      if (cls === null) {
+        console.warn(`  [llm] invalid class "${rawClass}" for ${c.committeeId} — skipping`);
+        return null;
+      }
+      const confidenceRaw = typeof out.confidence === 'number' ? out.confidence : Number(out.confidence);
+      const confidence = Number.isFinite(confidenceRaw) ? Math.max(0, Math.min(1, confidenceRaw)) : 0;
+      const reasoning = typeof out.reasoning === 'string' ? out.reasoning : '';
+      return { class: cls, confidence, reasoning };
+    } catch (e) {
+      lastErr = String(e);
+      await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+    }
   }
-  const confidenceRaw = typeof out.confidence === 'number' ? out.confidence : Number(out.confidence);
-  const confidence = Number.isFinite(confidenceRaw) ? Math.max(0, Math.min(1, confidenceRaw)) : 0;
-  const reasoning = typeof out.reasoning === 'string' ? out.reasoning : '';
-  return { class: cls, confidence, reasoning };
+  console.warn(`  [llm] failed ${c.committeeId} after retries: ${lastErr}`);
+  return null;
 }
 
 // Rank UNKNOWN committees by counts-eligible dollars flowing to published-score
