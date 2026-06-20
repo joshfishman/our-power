@@ -78,7 +78,7 @@ export const CURRENT_METHODOLOGY = METHODOLOGY_VERSION;
 // METHODOLOGY_VERSION without silently swapping the public Voting Record back
 // to the signed-integer rows. The PAC Score is computed separately (read-time
 // from PacContribution/PacMoneyData) and is unaffected by this value.
-export const VOTING_DISPLAY_METHODOLOGY = 'v1.7';
+export const VOTING_DISPLAY_METHODOLOGY = 'v1.7.1';
 
 // ─── v1.9.3 Minimum-bills floor on the Voting Record ────────────────────────
 //
@@ -137,7 +137,7 @@ export const MIN_ELIGIBLE_BILLS_FLOOR = 2;
 //     `votingPublished: false` / `votingStatus: 'under-revision'`.
 // Flipping this to `true` is the ONLY change needed to re-enable everything —
 // every public surface branches on this constant.
-export const VOTING_RECORD_PUBLISHED = false;
+export const VOTING_RECORD_PUBLISHED = true;
 
 // ─── 2026 candidate viability filter (the "no-chance" filter) ────────────────
 //
