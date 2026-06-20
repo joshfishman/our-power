@@ -572,44 +572,62 @@ export async function getPacScoresByLegislatorV171(legislatorIds: string[]): Pro
     WHERE pcontrib."legislatorId" = ANY(${legislatorIds})
     GROUP BY pcontrib."legislatorId", pcontrib."cycleYear"
   `;
-  const receiptsAgg = await prisma.$queryRaw<Array<{ legislatorId: string; cycleYear: number; receipts: string }>>`
+  const receiptsAgg = await prisma.$queryRaw<
+    Array<{ legislatorId: string; cycleYear: number; receipts: string; corpPct: string | null }>
+  >`
     SELECT
       "legislatorId",
       "cycleYear",
-      COALESCE(SUM("totalReceipts"::numeric), 0)::text AS receipts
+      COALESCE(SUM("totalReceipts"::numeric), 0)::text AS receipts,
+      MAX("corporatePacPercentage"::numeric)::text AS "corpPct"
     FROM "PacMoneyData"
     WHERE "legislatorId" = ANY(${legislatorIds})
     GROUP BY "legislatorId", "cycleYear"
   `;
-  // receipts keyed by (legislatorId, cycleYear).
+  // receipts + FEC-summary corporate ratio keyed by (legislatorId, cycleYear).
   const receiptsByCycle = new Map<string, number>();
+  const fecCorpRatioByCycle = new Map<string, number>();
   const cycleKey = (legId: string, cycle: number) => `${legId}|${cycle}`;
   for (const r of receiptsAgg) {
     const v = Number(r.receipts);
     if (Number.isFinite(v)) receiptsByCycle.set(cycleKey(r.legislatorId, r.cycleYear), v);
+    const cp = r.corpPct == null ? NaN : Number(r.corpPct);
+    if (Number.isFinite(cp)) fecCorpRatioByCycle.set(cycleKey(r.legislatorId, r.cycleYear), cp);
   }
-  // Accumulate per-cycle ratios per legislator, then take the simple mean.
-  const sums = new Map<string, { sum: number; n: number }>();
+  // Itemized counts-against / IE / beneficiary keyed by (legislatorId, cycleYear).
+  const itemizedByCycle = new Map<string, { ca: number; ie: number; ben: number }>();
   for (const r of contribAgg) {
-    const ca = Number(r.countsAgainst);
-    const ie = Number(r.ieSupport);
-    const ben = Number(r.beneficiary);
-    const receipts = receiptsByCycle.get(cycleKey(r.legislatorId, r.cycleYear)) ?? 0;
-    // v1.7.7 safety guard (applied per cycle): a cycle with no principal-
-    // committee receipts on record but real counts-against activity yields a
-    // misleading IE-only ratio — skip that cycle rather than feed it into the
-    // mean. A cycle with neither receipts nor counts-against (denom 0) is also
-    // skipped. Cycles that legitimately have receipts contribute their ratio.
+    itemizedByCycle.set(cycleKey(r.legislatorId, r.cycleYear), {
+      ca: Number(r.countsAgainst) || 0,
+      ie: Number(r.ieSupport) || 0,
+      ben: Number(r.beneficiary) || 0,
+    });
+  }
+  // Accumulate per-cycle ratios per legislator over EVERY cycle that has
+  // receipts or itemized contributions, then take the simple mean.
+  const sums = new Map<string, { sum: number; n: number }>();
+  for (const key of new Set<string>([...receiptsByCycle.keys(), ...itemizedByCycle.keys()])) {
+    const legId = key.slice(0, key.lastIndexOf('|'));
+    const { ca, ie, ben } = itemizedByCycle.get(key) ?? { ca: 0, ie: 0, ben: 0 };
+    const receipts = receiptsByCycle.get(key) ?? 0;
+    // v1.7.7 guard: receipts absent but counts-against present → misleading
+    // IE-only ratio; skip. denom 0 also skipped.
     if (receipts <= 0 && ca > 0) continue;
-    // v1.9.4 denominator = receipts + IE_SUPPORT + IE_OPPOSE_BENEFICIARY (the
-    // same money kinds that can appear in the numerator).
+    // v1.9.4 denominator = receipts + IE_SUPPORT + IE_OPPOSE_BENEFICIARY.
     const denom = receipts + (Number.isFinite(ie) ? ie : 0) + (Number.isFinite(ben) ? ben : 0);
     if (!Number.isFinite(denom) || denom <= 0) continue;
-    const ratio = ca / denom;
-    const acc = sums.get(r.legislatorId) ?? { sum: 0, n: 0 };
+    const itemizedRatio = ca / denom;
+    // FEC-summary fallback (v1.9.7): when itemized PAC contributions are
+    // effectively un-ingested for this cycle (counts-against < 1% of denom)
+    // but FEC's aggregate filing reports real corporate-PAC money, use the FEC
+    // corporate ratio — otherwise a member whose itemized donors weren't
+    // ingested renders a false 100% ("refuses all corporate money").
+    const fecRatio = fecCorpRatioByCycle.get(key);
+    const ratio = ca < 0.01 * denom && fecRatio != null && fecRatio > itemizedRatio ? fecRatio : itemizedRatio;
+    const acc = sums.get(legId) ?? { sum: 0, n: 0 };
     acc.sum += ratio;
     acc.n += 1;
-    sums.set(r.legislatorId, acc);
+    sums.set(legId, acc);
   }
   const out = new Map<string, number | null>();
   for (const id of legislatorIds) out.set(id, null);
@@ -670,37 +688,51 @@ export async function getLegislatorMoneyTrail(legislatorId: string): Promise<Pac
     WHERE pcontrib."legislatorId" = ${legislatorId}
     GROUP BY pcontrib."cycleYear"
   `;
-  const perCycleReceipts = await prisma.$queryRaw<Array<{ cycleYear: number; receipts: string }>>`
-    SELECT "cycleYear", COALESCE(SUM("totalReceipts"::numeric), 0)::text AS receipts
+  const perCycleReceipts = await prisma.$queryRaw<
+    Array<{ cycleYear: number; receipts: string; corpPct: string | null }>
+  >`
+    SELECT "cycleYear", COALESCE(SUM("totalReceipts"::numeric), 0)::text AS receipts,
+      MAX("corporatePacPercentage"::numeric)::text AS "corpPct"
     FROM "PacMoneyData"
     WHERE "legislatorId" = ${legislatorId}
     GROUP BY "cycleYear"
   `;
   const receiptsByCycle = new Map<number, number>();
+  const fecCorpRatioByCycle = new Map<number, number>();
   for (const r of perCycleReceipts) {
     const v = Number(r.receipts);
     if (Number.isFinite(v)) receiptsByCycle.set(r.cycleYear, v);
+    const cp = r.corpPct == null ? NaN : Number(r.corpPct);
+    if (Number.isFinite(cp)) fecCorpRatioByCycle.set(r.cycleYear, cp);
   }
-  // v1.9.4 — single simple-mean-of-per-cycle-ratios computation, identical to
-  // getPacScoresByLegislatorV171. Numerator (ca) already folds in
-  // IE_OPPOSE_BENEFICIARY (counted classes); denominator adds beneficiary
-  // (any class) alongside IE_SUPPORT. There is no longer a separate
-  // beneficiary ratio — beneficiaryPacScore equals pacScore.
+  const itemizedByCycle = new Map<number, { ca: number; ie: number; ben: number }>();
+  for (const r of perCycleContrib) {
+    itemizedByCycle.set(r.cycleYear, {
+      ca: Number(r.countsAgainst) || 0,
+      ie: Number(r.ieSupport) || 0,
+      ben: Number(r.beneficiary) || 0,
+    });
+  }
+  // v1.9.7 — simple mean of per-cycle ratios over every cycle with receipts or
+  // itemized contributions, identical to getPacScoresByLegislatorV171, WITH the
+  // FEC-summary fallback: when itemized PAC contributions are effectively
+  // un-ingested (counts-against < 1% of denom) but FEC's aggregate filing shows
+  // real corporate-PAC money, use the FEC corporate ratio so the member doesn't
+  // render a false 100%. Numerator folds in IE_OPPOSE_BENEFICIARY; denominator
+  // adds beneficiary alongside IE_SUPPORT. beneficiaryPacScore equals pacScore.
   let scoreRatioSum = 0;
   let scoreRatioN = 0;
-  for (const r of perCycleContrib) {
-    const ca = Number(r.countsAgainst) || 0;
-    const ie = Number(r.ieSupport) || 0;
-    const ben = Number(r.beneficiary) || 0;
-    const receipts = receiptsByCycle.get(r.cycleYear) ?? 0;
-    // v1.7.7 per-cycle guard: a cycle with no receipts but real counts-against
-    // is IE-only and misleading — skip it rather than feed it into the mean.
+  for (const cycle of new Set<number>([...receiptsByCycle.keys(), ...itemizedByCycle.keys()])) {
+    const { ca, ie, ben } = itemizedByCycle.get(cycle) ?? { ca: 0, ie: 0, ben: 0 };
+    const receipts = receiptsByCycle.get(cycle) ?? 0;
     if (receipts <= 0 && ca > 0) continue;
     const denomCycle = receipts + ie + ben;
-    if (denomCycle > 0) {
-      scoreRatioSum += ca / denomCycle;
-      scoreRatioN += 1;
-    }
+    if (denomCycle <= 0) continue;
+    const itemizedRatio = ca / denomCycle;
+    const fecRatio = fecCorpRatioByCycle.get(cycle);
+    const ratio = ca < 0.01 * denomCycle && fecRatio != null && fecRatio > itemizedRatio ? fecRatio : itemizedRatio;
+    scoreRatioSum += ratio;
+    scoreRatioN += 1;
   }
 
   const byClass: Record<string, number> = {};
