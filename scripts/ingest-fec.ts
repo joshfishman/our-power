@@ -56,15 +56,23 @@ interface CliFlags {
   force: boolean;
   /** Max number of API calls per run; 0 = unlimited. Useful for testing. */
   limit: number;
+  /** Restrict the run to these bioguide IDs (comma-separated). Empty = all. */
+  bioguides: string[];
 }
 
 function parseFlags(argv: string[]): CliFlags {
-  const flags: CliFlags = { cycleYear: 2026, dryRun: false, force: false, limit: 0 };
+  const flags: CliFlags = { cycleYear: 2026, dryRun: false, force: false, limit: 0, bioguides: [] };
   for (const arg of argv.slice(2)) {
     if (arg === '--dry-run') flags.dryRun = true;
     else if (arg === '--force') flags.force = true;
     else if (arg.startsWith('--cycle=')) flags.cycleYear = Number(arg.split('=')[1]);
     else if (arg.startsWith('--limit=')) flags.limit = Number(arg.split('=')[1]);
+    else if (arg.startsWith('--bioguide='))
+      flags.bioguides = arg
+        .split('=')[1]
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
   }
   return flags;
 }
@@ -338,10 +346,18 @@ async function main(): Promise<void> {
   }
 
   const legislators = await prisma.legislator.findMany({
-    where: { isActive: true, jurisdiction: 'FEDERAL' },
+    where: {
+      isActive: true,
+      jurisdiction: 'FEDERAL',
+      ...(flags.bioguides.length > 0 ? { bioguideId: { in: flags.bioguides } } : {}),
+    },
     select: { id: true, bioguideId: true, fullName: true, fecIds: true, state: true, chamber: true, district: true },
   });
-  console.log(`[ingest-fec] ${legislators.length} federal legislator(s) total`);
+  console.log(
+    `[ingest-fec] ${legislators.length} federal legislator(s) total${
+      flags.bioguides.length > 0 ? ` (restricted to ${flags.bioguides.join(', ')})` : ''
+    }`,
+  );
 
   let written = 0;
   let noFecId = 0;

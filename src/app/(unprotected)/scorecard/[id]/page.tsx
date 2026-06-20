@@ -132,8 +132,10 @@ export default async function LegislatorScorecardPage(props: Props) {
   const pacScore = jurisdiction === 'FEDERAL' ? moneyTrail?.pacScore ?? null : legacyPacScore;
   // While the Voting Record is held, votingScore is null, so this collapses to
   // the PAC Score alone — the published headline. When the flag is flipped on,
-  // it returns to the simple mean of PAC + Voting.
-  const avgScore = computeTwoScoreAverage(pacScore, votingScore);
+  // it returns to the simple mean of PAC + Voting. When the PAC Score itself is
+  // missing (no PAC data yet) the average is "pending" rather than a
+  // voting-only number — keeps the headline honest and matches the index.
+  const avgScore = pacScore === null ? null : computeTwoScoreAverage(pacScore, votingScore);
   // The headline "pending" guard should only fire when there is genuinely no
   // published number to show. While voting is held the headline is the PAC
   // Score, so we treat a present PAC Score as "not pending" regardless.
