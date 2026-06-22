@@ -4,6 +4,7 @@
 import prisma from '@/lib/prisma/prisma';
 import { METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
 import { classifyEmployer, SECTOR_LABEL } from '@/lib/scorecard/employer-industry';
+import { CURATED_VOTE_BILLS, curatedDirection } from '@/lib/scorecard/curated-votes';
 
 export type ScorecardJurisdiction = 'FEDERAL' | 'CA';
 
@@ -78,7 +79,7 @@ export const CURRENT_METHODOLOGY = METHODOLOGY_VERSION;
 // METHODOLOGY_VERSION without silently swapping the public Voting Record back
 // to the signed-integer rows. The PAC Score is computed separately (read-time
 // from PacContribution/PacMoneyData) and is unaffected by this value.
-export const VOTING_DISPLAY_METHODOLOGY = 'v1.7.1';
+export const VOTING_DISPLAY_METHODOLOGY = 'v2.0';
 
 // ─── v1.9.3 Minimum-bills floor on the Voting Record ────────────────────────
 //
@@ -1322,12 +1323,13 @@ export async function getLegislatorBillBreakdown(
       : legChamber === 'SEN'
       ? ['CA_SENATE']
       : ['CA_ASSEMBLY'];
+  // v2.0: the roll-call layer is restricted to the human-CURATED vote-bills so
+  // the displayed breakdown matches the scored basis (no auto-classified net).
+  // CA has no curated votes yet → this is empty for CA (markers-only breakdown).
   const rcVotes = await prisma.rollCallVote.findMany({
     where: {
-      isScorable: true,
-      alignedPosition: { not: null },
-      plankNumbers: { isEmpty: false },
       chamber: { in: rcChambers as ('SENATE' | 'HOUSE' | 'CA_SENATE' | 'CA_ASSEMBLY')[] },
+      OR: CURATED_VOTE_BILLS.map((b) => ({ billType: b.billType, billNumber: b.billNumber })),
     },
     select: {
       id: true,
@@ -1398,10 +1400,17 @@ export async function getLegislatorBillBreakdown(
   }
   const billAggs = new Map<string, BillAgg>();
   for (const v of rcVotes) {
-    if (!v.billType || !v.billNumber || !v.alignedPosition) continue;
+    if (!v.billType || !v.billNumber) continue;
+    // v2.0: use the HUMAN-curated direction + plank, not the DB auto-classified
+    // ones (which were wrong for several of these bills).
+    const dir = curatedDirection(v.billType, v.billNumber);
+    if (!dir) continue;
+    const curatedPlank = CURATED_VOTE_BILLS.find(
+      (b) => b.billType === v.billType && b.billNumber === v.billNumber,
+    )!.plank;
     const key = `${v.billType}|${v.billNumber}`;
     const legPos = v.positions[0]?.position ?? null;
-    const isAligned = legPos === v.alignedPosition;
+    const isAligned = legPos === dir; // only a cast YES/NO can match
     const existing = billAggs.get(key);
     if (!existing) {
       billAggs.set(key, {
@@ -1409,15 +1418,16 @@ export async function getLegislatorBillBreakdown(
         billType: v.billType,
         billNumber: v.billNumber,
         billTitle: v.billTitle ?? null,
-        plankNumbers: [...v.plankNumbers],
-        alignedPosition: v.alignedPosition as 'YES' | 'NO',
+        plankNumbers: [curatedPlank],
+        alignedPosition: dir,
         legPosition: legPos as BillAgg['legPosition'],
         votedAligned: isAligned,
       });
     } else {
-      for (const p of v.plankNumbers) if (!existing.plankNumbers.includes(p)) existing.plankNumbers.push(p);
       if (isAligned) existing.votedAligned = true;
-      if (existing.legPosition === null && legPos) existing.legPosition = legPos as BillAgg['legPosition'];
+      // Prefer a real cast YES/NO over a procedural/absent position from another roll call.
+      const haveCast = existing.legPosition === 'YES' || existing.legPosition === 'NO';
+      if (!haveCast && legPos) existing.legPosition = legPos as BillAgg['legPosition'];
     }
   }
 
