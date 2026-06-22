@@ -165,7 +165,16 @@ async function fecCandidateTotals(
     return null;
   }
   rateLimitState.consecutive = 0;
-  const json = (await response.json()) as FecResponse<FecCandidateTotals>;
+  // ECONNRESET / timeout can fire while reading the body (after headers) — that
+  // throws OUTSIDE the fetch try above, so guard it here. One dropped connection
+  // skips this legislator instead of crashing the whole --force run.
+  let json: FecResponse<FecCandidateTotals>;
+  try {
+    json = (await response.json()) as FecResponse<FecCandidateTotals>;
+  } catch (err) {
+    console.warn(`  [warn] body read failed for ${candidateId}: ${err instanceof Error ? err.message : err}`);
+    return null;
+  }
   if (!json.results?.length) return null;
   const floor = SUBSTANTIVE_RECEIPTS_FLOOR[chamber];
   // Cycles arrive in descending order. Pick the latest with substantive
