@@ -317,6 +317,23 @@ export function computePublishedTotal(
 }
 
 /**
+ * v2.0.1 — minimum principal receipts for a cycle's corporate-PAC RATIO to be
+ * trusted. A cycle that raised only a few thousand dollars (a mid-cycle row
+ * early in a current cycle, e.g. $8.5k of 2026 receipts so far) yields a wildly
+ * unstable ratio. We drop such cycles from the per-cycle mean — UNLESS every
+ * cycle is thin, in which case we keep them all rather than null out a
+ * sparse-but-real record.
+ */
+export const MIN_CYCLE_RECEIPTS_FOR_RATIO = 50000;
+
+function meanRatioSkippingThinCycles(ratioByCycle: Map<number, number>, receiptsByCycle: Map<number, number>): number {
+  const cycles = [...ratioByCycle.keys()];
+  const substantial = cycles.filter((cy) => (receiptsByCycle.get(cy) ?? 0) >= MIN_CYCLE_RECEIPTS_FOR_RATIO);
+  const use = substantial.length > 0 ? substantial : cycles;
+  return use.reduce((a, cy) => a + (ratioByCycle.get(cy) ?? 0), 0) / use.length;
+}
+
+/**
  * v1.9.3 — corporate-PAC score for one legislator (CA / legacy PacMoneyData path).
  *
  * Score = (1 − mean_corporate_ratio) × 100, clamped to [0, 100].
@@ -337,11 +354,15 @@ export async function getLegislatorPacScore(legislatorId: string): Promise<numbe
     // dataSource ASC = higher-fidelity source first; cycleYear DESC for stable
     // ordering. We dedupe to one row per cycle below (first wins).
     orderBy: [{ cycleYear: 'desc' }, { dataSource: 'asc' }],
-    select: { cycleYear: true, combinedCorporateRatio: true, corporatePacPercentage: true },
+    select: { cycleYear: true, combinedCorporateRatio: true, corporatePacPercentage: true, totalReceipts: true },
   });
   if (rows.length === 0) return null;
   // One ratio per cycle (first row per cycle wins — highest-fidelity source).
+  // Track receipts per cycle so we can drop "thin" cycles whose tiny denominator
+  // makes the corporate ratio unstable (e.g. a mid-cycle row with only $8.5k
+  // raised so far would otherwise read as a near-perfect 0%-corporate cycle).
   const ratioByCycle = new Map<number, number>();
+  const receiptsByCycle = new Map<number, number>();
   for (const row of rows) {
     if (ratioByCycle.has(row.cycleYear)) continue;
     const ratioRaw = row.combinedCorporateRatio ?? row.corporatePacPercentage;
@@ -349,10 +370,10 @@ export async function getLegislatorPacScore(legislatorId: string): Promise<numbe
     const ratio = Number(ratioRaw);
     if (!Number.isFinite(ratio)) continue;
     ratioByCycle.set(row.cycleYear, ratio);
+    receiptsByCycle.set(row.cycleYear, Number(row.totalReceipts ?? 0));
   }
   if (ratioByCycle.size === 0) return null;
-  // Simple mean across cycles — every cycle weighted equally.
-  const meanRatio = [...ratioByCycle.values()].reduce((a, b) => a + b, 0) / ratioByCycle.size;
+  const meanRatio = meanRatioSkippingThinCycles(ratioByCycle, receiptsByCycle);
   return Math.max(0, Math.min(100, Math.round((1 - meanRatio) * 100)));
 }
 
@@ -391,32 +412,36 @@ export async function getPacScoresByLegislator(legislatorIds: string[]): Promise
       cycleYear: number;
       combinedCorporateRatio: number | null;
       corporatePacPercentage: number | null;
+      totalReceipts: number | null;
     }>
   >`
     SELECT DISTINCT ON ("legislatorId", "cycleYear")
       "legislatorId",
       "cycleYear",
       "combinedCorporateRatio"::float AS "combinedCorporateRatio",
-      "corporatePacPercentage"::float AS "corporatePacPercentage"
+      "corporatePacPercentage"::float AS "corporatePacPercentage",
+      "totalReceipts"::float AS "totalReceipts"
     FROM "PacMoneyData"
     WHERE "legislatorId" = ANY(${legislatorIds})
     ORDER BY "legislatorId" ASC, "cycleYear" DESC, "dataSource" ASC
   `;
-  // Accumulate per-cycle ratios per legislator, then take the simple mean.
-  const sums = new Map<string, { sum: number; n: number }>();
+  // Accumulate per-cycle ratio + receipts per legislator, then take the simple
+  // mean — dropping thin cycles (see meanRatioSkippingThinCycles) so a sparse
+  // mid-cycle row can't fabricate a near-perfect score.
+  const byLeg = new Map<string, { ratios: Map<number, number>; receipts: Map<number, number> }>();
   for (const r of rows) {
     const ratio = r.combinedCorporateRatio ?? r.corporatePacPercentage;
     if (ratio === null || ratio === undefined || !Number.isFinite(ratio)) continue;
-    const acc = sums.get(r.legislatorId) ?? { sum: 0, n: 0 };
-    acc.sum += ratio;
-    acc.n += 1;
-    sums.set(r.legislatorId, acc);
+    const acc = byLeg.get(r.legislatorId) ?? { ratios: new Map(), receipts: new Map() };
+    acc.ratios.set(r.cycleYear, ratio);
+    acc.receipts.set(r.cycleYear, Number(r.totalReceipts ?? 0));
+    byLeg.set(r.legislatorId, acc);
   }
   const out = new Map<string, number | null>();
   for (const id of legislatorIds) out.set(id, null);
-  for (const [id, acc] of sums) {
-    if (acc.n === 0) continue;
-    const meanRatio = acc.sum / acc.n;
+  for (const [id, acc] of byLeg) {
+    if (acc.ratios.size === 0) continue;
+    const meanRatio = meanRatioSkippingThinCycles(acc.ratios, acc.receipts);
     out.set(id, Math.max(0, Math.min(100, Math.round((1 - meanRatio) * 100))));
   }
   return out;
