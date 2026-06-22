@@ -33,7 +33,7 @@
 import './load-env';
 import { PrismaClient } from '../src/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { CURATED_VOTE_BILLS } from '../src/lib/scorecard/curated-votes';
+import { CURATED_VOTE_BILLS, isCuratedVoteBill } from '../src/lib/scorecard/curated-votes';
 
 const url = new URL(process.env.DATABASE_URL!);
 if (!url.searchParams.has('pgbouncer')) url.searchParams.set('pgbouncer', 'true');
@@ -68,10 +68,16 @@ async function main(): Promise<void> {
   // 1. Curated vote-bills → who voted / who voted aligned, keyed by (chamber, type, num).
   //    Use the MOST RECENT passage vote per (chamber, bill) so multi-vote bills
   //    (e.g. HR1 passage + concurrence) count once.
-  const billKeys = CURATED_VOTE_BILLS.map((b) => ({ billType: b.billType, billNumber: b.billNumber }));
+  // Multi-Congress: match curated bills by (congress, type, number).
+  const billKeys = CURATED_VOTE_BILLS.map((b) => ({
+    congressNumber: b.congress,
+    billType: b.billType,
+    billNumber: b.billNumber,
+  }));
   const votes = await prisma.rollCallVote.findMany({
-    where: { congressNumber: 119, OR: billKeys },
+    where: { OR: billKeys },
     select: {
+      congressNumber: true,
       chamber: true,
       billType: true,
       billNumber: true,
@@ -80,15 +86,16 @@ async function main(): Promise<void> {
       positions: { select: { legislatorId: true, position: true } },
     },
   });
-  // Group passage votes per (chamber, bill); a bill can have several roll calls
-  // (initial passage, recommit, concurrence, motions). We pick the one with the
-  // MOST cast YES/NO positions — the true full-participation floor vote — so a
-  // stray procedural roll call can't stand in for final passage. (Fixes the
-  // HR6644/HR2550 mismatch where a committee/procedural vote was being used.)
+  // Pick the final-passage roll call per (congress, chamber, bill): exclude
+  // clearly-procedural questions, then take the most-cast YES/NO vote. Exclusion
+  // (not keyword inclusion) is required because the Senate labels some passage
+  // votes just "On the Motion" (CHIPS, PACT).
+  const PROCEDURAL =
+    /cloture|motion to proceed|recommit|reconsider|motion to table|previous question|quorum|adjourn|motion to refer|motion to instruct|motion to commit|on the amendment/i;
   const passageByCb = new Map<string, typeof votes>();
   for (const v of votes) {
-    if (!/passage|suspend the rules and pass|concur/i.test(v.voteQuestion || '')) continue;
-    const cb = `${v.chamber}|${v.billType}|${v.billNumber}`;
+    if (PROCEDURAL.test(v.voteQuestion || '')) continue;
+    const cb = `${v.congressNumber}|${v.chamber}|${v.billType}|${v.billNumber}`;
     (passageByCb.get(cb) ?? passageByCb.set(cb, []).get(cb)!).push(v);
   }
   const castCount = (v: (typeof votes)[number]): number =>
@@ -96,7 +103,9 @@ async function main(): Promise<void> {
   const voteData = new Map<string, { voted: Set<string>; aligned: Set<string> }>();
   for (const [cb, vs] of passageByCb) {
     const v = vs.reduce((best, cur) => (castCount(cur) > castCount(best) ? cur : best));
-    const curated = CURATED_VOTE_BILLS.find((c) => c.billType === v.billType && c.billNumber === v.billNumber);
+    const curated = CURATED_VOTE_BILLS.find(
+      (c) => c.congress === v.congressNumber && c.billType === v.billType && c.billNumber === v.billNumber,
+    );
     if (!curated) continue;
     const entry = { voted: new Set<string>(), aligned: new Set<string>() };
     for (const pos of v.positions) {
@@ -113,7 +122,14 @@ async function main(): Promise<void> {
   const markers = await prisma.marker.findMany({
     include: {
       plank: { select: { number: true, jurisdiction: true } },
-      bills: { select: { billType: true, billNumber: true, sponsorships: { select: { legislatorId: true } } } },
+      bills: {
+        select: {
+          congressNumber: true,
+          billType: true,
+          billNumber: true,
+          sponsorships: { select: { legislatorId: true } },
+        },
+      },
     },
   });
   const cosponsorRows = await prisma.billCosponsor.findMany({
@@ -135,16 +151,22 @@ async function main(): Promise<void> {
     if (m.popularSupport != null && Number(m.popularSupport) < POPULAR_SUPPORT_FLOOR) continue;
     const jur = m.plank.jurisdiction;
     const aligned = new Set<string>();
+    let countedBills = 0;
     for (const b of m.bills) {
-      for (const s of b.sponsorships) aligned.add(s.legislatorId);
       const storageType = STORAGE_TYPE_MAP[b.billType];
       if (!storageType) continue;
       const num = stripNum(b.billNumber);
       if (!num) continue;
+      // Dedup: a bill that is ALSO a curated vote-bill is scored by the vote
+      // layer — don't double-count it here as cosponsorship bonus.
+      if (b.congressNumber != null && isCuratedVoteBill(b.congressNumber, storageType, num)) continue;
+      countedBills += 1;
+      for (const s of b.sponsorships) aligned.add(s.legislatorId);
       const billNumStored = jur === 'CA' ? b.billNumber : num;
       const ids = cosponsorsByBill.get(`${jur}|${storageType}|${billNumStored}`);
       if (ids) for (const id of ids) aligned.add(id);
     }
+    if (countedBills === 0) continue; // marker fully represented by the vote layer
     markerSlots.push({ plankNumber: m.plank.number, jurisdiction: jur, aligned });
   }
 
@@ -186,7 +208,7 @@ async function main(): Promise<void> {
     // Vote layer (federal curated bills; CA has none yet).
     if (jur === 'FEDERAL') {
       for (const cb of CURATED_VOTE_BILLS) {
-        const entry = voteData.get(`${chamber}|${cb.billType}|${cb.billNumber}`);
+        const entry = voteData.get(`${cb.congress}|${chamber}|${cb.billType}|${cb.billNumber}`);
         if (!entry || !entry.voted.has(leg.id)) continue; // vote-gated: no vote, no count
         (per[cb.plank] ??= { a: 0, t: 0 }).t += 1;
         if (entry.aligned.has(leg.id)) per[cb.plank].a += 1;

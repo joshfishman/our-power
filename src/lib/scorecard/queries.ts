@@ -1329,10 +1329,15 @@ export async function getLegislatorBillBreakdown(
   const rcVotes = await prisma.rollCallVote.findMany({
     where: {
       chamber: { in: rcChambers as ('SENATE' | 'HOUSE' | 'CA_SENATE' | 'CA_ASSEMBLY')[] },
-      OR: CURATED_VOTE_BILLS.map((b) => ({ billType: b.billType, billNumber: b.billNumber })),
+      OR: CURATED_VOTE_BILLS.map((b) => ({
+        congressNumber: b.congress,
+        billType: b.billType,
+        billNumber: b.billNumber,
+      })),
     },
     select: {
       id: true,
+      congressNumber: true,
       billType: true,
       billNumber: true,
       billTitle: true,
@@ -1401,14 +1406,16 @@ export async function getLegislatorBillBreakdown(
   const billAggs = new Map<string, BillAgg>();
   for (const v of rcVotes) {
     if (!v.billType || !v.billNumber) continue;
-    // v2.0: use the HUMAN-curated direction + plank, not the DB auto-classified
-    // ones (which were wrong for several of these bills).
-    const dir = curatedDirection(v.billType, v.billNumber);
+    // v2.0: use the HUMAN-curated direction + plank(s), not the DB auto-classified
+    // ones. A bill can be curated under multiple planks (e.g. IRA → P2 climate
+    // + P4 drug-pricing); show it under each. Keyed by (congress, type, number).
+    const cong = v.congressNumber;
+    const dir = curatedDirection(cong, v.billType, v.billNumber);
     if (!dir) continue;
-    const curatedPlank = CURATED_VOTE_BILLS.find(
-      (b) => b.billType === v.billType && b.billNumber === v.billNumber,
-    )!.plank;
-    const key = `${v.billType}|${v.billNumber}`;
+    const planksFor = CURATED_VOTE_BILLS.filter(
+      (b) => b.congress === cong && b.billType === v.billType && b.billNumber === v.billNumber,
+    ).map((b) => b.plank);
+    const key = `${cong}|${v.billType}|${v.billNumber}`;
     const legPos = v.positions[0]?.position ?? null;
     const isAligned = legPos === dir; // only a cast YES/NO can match
     const existing = billAggs.get(key);
@@ -1418,7 +1425,7 @@ export async function getLegislatorBillBreakdown(
         billType: v.billType,
         billNumber: v.billNumber,
         billTitle: v.billTitle ?? null,
-        plankNumbers: [curatedPlank],
+        plankNumbers: planksFor,
         alignedPosition: dir,
         legPosition: legPos as BillAgg['legPosition'],
         votedAligned: isAligned,
