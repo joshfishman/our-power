@@ -353,6 +353,82 @@ async function writeAggregates(aggregates: PacAggregate[], dryRun: boolean): Pro
   return written;
 }
 
+// CA itemized contributions → PacContribution (for the per-class money trail
+// on CA legislator pages, matching federal depth). CA receipts are
+// name-classified (no FEC committee id), so we mint a synthetic committee id
+// `CA:<name>` and a matching PacClassification row, which satisfies the
+// existing FK and lets the money-trail join work unchanged. PacClass has no
+// TRADE_ASSOCIATION → folds into CORPORATE (trade money counts-against like
+// corporate, which is correct). CA scoring stays on the legacy PacMoneyData
+// summary path — these rows power the DISPLAY, not the CA score.
+const CA_CLASS_TO_PACCLASS: Record<string, 'CORPORATE' | 'LABOR' | 'IDEOLOGICAL' | 'PARTY' | 'UNKNOWN'> = {
+  CORPORATE: 'CORPORATE',
+  TRADE_ASSOCIATION: 'CORPORATE',
+  LABOR: 'LABOR',
+  IDEOLOGICAL: 'IDEOLOGICAL',
+  PARTY: 'PARTY',
+  CANDIDATE: 'UNKNOWN',
+  UNCLASSIFIED: 'UNKNOWN',
+};
+
+async function writeCaContributions(aggregates: PacAggregate[], dryRun: boolean): Promise<number> {
+  const committees = new Map<
+    string,
+    { name: string; cls: 'CORPORATE' | 'LABOR' | 'IDEOLOGICAL' | 'PARTY' | 'UNKNOWN' }
+  >();
+  const rows: Array<{ legislatorId: string; donorCommitteeId: string; cycleYear: number; amount: number }> = [];
+  const legCycles = new Set<string>();
+  for (const a of aggregates) {
+    if (!a.contributorBreakdown) continue;
+    legCycles.add(`${a.legislatorId}|${a.cycleYear}`);
+    for (const [name, { amount, classification }] of a.contributorBreakdown) {
+      if (!name || amount <= 0) continue;
+      const cls = CA_CLASS_TO_PACCLASS[classification] ?? 'UNKNOWN';
+      const committeeId = `CA:${name}`.slice(0, 200);
+      committees.set(committeeId, { name, cls });
+      rows.push({ legislatorId: a.legislatorId, donorCommitteeId: committeeId, cycleYear: a.cycleYear, amount });
+    }
+  }
+  if (dryRun) {
+    console.log(`  [dry-run] CA itemized: ${rows.length} contributions across ${committees.size} committees`);
+    return rows.length;
+  }
+  // 1. Synthetic CA committee classifications (stable per name → skipDuplicates).
+  const classData = [...committees.entries()].map(([committeeId, c]) => ({
+    committeeId,
+    name: c.name.slice(0, 255),
+    class: c.cls,
+    source: 'cal-access',
+    reason: 'CA name-heuristic (ingest-cal-access)',
+  }));
+  for (let i = 0; i < classData.length; i += 500) {
+    await prisma.pacClassification.createMany({ data: classData.slice(i, i + 500), skipDuplicates: true });
+  }
+  // 2. Replace CA itemized rows for the touched (leg, cycle) sets (idempotent re-runs).
+  for (const lc of legCycles) {
+    const [legId, cy] = lc.split('|');
+    await prisma.pacContribution.deleteMany({
+      where: { legislatorId: legId, cycleYear: Number(cy), donorCommitteeId: { startsWith: 'CA:' } },
+    });
+  }
+  const contribData = rows.map((r) => ({
+    legislatorId: r.legislatorId,
+    donorCommitteeId: r.donorCommitteeId,
+    cycleYear: r.cycleYear,
+    kind: 'DIRECT' as const,
+    amount: r.amount,
+  }));
+  let written = 0;
+  for (let i = 0; i < contribData.length; i += 500) {
+    const res = await prisma.pacContribution.createMany({ data: contribData.slice(i, i + 500), skipDuplicates: true });
+    written += res.count;
+  }
+  console.log(
+    `[ingest-cal-access] itemized: ${committees.size} CA committees classified, ${written} PacContribution rows written`,
+  );
+  return written;
+}
+
 async function writeRecords(records: PacRecord[], dryRun: boolean): Promise<number> {
   let written = 0;
   for (const r of records) {
@@ -418,6 +494,8 @@ async function main(): Promise<void> {
     const { aggregates, unclassifiedTop } = await ingestFromCcdc(flags.ccdcDir, flags.cycleYear);
     console.log(`[ingest-cal-access] parsed ${aggregates.length} aggregate(s) from CCDC bulk`);
     written = await writeAggregates(aggregates, flags.dryRun);
+    // Itemized per-donor contributions for the CA money-trail display.
+    await writeCaContributions(aggregates, flags.dryRun);
     if (unclassifiedTop.length > 0) {
       console.log('\n[ingest-cal-access] top unclassified committee contributors (review for classifier tuning):');
       for (const u of unclassifiedTop.slice(0, 15)) {

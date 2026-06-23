@@ -448,6 +448,50 @@ export async function getPacScoresByLegislator(legislatorIds: string[]): Promise
   return out;
 }
 
+/**
+ * CA money trail — per-class breakdown + top committee donors for a California
+ * legislator, from the itemized CA PacContribution rows (synthetic `CA:<name>`
+ * committees written by ingest-cal-access.ts). Gives CA pages the money-trail
+ * depth federal has. Returns null when no itemized CA data exists yet.
+ */
+export interface CaMoneyTrail {
+  total: number;
+  byClass: Array<{ class: string; amount: number }>;
+  topDonors: Array<{ name: string; class: string; amount: number }>;
+  cycles: number[];
+}
+export async function getCaMoneyTrail(legislatorId: string): Promise<CaMoneyTrail | null> {
+  const rows = await prisma.$queryRaw<Array<{ name: string; class: string; amount: string; cycleYear: number }>>`
+    SELECT pcl.name AS name, pcl.class::text AS class, pc.amount::text AS amount, pc."cycleYear" AS "cycleYear"
+    FROM "PacContribution" pc
+    JOIN "PacClassification" pcl ON pcl."committeeId" = pc."donorCommitteeId"
+    WHERE pc."legislatorId" = ${legislatorId} AND pc."donorCommitteeId" LIKE 'CA:%'
+  `;
+  if (rows.length === 0) return null;
+  const byClassMap = new Map<string, number>();
+  const donorMap = new Map<string, { class: string; amount: number }>();
+  const cycles = new Set<number>();
+  let total = 0;
+  for (const r of rows) {
+    const amt = Number(r.amount);
+    if (!Number.isFinite(amt)) continue;
+    total += amt;
+    cycles.add(r.cycleYear);
+    byClassMap.set(r.class, (byClassMap.get(r.class) ?? 0) + amt);
+    const d = donorMap.get(r.name) ?? { class: r.class, amount: 0 };
+    d.amount += amt;
+    donorMap.set(r.name, d);
+  }
+  const byClass = [...byClassMap.entries()]
+    .map(([c, a]) => ({ class: c, amount: a }))
+    .sort((a, b) => b.amount - a.amount);
+  const topDonors = [...donorMap.entries()]
+    .map(([name, d]) => ({ name, class: d.class, amount: d.amount }))
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, 12);
+  return { total, byClass, topDonors, cycles: [...cycles].sort((a, b) => b - a) };
+}
+
 // ─── v1.7.1 PAC scoring (from PacContribution table) ────────────────────────
 //
 // The v1.7.1 PAC Score is computed from per-(leg, donor, cycle, kind) rows

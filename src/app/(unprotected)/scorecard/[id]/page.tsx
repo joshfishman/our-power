@@ -11,6 +11,7 @@ import {
   computeTwoScoreAverage,
   getLegislatorBillBreakdown,
   getLegislatorMoneyTrail,
+  getCaMoneyTrail,
   getTopDonorsForLegislator,
   getOpposedByPacs,
   getLegislatorLeadershipPacInflows,
@@ -48,6 +49,14 @@ const CHAMBER_LABEL_FEDERAL: Record<string, string> = {
 const CHAMBER_LABEL_STATE: Record<string, string> = {
   SEN: 'California State Senate',
   REP: 'California State Assembly',
+};
+
+const CA_CLASS_LABEL: Record<string, string> = {
+  CORPORATE: 'Corporate / trade',
+  LABOR: 'Labor',
+  IDEOLOGICAL: 'Ideological',
+  PARTY: 'Party',
+  UNKNOWN: 'Unclassified',
 };
 
 export async function generateMetadata(props: Props): Promise<Metadata> {
@@ -130,6 +139,9 @@ export default async function LegislatorScorecardPage(props: Props) {
   // different PAC score than the index page (and a "no data" guard that
   // wasn't actually no-data on the detail surface).
   const pacScore = jurisdiction === 'FEDERAL' ? moneyTrail?.pacScore ?? null : legacyPacScore;
+  // CA itemized money trail (per-class + top committee donors) — gives CA pages
+  // the depth federal gets from moneyTrail. Null until itemized CA data exists.
+  const caMoneyTrail = jurisdiction === 'CA' ? await getCaMoneyTrail(legislator.id) : null;
   // While the Voting Record is held, votingScore is null, so this collapses to
   // the PAC Score alone — the published headline. When the flag is flipped on,
   // it returns to the simple mean of PAC + Voting. When the PAC Score itself is
@@ -377,6 +389,60 @@ export default async function LegislatorScorecardPage(props: Props) {
         achievementByMarker={achievementByMarker}
         legislatorName={legislator.fullName}
       />
+
+      {caMoneyTrail ? (
+        <section className="mt-10">
+          <h2 className="font-serif text-2xl font-bold text-foreground">Where the PAC money came from</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Itemized committee contributions from Cal-Access filings
+            {caMoneyTrail.cycles.length ? ` (${caMoneyTrail.cycles.join(', ')} cycles)` : ''} — $
+            {Math.round(caMoneyTrail.total).toLocaleString()} from PACs, grouped by the kind of money.
+          </p>
+          <div className="mt-4 rounded-lg border border-[#C8B98A]/30 bg-[#2C4A5E]/60 p-4">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/70">By source</p>
+            <ul className="mt-2 space-y-1.5">
+              {caMoneyTrail.byClass.map((c) => {
+                const pct = caMoneyTrail.total > 0 ? (100 * c.amount) / caMoneyTrail.total : 0;
+                return (
+                  <li key={c.class} className="flex items-center gap-3">
+                    <span className="w-32 shrink-0 font-mono text-xs text-[#F5DEB3]">
+                      {CA_CLASS_LABEL[c.class] ?? c.class}
+                    </span>
+                    <span className="h-2 flex-1 overflow-hidden rounded bg-[#F5DEB3]/10">
+                      <span
+                        className="block h-full bg-[#8B3A3A]"
+                        style={{ width: `${Math.max(2, Math.round(pct))}%` }}
+                      />
+                    </span>
+                    <span className="w-28 shrink-0 text-right font-mono text-xs text-[#F5DEB3]/90">
+                      ${Math.round(c.amount).toLocaleString()} ({pct.toFixed(0)}%)
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+          <div className="mt-4 rounded-lg border border-border p-4">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-subtle-foreground">
+              Top committee donors
+            </p>
+            <ul className="mt-2 divide-y divide-border">
+              {caMoneyTrail.topDonors.map((d) => (
+                <li key={d.name} className="flex items-baseline justify-between gap-3 py-1.5">
+                  <span className="text-sm text-foreground">{d.name}</span>
+                  <span className="shrink-0 font-mono text-xs text-subtle-foreground">
+                    {CA_CLASS_LABEL[d.class] ?? d.class} · ${Math.round(d.amount).toLocaleString()}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <p className="mt-2 text-xs text-subtle-foreground">
+            Committee (PAC) contributions only, classified by name from Cal-Access. The PAC Score is the corporate +
+            trade-association share of total receipts, averaged across cycles.
+          </p>
+        </section>
+      ) : null}
 
       <footer className="mt-12 border-t-2 border-border pt-4 text-xs text-subtle-foreground">
         <p>
