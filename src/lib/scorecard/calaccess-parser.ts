@@ -24,9 +24,35 @@
 // what the classifier needs. cvr_campaign_disclosure_cd.csv carries the
 // FILING_ID -> FILER_ID + candidate-identity fields we need for Pass 1.
 
-import { createReadStream } from 'node:fs';
+import { createReadStream, existsSync } from 'node:fs';
 import path from 'node:path';
 import { parse } from 'csv-parse';
+
+/**
+ * CA format adapter — resolve a CAL-ACCESS table file regardless of the
+ * source format. The CCDC/Big Local News build ships lowercase comma `.csv`
+ * (e.g. `rcpt_cd.csv`); the raw CA Secretary of State bulk export ships
+ * UPPERCASE tab-separated `.TSV` (e.g. `RCPT_CD.TSV`). Both carry the same
+ * columns + a header row, so we just locate whichever exists. Delimiter is
+ * inferred from the extension by streamCsv.
+ */
+function resolveCalAccessFile(dir: string, baseName: string): string {
+  const candidates = [
+    `${baseName}.csv`,
+    `${baseName}.tsv`,
+    `${baseName.toUpperCase()}.TSV`,
+    `${baseName.toUpperCase()}.CSV`,
+    `${baseName.toUpperCase()}.tsv`,
+  ];
+  for (const c of candidates) {
+    const p = path.join(dir, c);
+    if (existsSync(p)) return p;
+  }
+  throw new Error(
+    `[ca-access] could not find ${baseName} in ${dir}. Looked for: ${candidates.join(', ')}. ` +
+      `Point --ccdc-dir at the directory holding the CAL-ACCESS table files (raw SoS .TSV or CCDC .csv).`,
+  );
+}
 
 export interface CalAccessLegislator {
   id: string;
@@ -299,9 +325,12 @@ async function streamCsv(
 ): Promise<number> {
   return new Promise((resolve, reject) => {
     let rowCount = 0;
+    // Raw CA SoS export is tab-separated (.TSV); CCDC build is comma (.csv).
+    const delimiter = /\.tsv$/i.test(filePath) ? '\t' : ',';
     const parser = createReadStream(filePath).pipe(
       parse({
         columns: true,
+        delimiter,
         skip_empty_lines: true,
         relax_column_count: true,
         relax_quotes: true,
@@ -360,7 +389,7 @@ export async function parseCalAccess(
   const matchedLegIds = new Set<string>();
   console.log('[ca-access] Pass 1: scanning cvr_campaign_disclosure_cd.csv...');
   const cvrRows = await streamCsv(
-    path.join(dir, 'cvr_campaign_disclosure_cd.csv'),
+    resolveCalAccessFile(dir, 'cvr_campaign_disclosure_cd'),
     {
       filter: (row) => row.FORM_TYPE === 'F460',
     },
@@ -420,7 +449,7 @@ export async function parseCalAccess(
   let rcptMatched = 0;
 
   console.log('[ca-access] Pass 2: streaming rcpt_cd.csv (this is the large file)...');
-  await streamCsv(path.join(dir, 'rcpt_cd.csv'), {}, (row) => {
+  await streamCsv(resolveCalAccessFile(dir, 'rcpt_cd'), {}, (row) => {
     rcptCount += 1;
     const target = filingToLegislator.get(row.FILING_ID);
     if (!target) return;
@@ -644,7 +673,7 @@ export async function parseCalAccessIe(args: ParseCalAccessIeArgs): Promise<CalA
   // ---- Pass 1: cvr_campaign_disclosure_cd → filing→filerId map ----
   const filingToFiler = new Map<string, string>();
   console.log('[ca-access-ie] Pass 1: scanning cvr_campaign_disclosure_cd.csv for FILING_ID → FILER_ID...');
-  const cvrRows = await streamCsv(path.join(dataDir, 'cvr_campaign_disclosure_cd.csv'), {}, (row) => {
+  const cvrRows = await streamCsv(resolveCalAccessFile(dataDir, 'cvr_campaign_disclosure_cd'), {}, (row) => {
     const filingId = row.FILING_ID;
     const filerId = row.FILER_ID;
     if (!filingId || !filerId) return;
@@ -679,7 +708,7 @@ export async function parseCalAccessIe(args: ParseCalAccessIeArgs): Promise<CalA
   }
 
   console.log('[ca-access-ie] Pass 2: streaming expn_cd.csv for F461P5 IE rows (large file — be patient)...');
-  await streamCsv(path.join(dataDir, 'expn_cd.csv'), { filter: (row) => row.FORM_TYPE === 'F461P5' }, (row) => {
+  await streamCsv(resolveCalAccessFile(dataDir, 'expn_cd'), { filter: (row) => row.FORM_TYPE === 'F461P5' }, (row) => {
     ieRowsScanned += 1;
 
     const filerId = filingToFiler.get(row.FILING_ID);
