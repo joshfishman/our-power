@@ -2,14 +2,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
-  getLegislatorList,
-  getFeaturedBills,
   parseJurisdictionParam,
   computePublishedTotal,
-  getScoreCalibration,
-  getPacScoresByLegislator,
-  getPacScoresByLegislatorV171,
   computeTwoScoreAverage,
+  getScorecardBase,
   VOTING_RECORD_PUBLISHED,
 } from '@/lib/scorecard/queries';
 import { METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
@@ -60,41 +56,23 @@ export default async function ScorecardIndexPage(props: { searchParams: Promise<
   const state = searchParams.state ? searchParams.state.toUpperCase() : undefined;
   const sortOrder: 'best' | 'worst' = searchParams.sort === 'worst' ? 'worst' : 'best';
 
-  const [legislators, featuredBills, calibrationRow] = await Promise.all([
-    getLegislatorList({ jurisdiction, chamber, party, state }),
-    getFeaturedBills(jurisdiction),
-    getScoreCalibration(METHODOLOGY_VERSION),
-  ]);
-  // Fallback anchors keep the page rendering on a fresh methodology version
-  // before the first compute-scores pass populates ScoreCalibration.
-  // (Retained for forward-compat with non-v1.7 methodology versions; v1.7
-  // uses natural percentages and does not anchor.)
+  // v2.0.2 — ONE cached per-jurisdiction fetch (all chambers/parties) + every
+  // PAC score, then filter in memory. Previously every chamber/party/state
+  // filter change re-ran the heavy PAC-scoring queries (V171 over
+  // PacContribution) for the whole chamber — making filtering slow. The PAC
+  // split (FEDERAL→V171, CA→legacy) now lives inside getScorecardBase; the
+  // result is cached for an hour. See getScorecardBase in queries.ts.
+  const {
+    legislators: allLegislators,
+    featuredBills,
+    calibration: calibrationRow,
+    pacScores,
+  } = await getScorecardBase(jurisdiction);
   void calibrationRow;
-
-  // v1.8.6 — explicit jurisdiction split, matched precisely on the detail
-  // page so the index and detail can never show different PAC scores for the
-  // same legislator. Previously the index fell back from V171 to legacy
-  // PacMoneyData on null; the detail page didn't have that fallback for some
-  // null paths and had it for others. Now:
-  //   FEDERAL → v1.7.1 PAC Score from PacContribution exclusively. If the
-  //             v1.8.1 safety guard fires (no receipts on record + meaningful
-  //             counts-against), we return null and render "Score pending"
-  //             rather than silently falling back to a stale legacy ratio.
-  //   CA      → legacy PacMoneyData ratio (no PacContribution data for CA).
-  const federalIds = legislators.filter((l) => l.jurisdiction === 'FEDERAL').map((l) => l.id);
-  const caIds = legislators.filter((l) => l.jurisdiction === 'CA').map((l) => l.id);
-  const [v171ScoresById, legacyScoresById] = await Promise.all([
-    federalIds.length > 0 ? getPacScoresByLegislatorV171(federalIds) : Promise.resolve(new Map()),
-    caIds.length > 0 ? getPacScoresByLegislator(caIds) : Promise.resolve(new Map()),
-  ]);
-  const pacScoresById = new Map<string, number | null>();
-  for (const leg of legislators) {
-    if (leg.jurisdiction === 'FEDERAL') {
-      pacScoresById.set(leg.id, v171ScoresById.get(leg.id) ?? null);
-    } else {
-      pacScoresById.set(leg.id, legacyScoresById.get(leg.id) ?? null);
-    }
-  }
+  const legislators = allLegislators.filter(
+    (l) => (!chamber || l.chamber === chamber) && (!party || l.party === party) && (!state || l.state === state),
+  );
+  const pacScoresById = new Map<string, number | null>(pacScores);
 
   const buildHref = (overrides: Partial<SearchParams>): string => {
     const params = new URLSearchParams();

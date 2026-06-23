@@ -1,6 +1,7 @@
 // Server-side data fetching for the scorecard pages and API routes.
 // All functions are read-only and safe to call from public surface area.
 
+import { unstable_cache } from 'next/cache';
 import prisma from '@/lib/prisma/prisma';
 import { METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
 import { classifyEmployer, SECTOR_LABEL } from '@/lib/scorecard/employer-industry';
@@ -1981,3 +1982,29 @@ export async function getPlankScoresByLegislator(
     };
   });
 }
+
+/**
+ * v2.0.2 — cached per-jurisdiction scorecard base. The index page was re-running
+ * the heavy PAC-scoring queries (V171 over PacContribution + classifications)
+ * for every filter change, because chamber/party/state filters are URL params
+ * that trigger a fresh server render. This fetches the FULL jurisdiction once
+ * (all chambers/parties) + every PAC score, cached for an hour, so filter
+ * changes are served from cache and filtered in memory by the page. Scores only
+ * change on ingest/recompute, so an hourly TTL is safe.
+ */
+export const getScorecardBase = unstable_cache(
+  async (jurisdiction: ScorecardJurisdiction) => {
+    const [legislators, featuredBills, calibration] = await Promise.all([
+      getLegislatorList({ jurisdiction }),
+      getFeaturedBills(jurisdiction),
+      getScoreCalibration(METHODOLOGY_VERSION),
+    ]);
+    const ids = legislators.map((l) => l.id);
+    const pacMap =
+      jurisdiction === 'FEDERAL' ? await getPacScoresByLegislatorV171(ids) : await getPacScoresByLegislator(ids);
+    // Maps don't serialize through the cache — return entries, rebuild in page.
+    return { legislators, featuredBills, calibration, pacScores: [...pacMap.entries()] };
+  },
+  ['scorecard-base'],
+  { revalidate: 3600, tags: ['scorecard'] },
+);
