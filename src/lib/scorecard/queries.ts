@@ -1,6 +1,7 @@
 // Server-side data fetching for the scorecard pages and API routes.
 // All functions are read-only and safe to call from public surface area.
 
+import { unstable_cache } from 'next/cache';
 import prisma from '@/lib/prisma/prisma';
 import { METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
 import { classifyEmployer, SECTOR_LABEL } from '@/lib/scorecard/employer-industry';
@@ -401,12 +402,15 @@ export function computeTwoScoreAverage(pacScore: number | null, votingScore: num
  * ASC so a cycle is never double-counted — then average the per-cycle ratios
  * in JS.
  */
-export async function getPacScoresByLegislator(legislatorIds: string[]): Promise<Map<string, number | null>> {
+export async function getPacScoresByLegislator(
+  legislatorIds: string[],
+  db: typeof prisma = prisma,
+): Promise<Map<string, number | null>> {
   if (legislatorIds.length === 0) return new Map();
   // One ratio row per (legislator, cycle): DISTINCT ON the (legislator, cycle)
   // pair, preferring the higher-fidelity dataSource. Then we average the
   // per-cycle ratios per legislator in JS for the simple mean.
-  const rows = await prisma.$queryRaw<
+  const rows = await db.$queryRaw<
     Array<{
       legislatorId: string;
       cycleYear: number;
@@ -445,6 +449,50 @@ export async function getPacScoresByLegislator(legislatorIds: string[]): Promise
     out.set(id, Math.max(0, Math.min(100, Math.round((1 - meanRatio) * 100))));
   }
   return out;
+}
+
+/**
+ * CA money trail — per-class breakdown + top committee donors for a California
+ * legislator, from the itemized CA PacContribution rows (synthetic `CA:<name>`
+ * committees written by ingest-cal-access.ts). Gives CA pages the money-trail
+ * depth federal has. Returns null when no itemized CA data exists yet.
+ */
+export interface CaMoneyTrail {
+  total: number;
+  byClass: Array<{ class: string; amount: number }>;
+  topDonors: Array<{ name: string; class: string; amount: number }>;
+  cycles: number[];
+}
+export async function getCaMoneyTrail(legislatorId: string): Promise<CaMoneyTrail | null> {
+  const rows = await prisma.$queryRaw<Array<{ name: string; class: string; amount: string; cycleYear: number }>>`
+    SELECT pcl.name AS name, pcl.class::text AS class, pc.amount::text AS amount, pc."cycleYear" AS "cycleYear"
+    FROM "PacContribution" pc
+    JOIN "PacClassification" pcl ON pcl."committeeId" = pc."donorCommitteeId"
+    WHERE pc."legislatorId" = ${legislatorId} AND pc."donorCommitteeId" LIKE 'CA:%'
+  `;
+  if (rows.length === 0) return null;
+  const byClassMap = new Map<string, number>();
+  const donorMap = new Map<string, { class: string; amount: number }>();
+  const cycles = new Set<number>();
+  let total = 0;
+  for (const r of rows) {
+    const amt = Number(r.amount);
+    if (!Number.isFinite(amt)) continue;
+    total += amt;
+    cycles.add(r.cycleYear);
+    byClassMap.set(r.class, (byClassMap.get(r.class) ?? 0) + amt);
+    const d = donorMap.get(r.name) ?? { class: r.class, amount: 0 };
+    d.amount += amt;
+    donorMap.set(r.name, d);
+  }
+  const byClass = [...byClassMap.entries()]
+    .map(([c, a]) => ({ class: c, amount: a }))
+    .sort((a, b) => b.amount - a.amount);
+  const topDonors = [...donorMap.entries()]
+    .map(([name, d]) => ({ name, class: d.class, amount: d.amount }))
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, 12);
+  return { total, byClass, topDonors, cycles: [...cycles].sort((a, b) => b - a) };
 }
 
 // ─── v1.7.1 PAC scoring (from PacContribution table) ────────────────────────
@@ -554,7 +602,10 @@ export interface PacMoneyTrail {
  * v1.7.1 — bulk PAC scores for many legislators in one query. Used by the
  * index page so we don't fire N+1 sums. Returns Map<legislatorId, score|null>.
  */
-export async function getPacScoresByLegislatorV171(legislatorIds: string[]): Promise<Map<string, number | null>> {
+export async function getPacScoresByLegislatorV171(
+  legislatorIds: string[],
+  db: typeof prisma = prisma,
+): Promise<Map<string, number | null>> {
   if (legislatorIds.length === 0) return new Map();
   // v1.9.3 — SIMPLE MEAN of per-cycle ratios (every cycle weighted equally),
   // replacing the pooled (Σnumerator / Σdenominator) dollar-weighted ratio.
@@ -571,7 +622,7 @@ export async function getPacScoresByLegislatorV171(legislatorIds: string[]): Pro
   // FOREIGN_POLICY, and LEADERSHIP. The per-cycle denominator is that cycle's
   // receipts + that cycle's IE_SUPPORT + that cycle's IE_OPPOSE_BENEFICIARY
   // (the same money kinds that can appear in the numerator).
-  const contribAgg = await prisma.$queryRaw<
+  const contribAgg = await db.$queryRaw<
     Array<{ legislatorId: string; cycleYear: number; countsAgainst: string; ieSupport: string; beneficiary: string }>
   >`
     SELECT
@@ -598,7 +649,7 @@ export async function getPacScoresByLegislatorV171(legislatorIds: string[]): Pro
     WHERE pcontrib."legislatorId" = ANY(${legislatorIds})
     GROUP BY pcontrib."legislatorId", pcontrib."cycleYear"
   `;
-  const receiptsAgg = await prisma.$queryRaw<
+  const receiptsAgg = await db.$queryRaw<
     Array<{ legislatorId: string; cycleYear: number; receipts: string; corpPct: string | null }>
   >`
     SELECT
@@ -1981,3 +2032,29 @@ export async function getPlankScoresByLegislator(
     };
   });
 }
+
+/**
+ * v2.0.2 — cached per-jurisdiction scorecard base. The index page was re-running
+ * the heavy PAC-scoring queries (V171 over PacContribution + classifications)
+ * for every filter change, because chamber/party/state filters are URL params
+ * that trigger a fresh server render. This fetches the FULL jurisdiction once
+ * (all chambers/parties) + every PAC score, cached for an hour, so filter
+ * changes are served from cache and filtered in memory by the page. Scores only
+ * change on ingest/recompute, so an hourly TTL is safe.
+ */
+export const getScorecardBase = unstable_cache(
+  async (jurisdiction: ScorecardJurisdiction) => {
+    const [legislators, featuredBills, calibration] = await Promise.all([
+      getLegislatorList({ jurisdiction }),
+      getFeaturedBills(jurisdiction),
+      getScoreCalibration(METHODOLOGY_VERSION),
+    ]);
+    // v2.0.2 — read the PRECOMPUTED PAC score column instead of aggregating
+    // ~1.8M PacContribution rows live (that request-time query timed out and
+    // hung /scorecard). Refreshed by scripts/recache-pac-scores.ts after ingest.
+    const pacScores: Array<[string, number | null]> = legislators.map((l) => [l.id, l.pacScoreCache ?? null]);
+    return { legislators, featuredBills, calibration, pacScores };
+  },
+  ['scorecard-base'],
+  { revalidate: 3600, tags: ['scorecard'] },
+);

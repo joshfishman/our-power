@@ -829,6 +829,12 @@ model Legislator {
   // who lack the itemized corporate-PAC breakdown needed for a real PAC Score.
   // Populated by scripts/ingest-2026-receipts.ts from FEC /candidates/totals/.
   currentCycleReceipts  Int?
+  // v2.0.2 — precomputed PAC Score (0-100), written by scripts/recache-pac-scores.ts
+  // so the index page reads a column instead of aggregating 1.8M PacContribution
+  // rows live (that request-time query was timing out and hanging /scorecard).
+  // Recomputed after every PAC ingest. Null = no PAC data / not yet cached.
+  pacScoreCache         Int?
+  pacScoreCachedAt      DateTime?
 
   scores             RepresentativeScore[]
   achievements       MarkerAchievement[]
