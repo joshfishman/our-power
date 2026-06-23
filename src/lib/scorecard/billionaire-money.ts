@@ -9,6 +9,8 @@
 // subsidy vs loan vs profit) stated plainly so no number is misread.
 
 import muskData from './musk-government-money.json';
+import bezosData from './bezos-government-money.json';
+import thielData from './thiel-government-money.json';
 
 export type MoneyType =
   | 'FEDERAL_CONTRACT'
@@ -92,8 +94,53 @@ export const TYPE_NOTE: Record<MoneyType, string> = {
     'Money Musk GAVE to influence elections — the opposite direction. Never add this to money received.',
 };
 
-export function getMuskProfile(): BillionaireMoneyProfile {
-  return muskData as unknown as BillionaireMoneyProfile;
+// Registry of Phase-0 profiles. Each is a hand-curated, source-linked dataset.
+// Order = display order on the index. Blurb names the vehicles; `lean` is shown
+// to make the cross-partisan selection rule visible (we profile whoever takes
+// the most public money, of any party — not one side).
+interface ProfileEntry {
+  slug: string;
+  profile: BillionaireMoneyProfile;
+  blurb: string;
+  lean: 'left' | 'right' | 'mixed';
+}
+const PROFILES: ProfileEntry[] = [
+  { slug: 'musk', profile: muskData as unknown as BillionaireMoneyProfile, blurb: 'Tesla · SpaceX · X', lean: 'right' },
+  {
+    slug: 'bezos',
+    profile: bezosData as unknown as BillionaireMoneyProfile,
+    blurb: 'Amazon · Blue Origin',
+    lean: 'mixed',
+  },
+  {
+    slug: 'thiel',
+    profile: thielData as unknown as BillionaireMoneyProfile,
+    blurb: 'Palantir · Founders Fund',
+    lean: 'right',
+  },
+];
+
+export const PROFILE_SLUGS = PROFILES.map((p) => p.slug);
+
+export function getProfile(slug: string): BillionaireMoneyProfile | null {
+  return PROFILES.find((p) => p.slug === slug)?.profile ?? null;
+}
+
+/** Lightweight list for the index page (no need to ship every line item). */
+export function listProfiles(): Array<{
+  slug: string;
+  subject: string;
+  blurb: string;
+  lean: 'left' | 'right' | 'mixed';
+  headlineLabel: string;
+}> {
+  return PROFILES.map((p) => ({
+    slug: p.slug,
+    subject: p.profile.subject,
+    blurb: p.blurb,
+    lean: p.lean,
+    headlineLabel: p.profile.headline.label,
+  }));
 }
 
 /** Split a profile's line items into money-in (received) and money-out (political). */

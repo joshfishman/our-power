@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import {
-  getMuskProfile,
+  getProfile,
+  PROFILE_SLUGS,
   splitMoney,
   groupByType,
   TYPE_LABEL,
@@ -9,11 +11,21 @@ import {
   type MoneyLineItem,
 } from '@/lib/scorecard/billionaire-money';
 
-export const metadata: Metadata = {
-  title: 'Elon Musk — public money in, political money out | Common Ground',
-  description:
-    "How much public money has flowed to Elon Musk's companies (contracts, loans, subsidies, credits) — at least $38 billion — shown beside the money he spends on politics. Every figure traces to a public source.",
-};
+type Props = { params: Promise<{ slug: string }> };
+
+export function generateStaticParams() {
+  return PROFILE_SLUGS.map((slug) => ({ slug }));
+}
+
+export async function generateMetadata(props: Props): Promise<Metadata> {
+  const { slug } = await props.params;
+  const profile = getProfile(slug);
+  if (!profile) return { title: 'Profile not found | Common Ground' };
+  return {
+    title: `${profile.subject} — public money in, political money out | Common Ground`,
+    description: `How much public money has flowed to ${profile.subject}'s companies (contracts, loans, subsidies, credits), shown beside the money spent on politics. Every figure traces to a public source.`,
+  };
+}
 
 const CONF_TONE: Record<string, string> = {
   high: 'bg-[#2C4A5E]/80 text-[#F5DEB3]',
@@ -45,46 +57,55 @@ function LineItem({ item }: { item: MoneyLineItem }) {
   );
 }
 
-export default function MuskPowerPage() {
-  const profile = getMuskProfile();
+export default async function BillionaireProfilePage(props: Props) {
+  const { slug } = await props.params;
+  const profile = getProfile(slug);
+  if (!profile) notFound();
+
   const { moneyIn, moneyOut } = splitMoney(profile.line_items);
   const inGroups = groupByType(moneyIn);
-  const politicalTotal = moneyOut.find((m) => m.id === 'musk-total-2024');
+  const politicalTotal =
+    moneyOut.find((m) => /total|aggregate/i.test(m.category)) ??
+    moneyOut.slice().sort((a, b) => (b.amount ?? 0) - (a.amount ?? 0))[0];
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
-      <Link href="/scorecard" className="text-sm text-muted-foreground hover:text-foreground">
-        ← Back to scorecard
+      <Link href="/scorecard/power" className="text-sm text-muted-foreground hover:text-foreground">
+        ← Public money &amp; private fortunes
       </Link>
 
       <header className="mt-4 border-b-2 border-border pb-6">
         <p className="font-mono text-xs uppercase tracking-widest text-subtle-foreground">
           Power · public money &amp; private fortune
         </p>
-        <h1 className="mt-1 font-serif text-3xl font-bold text-foreground">Elon Musk</h1>
+        <h1 className="mt-1 font-serif text-3xl font-bold text-foreground">{profile.subject}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           The scorecard tracks the money that flows <em>to</em> politicians. This is the other direction: the public
-          money that flows to a private fortune. We show government money <strong>in</strong> — contracts, loans,
-          subsidies, credits — beside the political money Musk spends <strong>out</strong>. Every figure links to a
-          public source, and we keep the kinds of money strictly separate, because a contract the government chose to
-          buy is not a subsidy.
+          money that flows to a private fortune. Government money <strong>in</strong> — contracts, loans, subsidies,
+          credits — beside the political money spent <strong>out</strong>. Every figure links to a public source, and
+          the kinds of money are kept strictly separate, because a contract the government chose to buy is not a
+          subsidy.
         </p>
       </header>
 
       {/* Headline */}
       <section className="mt-6 rounded-lg border border-[#C8B98A]/30 bg-[#2C4A5E]/60 p-6">
         <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/70">
-          Lifetime U.S. government money to Musk&apos;s companies
+          {profile.headline.description.length < 90
+            ? profile.headline.description
+            : 'Government money to these companies'}
         </p>
         <div className="mt-1 font-serif text-5xl font-bold leading-none text-[#F5DEB3]">{profile.headline.label}</div>
-        <p className="mt-3 text-sm text-[#F5DEB3]/90">{profile.headline.description}</p>
+        {profile.headline.description.length >= 90 ? (
+          <p className="mt-3 text-sm text-[#F5DEB3]/90">{profile.headline.description}</p>
+        ) : null}
         <p className="mt-2 font-mono text-xs text-[#F5DEB3]/70">{profile.headline.composition}</p>
         <a
           href={profile.headline.source_url}
           target="_blank"
           rel="noopener noreferrer"
           className="mt-2 inline-block font-mono text-xs text-[#F5DEB3] underline hover:decoration-[#F5DEB3]">
-          Washington Post analysis ↗
+          source ↗
         </a>
         <ul className="mt-3 space-y-1 border-t border-[#C8B98A]/20 pt-3">
           {profile.headline.caveats.map((c) => (
@@ -95,7 +116,7 @@ export default function MuskPowerPage() {
         </ul>
       </section>
 
-      {/* Money IN, by type */}
+      {/* Money IN */}
       <h2 className="mt-8 font-serif text-2xl font-bold text-foreground">Money in — what the public paid</h2>
       <p className="mt-1 text-sm text-muted-foreground">
         Broken out by kind, because they are not the same thing. A contract buys a service; a subsidy is closer to a
@@ -116,25 +137,30 @@ export default function MuskPowerPage() {
       </div>
 
       {/* Money OUT */}
-      <h2 className="mt-10 font-serif text-2xl font-bold text-foreground">Money out — what he spends on politics</h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        The opposite direction. This is money Musk <em>gave</em> to shape elections — never to be added to the money
-        received above.
-      </p>
-      {politicalTotal ? (
-        <div className="mt-4 rounded-lg border border-[#8B3A3A]/40 bg-[#8B3A3A]/15 p-5">
-          <div className="font-serif text-4xl font-bold leading-none text-foreground">
-            {politicalTotal.amount_label}
+      {moneyOut.length > 0 ? (
+        <>
+          <h2 className="mt-10 font-serif text-2xl font-bold text-foreground">
+            Money out — what they spend on politics
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            The opposite direction — money <em>given</em> to shape elections, never to be added to the money received
+            above.
+          </p>
+          <div className="mt-4 rounded-lg border border-[#8B3A3A]/40 bg-[#8B3A3A]/15 p-5">
+            {politicalTotal ? (
+              <div className="font-serif text-4xl font-bold leading-none text-foreground">
+                {politicalTotal.amount_label}
+              </div>
+            ) : null}
+            <ul className="mt-3">
+              {moneyOut
+                .filter((m) => m.id !== politicalTotal?.id)
+                .map((item) => (
+                  <LineItem key={item.id} item={item} />
+                ))}
+            </ul>
           </div>
-          <p className="mt-2 text-sm text-muted-foreground">{politicalTotal.description}</p>
-          <ul className="mt-3">
-            {moneyOut
-              .filter((m) => m.id !== 'musk-total-2024')
-              .map((item) => (
-                <LineItem key={item.id} item={item} />
-              ))}
-          </ul>
-        </div>
+        </>
       ) : null}
 
       {/* Caveats */}
@@ -147,15 +173,10 @@ export default function MuskPowerPage() {
 
       <footer className="mt-10 border-t-2 border-border pt-4 text-xs text-muted-foreground">
         <p>
-          Phase 0 proof-of-concept — one hand-curated, fully source-linked profile. Compiled {profile.compiled} (method{' '}
-          {profile.methodology_version}). Figures are gross government dollars directed to Musk&apos;s companies, not
-          his personal income; contracts fund work delivered. We publish this to scrutinize the flow of public money to
-          concentrated private wealth — a question that applies to billionaires of every political stripe, not one
-          party. See{' '}
-          <Link href="/scorecard" className="underline hover:text-accent">
-            the scorecard
-          </Link>
-          .
+          Phase 0 proof-of-concept — hand-curated, fully source-linked. Compiled {profile.compiled} (method{' '}
+          {profile.methodology_version}). Figures are gross government dollars directed to the companies, not personal
+          income; contracts fund work delivered. We publish this to scrutinize the flow of public money to concentrated
+          private wealth — applicable to billionaires of every political stripe, not one party.
         </p>
       </footer>
     </div>

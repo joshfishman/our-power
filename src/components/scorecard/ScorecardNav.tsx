@@ -29,6 +29,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/scorecard', label: 'Scorecard', exact: true },
   { href: '/scorecard/races', label: 'Races', alsoActiveOn: ['/scorecard/race/'] },
   { href: '/scorecard/pac', label: 'PAC' },
+  { href: '/scorecard/power', label: 'Power', alsoActiveOn: ['/scorecard/power/'] },
   { href: '/scorecard/issues', label: 'Issues' },
   { href: '/scorecard/methodology', label: 'Methodology' },
 ];
