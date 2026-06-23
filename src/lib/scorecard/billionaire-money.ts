@@ -11,6 +11,7 @@
 import muskData from './musk-government-money.json';
 import bezosData from './bezos-government-money.json';
 import thielData from './thiel-government-money.json';
+import waltonData from './walton-government-money.json';
 
 export type MoneyType =
   | 'FEDERAL_CONTRACT'
@@ -116,6 +117,12 @@ const PROFILES: ProfileEntry[] = [
     slug: 'thiel',
     profile: thielData as unknown as BillionaireMoneyProfile,
     blurb: 'Palantir · Founders Fund',
+    lean: 'right',
+  },
+  {
+    slug: 'walton',
+    profile: waltonData as unknown as BillionaireMoneyProfile,
+    blurb: 'Walmart · Sam’s Club',
     lean: 'right',
   },
 ];
