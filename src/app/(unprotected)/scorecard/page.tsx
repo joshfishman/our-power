@@ -252,7 +252,13 @@ export default async function ScorecardIndexPage(props: { searchParams: Promise<
             // headline is the PAC Score alone and the ranking sorts on it.
             const pacScore = pacScoresById.get(leg.id) ?? null;
             const votingScore = VOTING_RECORD_PUBLISHED ? computePublishedTotal(leg.scores) : null;
-            const avg = VOTING_RECORD_PUBLISHED ? computeTwoScoreAverage(pacScore, votingScore) : null;
+            // The Average — and the rank — require the PAC Score, the headline
+            // metric of this list. A legislator with no PAC data yet is
+            // "pending": we do NOT fabricate a voting-only average (which would
+            // float a no-PAC member to the top), so avg/rank stay null and they
+            // sort to the bottom with the other pending rows.
+            const avg =
+              pacScore === null ? null : VOTING_RECORD_PUBLISHED ? computeTwoScoreAverage(pacScore, votingScore) : null;
             // Value the ranking sorts on: the Average when voting is published,
             // the PAC Score alone while it is held.
             const rankValue = VOTING_RECORD_PUBLISHED ? avg : pacScore;

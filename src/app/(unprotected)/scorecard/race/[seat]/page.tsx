@@ -168,6 +168,23 @@ export default async function RaceScorecardPage(props: Props) {
     ...basePartyOrder.filter((p) => p !== incumbentParty),
   ] as Array<(typeof basePartyOrder)[number]>;
 
+  // Race-level money totals (2026 cycle receipts) for the headline banner —
+  // big totals on top, per-candidate breakdowns below.
+  const fmtMoney = (n: number): string =>
+    n >= 1_000_000
+      ? `$${(n / 1_000_000).toFixed(1)}M`
+      : n >= 1_000
+      ? `$${Math.round(n / 1_000)}K`
+      : `$${Math.round(n)}`;
+  const raceTotal = candidates.reduce((s, c) => s + (cycleReceipts.get(c.id) ?? 0), 0);
+  const partyTotals = partyOrder
+    .map((p) => ({
+      party: p,
+      total: (byParty[p] ?? []).reduce((s, x) => s + (cycleReceipts.get(x.c.id) ?? 0), 0),
+      n: byParty[p]?.length ?? 0,
+    }))
+    .filter((x) => x.n > 0);
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
       <Link href="/scorecard" className="text-sm text-muted-foreground hover:text-foreground">
@@ -189,6 +206,31 @@ export default async function RaceScorecardPage(props: Props) {
           . Same rubric we apply to sitting members — applied to every candidate on the ballot.
         </p>
       </header>
+
+      {/* Big money totals on top — the headline numbers; breakdowns below. */}
+      {raceTotal > 0 ? (
+        <section className="mt-6 rounded-lg border border-border bg-secondary p-5">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-subtle-foreground">
+            2026 money raised in this race
+          </p>
+          <div className="mt-1 flex flex-wrap items-end gap-x-10 gap-y-4">
+            <div>
+              <div className="font-serif text-5xl font-bold leading-none text-foreground">{fmtMoney(raceTotal)}</div>
+              <div className="mt-1 font-mono text-xs text-subtle-foreground">total across all viable candidates</div>
+            </div>
+            {partyTotals.map((pt) => (
+              <div key={pt.party}>
+                <div className={`font-serif text-3xl font-bold leading-none ${PARTY_TONE[pt.party].text}`}>
+                  {fmtMoney(pt.total)}
+                </div>
+                <div className="mt-1 font-mono text-xs text-subtle-foreground">
+                  {PARTY_LABEL[pt.party]} · {pt.n} candidate{pt.n === 1 ? '' : 's'}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {ghostRows.length > 0 ? (
         <section className="mt-6 rounded-lg border border-border bg-secondary p-4 text-foreground">
@@ -244,6 +286,20 @@ export default async function RaceScorecardPage(props: Props) {
                       </span>
                     </div>
 
+                    {/* Big total on top, breakdown below. */}
+                    {(p.totalReceipts ?? 0) > 0 ? (
+                      <p className="mt-2 font-serif text-2xl font-bold text-foreground">
+                        {fmtMoney(p.totalReceipts!)}
+                        <span className="ml-2 font-mono text-xs font-normal text-subtle-foreground">
+                          raised this cycle
+                        </span>
+                      </p>
+                    ) : (
+                      <p className="mt-2 font-mono text-xs text-subtle-foreground">
+                        2026 receipts not yet on file with the FEC.
+                      </p>
+                    )}
+
                     <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
                       <Stat
                         label="PAC Score"
@@ -282,16 +338,6 @@ export default async function RaceScorecardPage(props: Props) {
                         hint={p.dimeScore !== null ? 'DIME donor CFscore' : 'no prior cycle in DIME'}
                       />
                     </dl>
-
-                    {(p.totalReceipts ?? 0) > 0 ? (
-                      <p className="mt-3 font-mono text-xs text-muted-foreground">
-                        2026 money raised: ${Math.round(p.totalReceipts!).toLocaleString()}
-                      </p>
-                    ) : (
-                      <p className="mt-3 font-mono text-xs text-subtle-foreground">
-                        2026 receipts not yet on file with the FEC.
-                      </p>
-                    )}
                   </li>
                 );
               })}
