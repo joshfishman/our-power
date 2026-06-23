@@ -402,12 +402,15 @@ export function computeTwoScoreAverage(pacScore: number | null, votingScore: num
  * ASC so a cycle is never double-counted — then average the per-cycle ratios
  * in JS.
  */
-export async function getPacScoresByLegislator(legislatorIds: string[]): Promise<Map<string, number | null>> {
+export async function getPacScoresByLegislator(
+  legislatorIds: string[],
+  db: typeof prisma = prisma,
+): Promise<Map<string, number | null>> {
   if (legislatorIds.length === 0) return new Map();
   // One ratio row per (legislator, cycle): DISTINCT ON the (legislator, cycle)
   // pair, preferring the higher-fidelity dataSource. Then we average the
   // per-cycle ratios per legislator in JS for the simple mean.
-  const rows = await prisma.$queryRaw<
+  const rows = await db.$queryRaw<
     Array<{
       legislatorId: string;
       cycleYear: number;
@@ -599,7 +602,10 @@ export interface PacMoneyTrail {
  * v1.7.1 — bulk PAC scores for many legislators in one query. Used by the
  * index page so we don't fire N+1 sums. Returns Map<legislatorId, score|null>.
  */
-export async function getPacScoresByLegislatorV171(legislatorIds: string[]): Promise<Map<string, number | null>> {
+export async function getPacScoresByLegislatorV171(
+  legislatorIds: string[],
+  db: typeof prisma = prisma,
+): Promise<Map<string, number | null>> {
   if (legislatorIds.length === 0) return new Map();
   // v1.9.3 — SIMPLE MEAN of per-cycle ratios (every cycle weighted equally),
   // replacing the pooled (Σnumerator / Σdenominator) dollar-weighted ratio.
@@ -616,7 +622,7 @@ export async function getPacScoresByLegislatorV171(legislatorIds: string[]): Pro
   // FOREIGN_POLICY, and LEADERSHIP. The per-cycle denominator is that cycle's
   // receipts + that cycle's IE_SUPPORT + that cycle's IE_OPPOSE_BENEFICIARY
   // (the same money kinds that can appear in the numerator).
-  const contribAgg = await prisma.$queryRaw<
+  const contribAgg = await db.$queryRaw<
     Array<{ legislatorId: string; cycleYear: number; countsAgainst: string; ieSupport: string; beneficiary: string }>
   >`
     SELECT
@@ -643,7 +649,7 @@ export async function getPacScoresByLegislatorV171(legislatorIds: string[]): Pro
     WHERE pcontrib."legislatorId" = ANY(${legislatorIds})
     GROUP BY pcontrib."legislatorId", pcontrib."cycleYear"
   `;
-  const receiptsAgg = await prisma.$queryRaw<
+  const receiptsAgg = await db.$queryRaw<
     Array<{ legislatorId: string; cycleYear: number; receipts: string; corpPct: string | null }>
   >`
     SELECT
@@ -2043,11 +2049,11 @@ export const getScorecardBase = unstable_cache(
       getFeaturedBills(jurisdiction),
       getScoreCalibration(METHODOLOGY_VERSION),
     ]);
-    const ids = legislators.map((l) => l.id);
-    const pacMap =
-      jurisdiction === 'FEDERAL' ? await getPacScoresByLegislatorV171(ids) : await getPacScoresByLegislator(ids);
-    // Maps don't serialize through the cache — return entries, rebuild in page.
-    return { legislators, featuredBills, calibration, pacScores: [...pacMap.entries()] };
+    // v2.0.2 — read the PRECOMPUTED PAC score column instead of aggregating
+    // ~1.8M PacContribution rows live (that request-time query timed out and
+    // hung /scorecard). Refreshed by scripts/recache-pac-scores.ts after ingest.
+    const pacScores: Array<[string, number | null]> = legislators.map((l) => [l.id, l.pacScoreCache ?? null]);
+    return { legislators, featuredBills, calibration, pacScores };
   },
   ['scorecard-base'],
   { revalidate: 3600, tags: ['scorecard'] },
