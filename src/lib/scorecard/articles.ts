@@ -24,12 +24,22 @@ export interface ArticleSource {
   representative?: boolean;
 }
 
-/** A simple horizontal bar chart rendered above the article body (the thesis visual). */
+/** A bar or pie chart rendered above the article body (the thesis visual). */
 export interface ArticleChart {
   title: string;
-  /** Bars, in display order. valueLabel is the human figure ("$48.6M"); value drives bar width. */
-  bars: Array<{ label: string; value: number; valueLabel: string; tone?: 'brick' | 'navy' | 'muted' }>;
+  /** 'bar' (default) renders horizontal bars; 'pie' renders a donut with a center highlight + % legend. */
+  kind?: 'bar' | 'pie';
+  /**
+   * Segments, in display order. valueLabel is the human figure ("$20.0M");
+   * value drives the bar width / pie slice. color overrides the tone-derived
+   * fill (used by the pie to give same-tone slices distinct shades).
+   */
+  bars: Array<{ label: string; value: number; valueLabel: string; tone?: 'brick' | 'navy' | 'muted'; color?: string }>;
+  /** Big number shown in the donut center (pie only), e.g. "~91%". */
+  highlight?: { value: string; label: string };
   caption?: string;
+  /** Optional explanatory note rendered under the chart (e.g. "UDP is AIPAC's super PAC"). */
+  note?: string;
 }
 
 /** A targeted-primary case study: who was targeted, how they stood, who won, how the winner voted. */
@@ -86,15 +96,18 @@ const AIPAC_SPENDING: Article = {
   section: 'pac',
   publishedAt: '2026-06-24',
   chart: {
-    title: 'AIPAC super-PAC (United Democracy Project) independent expenditures, 2024 — by party',
+    kind: 'pie',
+    title: 'Where the AIPAC Super PAC (UDP) spent its money — 2024, by party',
+    highlight: { value: '~91%', label: 'spent inside Democratic primaries' },
     bars: [
-      { label: 'Against Democrats', value: 20.0, valueLabel: '$20.0M', tone: 'brick' },
-      { label: 'Boosting Dem challengers', value: 12.4, valueLabel: '$12.4M', tone: 'brick' },
-      { label: 'Against Republicans', value: 3.0, valueLabel: '$3.0M', tone: 'muted' },
-      { label: 'Boosting Republicans', value: 0, valueLabel: '$0', tone: 'muted' },
+      { label: 'Against Democrats', value: 20.0, valueLabel: '$20.0M', color: '#8B3A3A' },
+      { label: 'Boosting Dem challengers', value: 12.4, valueLabel: '$12.4M', color: '#B5685A' },
+      { label: 'Against Republicans', value: 3.0, valueLabel: '$3.0M', color: '#C8B98A' },
+      { label: 'Boosting Republicans', value: 0, valueLabel: '$0', color: '#6B7C87' },
     ],
     caption:
-      "About $32.4M of UDP's ~$35.6M in itemized independent expenditures — roughly 91% — was spent inside Democratic primaries: defeating Israel-critical incumbents and boosting their challengers. Only ~$3M went against Republicans, and effectively nothing supported them. (FactCheck.org / FEC, Sept. 2024 snapshot; final UDP independent expenditures $37.9M.)",
+      'FactCheck.org / FEC, Sept. 2024 snapshot of ~$35.6M in itemized independent expenditures; final spend for the cycle was $37.9M. About $32.4M — roughly 91% — landed inside Democratic primaries; only ~$3M went against Republicans, and nothing supported them.',
+    note: '“UDP” is the United Democracy Project — AIPAC’s own super PAC, created and funded by AIPAC’s donor network to make the uncapped “independent expenditure” ads a candidate-contribution PAC legally can’t. When you see UDP money, you are seeing AIPAC money.',
   },
   body: `So what is up with that chart?
 
@@ -105,7 +118,7 @@ The short answer: **AIPAC and allied pro-Israel groups are among the largest out
 In the 2023–24 cycle, AIPAC's two vehicles spent on the order of **$127 million** combined (FEC):
 
 - The **AIPAC PAC** (~$55.2M) bundles capped contributions directly to candidates — and it does give to both parties.
-- The **United Democracy Project (UDP)** super PAC made **~$37.9M in uncapped independent expenditures** (~$61M total disbursed) — the attack ads — and *that* money concentrates in Democratic primaries. UDP is where the chart comes from.
+- The **AIPAC Super PAC (UDP)** — formally the United Democracy Project, AIPAC's own super PAC — made **~$37.9M in uncapped independent expenditures** (~$61M total disbursed): the attack ads. *That* money concentrates in Democratic primaries, and it is where the chart above comes from.
 
 They are not alone. **Democratic Majority for Israel** (DMFI PAC, ~$4.8M in 2024) runs the same play on a smaller scale. And on a different issue entirely, the crypto industry's **Fairshake** network deployed ~$133M in 2024 — including ~$10M to sink Katie Porter in California's Senate primary — proving the mechanism isn't unique to one cause: **a single national network can now decide a low-turnout primary with a late surge of uncapped money.**
 

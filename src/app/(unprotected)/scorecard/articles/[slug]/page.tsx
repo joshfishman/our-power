@@ -1,10 +1,11 @@
 /* eslint-disable react/no-children-prop */
 import type { Metadata } from 'next';
+import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { getArticleBySlug, getAllArticles } from '@/lib/scorecard/articles';
+import { getArticleBySlug, getAllArticles, type ArticleChart } from '@/lib/scorecard/articles';
 import { getPlankBySlug } from '@/lib/scorecard/queries';
 
 type Props = { params: Promise<{ slug: string }> };
@@ -27,6 +28,112 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 
 const PROSE_CLASS =
   'mt-6 text-foreground [&_a]:text-accent [&_a]:underline hover:[&_a]:text-foreground [&_blockquote]:mt-4 [&_blockquote]:border-l-4 [&_blockquote]:border-accent [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-foreground [&_code]:rounded [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-xs [&_h2]:mt-10 [&_h2]:font-serif [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:text-foreground [&_h3]:mt-6 [&_h3]:font-serif [&_h3]:text-xl [&_h3]:font-semibold [&_h3]:text-foreground [&_li]:mt-1 [&_ol]:mt-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:mt-3 [&_p]:leading-relaxed [&_p]:text-foreground [&_strong]:font-semibold [&_strong]:text-foreground [&_ul]:mt-3 [&_ul]:list-disc [&_ul]:pl-6';
+
+/** Renders an article's thesis chart — a horizontal bar set or a donut with a center highlight + % legend. */
+function ChartBlock({ chart }: { chart: ArticleChart }) {
+  const total = chart.bars.reduce((s, b) => s + b.value, 0) || 1;
+
+  const legend = (
+    <ul className="w-full flex-1 space-y-2">
+      {chart.bars.map((b) => {
+        const pct = Math.round((100 * b.value) / total);
+        const fill = b.color ?? (b.tone === 'navy' ? '#C8B98A' : b.tone === 'muted' ? '#6B7C87' : '#8B3A3A');
+        return (
+          <li key={b.label} className="flex items-center gap-3">
+            <span aria-hidden className="h-3 w-3 shrink-0 rounded-sm" style={{ backgroundColor: fill }} />
+            <span className="flex-1 font-mono text-xs text-[#F5DEB3]">{b.label}</span>
+            <span className="font-mono text-xs text-[#F5DEB3]/60">{b.valueLabel}</span>
+            <span className="w-12 text-right font-mono text-base font-bold text-[#F5DEB3]">{pct}%</span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+
+  let body: ReactNode;
+  if (chart.kind === 'pie') {
+    const r = 70;
+    const cx = 90;
+    const circ = 2 * Math.PI * r;
+    let acc = 0;
+    const slices = chart.bars
+      .filter((b) => b.value > 0)
+      .map((b) => {
+        const frac = b.value / total;
+        const fill = b.color ?? (b.tone === 'navy' ? '#C8B98A' : b.tone === 'muted' ? '#6B7C87' : '#8B3A3A');
+        const seg = { label: b.label, frac, offset: acc, fill };
+        acc += frac;
+        return seg;
+      });
+    body = (
+      <div className="mt-5 flex flex-col items-center gap-6 sm:flex-row sm:gap-8">
+        <div className="relative h-44 w-44 shrink-0">
+          <svg viewBox="0 0 180 180" className="h-full w-full">
+            <circle cx={cx} cy={cx} r={r} fill="none" stroke="#F5DEB3" strokeOpacity={0.1} strokeWidth={26} />
+            {slices.map((s) => (
+              <circle
+                key={s.label}
+                cx={cx}
+                cy={cx}
+                r={r}
+                fill="none"
+                stroke={s.fill}
+                strokeWidth={26}
+                strokeDasharray={`${s.frac * circ} ${circ}`}
+                transform={`rotate(${s.offset * 360 - 90} ${cx} ${cx})`}
+              />
+            ))}
+          </svg>
+          {chart.highlight ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
+              <span className="font-serif text-4xl font-bold leading-none text-[#F5DEB3]">{chart.highlight.value}</span>
+              <span className="mt-1 font-mono text-[9px] uppercase leading-tight tracking-wide text-[#F5DEB3]/70">
+                {chart.highlight.label}
+              </span>
+            </div>
+          ) : null}
+        </div>
+        {legend}
+      </div>
+    );
+  } else {
+    body = (
+      <ul className="mt-4 space-y-2.5">
+        {chart.bars.map((b) => {
+          const max = Math.max(...chart.bars.map((x) => x.value), 1);
+          const pct = Math.max(2, Math.round((100 * b.value) / max));
+          const bar = b.tone === 'navy' ? 'bg-[#C8B98A]' : b.tone === 'muted' ? 'bg-[#F5DEB3]/30' : 'bg-[#8B3A3A]';
+          return (
+            <li key={b.label} className="flex items-center gap-3">
+              <span className="w-40 shrink-0 font-mono text-xs text-[#F5DEB3]">{b.label}</span>
+              <span className="h-3 flex-1 overflow-hidden rounded bg-[#F5DEB3]/10">
+                <span className={`block h-full ${bar}`} style={{ width: `${pct}%` }} />
+              </span>
+              <span className="w-24 shrink-0 text-right font-mono text-xs font-bold text-[#F5DEB3]">
+                {b.valueLabel}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    );
+  }
+
+  return (
+    <section className="mt-8 rounded-lg border border-[#C8B98A]/30 bg-[#2C4A5E]/60 p-5">
+      <h2 className="font-serif text-lg font-bold text-[#F5DEB3]">{chart.title}</h2>
+      {body}
+      {chart.caption ? (
+        <p className="mt-3 border-t border-[#C8B98A]/20 pt-2 text-xs text-[#F5DEB3]/70">{chart.caption}</p>
+      ) : null}
+      {chart.note ? (
+        <p className="mt-3 rounded border border-[#C8B98A]/30 bg-[#8B3A3A]/20 p-3 text-xs text-[#F5DEB3]">
+          {chart.note}
+        </p>
+      ) : null}
+    </section>
+  );
+}
 
 export default async function ArticlePage(props: Props) {
   const params = await props.params;
@@ -74,32 +181,7 @@ export default async function ArticlePage(props: Props) {
         <p className="mt-3 font-mono text-xs uppercase tracking-wide text-subtle-foreground">{formattedDate}</p>
       </header>
 
-      {article.chart ? (
-        <section className="mt-8 rounded-lg border border-[#C8B98A]/30 bg-[#2C4A5E]/60 p-5">
-          <h2 className="font-serif text-lg font-bold text-[#F5DEB3]">{article.chart.title}</h2>
-          <ul className="mt-4 space-y-2.5">
-            {article.chart.bars.map((b) => {
-              const max = Math.max(...article.chart!.bars.map((x) => x.value), 1);
-              const pct = Math.max(2, Math.round((100 * b.value) / max));
-              const bar = b.tone === 'navy' ? 'bg-[#C8B98A]' : b.tone === 'muted' ? 'bg-[#F5DEB3]/30' : 'bg-[#8B3A3A]';
-              return (
-                <li key={b.label} className="flex items-center gap-3">
-                  <span className="w-40 shrink-0 font-mono text-xs text-[#F5DEB3]">{b.label}</span>
-                  <span className="h-3 flex-1 overflow-hidden rounded bg-[#F5DEB3]/10">
-                    <span className={`block h-full ${bar}`} style={{ width: `${pct}%` }} />
-                  </span>
-                  <span className="w-24 shrink-0 text-right font-mono text-xs font-bold text-[#F5DEB3]">
-                    {b.valueLabel}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-          {article.chart.caption ? (
-            <p className="mt-3 border-t border-[#C8B98A]/20 pt-2 text-xs text-[#F5DEB3]/70">{article.chart.caption}</p>
-          ) : null}
-        </section>
-      ) : null}
+      {article.chart ? <ChartBlock chart={article.chart} /> : null}
 
       <article className={PROSE_CLASS}>
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{article.body}</ReactMarkdown>
@@ -123,16 +205,28 @@ export default async function ArticlePage(props: Props) {
                 </div>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
                   <div className="rounded border border-border bg-secondary p-3">
-                    <p className="font-mono text-[10px] uppercase tracking-wide text-subtle-foreground">
-                      Targeted — how they stood
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-mono text-[10px] uppercase tracking-wide text-subtle-foreground">
+                        AIPAC target — how they stood
+                      </p>
+                      <span className="shrink-0 rounded bg-[#8B3A3A] px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wide text-[#F5DEB3]">
+                        ✕ Defeated
+                      </span>
+                    </div>
+                    <p className="mt-1 font-serif text-sm font-bold text-foreground line-through decoration-[#8B3A3A] decoration-2">
+                      {c.targeted}
                     </p>
-                    <p className="mt-1 font-serif text-sm font-bold text-foreground">{c.targeted}</p>
                     <p className="mt-1 text-xs text-muted-foreground">{c.targetedStance}</p>
                   </div>
                   <div className="rounded border border-[#8B3A3A]/40 bg-[#8B3A3A]/10 p-3">
-                    <p className="font-mono text-[10px] uppercase tracking-wide text-subtle-foreground">
-                      Backed winner — how they voted
-                    </p>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-mono text-[10px] uppercase tracking-wide text-subtle-foreground">
+                        Backed winner — how they voted
+                      </p>
+                      <span className="shrink-0 rounded border border-[#C8B98A]/50 bg-[#2C4A5E] px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wide text-[#F5DEB3]">
+                        ✓ AIPAC-backed · Won
+                      </span>
+                    </div>
                     <p className="mt-1 font-serif text-sm font-bold text-foreground">{c.winner}</p>
                     <p className="mt-1 text-xs text-muted-foreground">{c.winnerRecord}</p>
                   </div>
