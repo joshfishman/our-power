@@ -109,11 +109,18 @@ async function main(): Promise<void> {
     if (!curated) continue;
     const entry = { voted: new Set<string>(), aligned: new Set<string>() };
     for (const pos of v.positions) {
-      // Only a cast YES/NO is a real position. NOT_VOTING / PRESENT / absent is
-      // not a vote — it must never penalize (would otherwise read as misaligned).
-      if (pos.position !== 'YES' && pos.position !== 'NO') continue;
-      entry.voted.add(pos.legislatorId);
-      if (pos.position === curated.aligned) entry.aligned.add(pos.legislatorId);
+      const cast = pos.position === 'YES' || pos.position === 'NO';
+      if (cast) {
+        entry.voted.add(pos.legislatorId);
+        if (pos.position === curated.aligned) entry.aligned.add(pos.legislatorId);
+      } else if (curated.aligned === 'YES') {
+        // Asymmetric abstention rule (v2.0.2): on an AFFIRMATIVE (YES-aligned)
+        // bill, a recorded abstention counts AS A NO — it lands in the
+        // denominator (voted) but never the numerator (aligned). On a NO-aligned
+        // "block the bad bill" vote, an abstention is neutral and is skipped
+        // entirely (not added to `voted`).
+        entry.voted.add(pos.legislatorId);
+      }
     }
     voteData.set(cb, entry);
   }

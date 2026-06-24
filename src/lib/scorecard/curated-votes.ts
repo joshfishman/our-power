@@ -13,13 +13,16 @@
 // web-verified (party-split + bill-text check) — the DB's auto-classified
 // alignedPosition is intentionally ignored for these.
 //
+// Defend-the-floor votes: a bill whose people-serving direction is NO (block a
+// harmful repeal/cut) IS scored — voting NO counts, exactly like voting YES on
+// an affirmative bill. HR4758 (repeal IRA clean-energy rebates → vote NO) and
+// HR1 (Medicaid-cuts reconciliation → vote NO) are both in.
+//
+// Abstention rule (asymmetric, v2.0.2): on a YES-aligned (affirmative) bill, a
+// recorded abstention counts AS A NO (you must show up to support it). On a
+// NO-aligned (block-the-bad-bill) vote, an abstention does NOT count (neutral).
+//
 // Curation log (rejected and why):
-//  • HR4758 "Homeowner Energy Freedom Act" (119, was P2 aligned=NO) — removed
-//    2026-06-24: a GOP messaging bill to REPEAL IRA clean-energy rebates. We had
-//    it as a vote-NO-to-protect-clean-energy signal, but a cross-partisan
-//    scorecard scores affirmative people-serving commitments, not "voted against
-//    the other side's anti-subsidy show bill." Drop it rather than score a
-//    repeal vote. (HR1 reconciliation stays: a landmark, not a messaging bill.)
 //  • HR5184 "Affordable HOMES", HR6703 "Lower Health Care Premiums" (119) —
 //    deceptively-named GOP bills Democrats voted against (party-split flipped them).
 //  • HR498 "Do No Harm in Medicaid" (119) — culture-war (bars Medicaid for
@@ -78,6 +81,14 @@ export const CURATED_VOTE_BILLS: CuratedVoteBill[] = [
   },
 
   // ── 119th Congress ──
+  {
+    congress: 119,
+    plank: 2,
+    billType: 'HR',
+    billNumber: '4758',
+    aligned: 'NO',
+    label: 'Homeowner Energy Freedom Act (repeal IRA clean-energy rebates)',
+  },
   {
     congress: 119,
     plank: 3,

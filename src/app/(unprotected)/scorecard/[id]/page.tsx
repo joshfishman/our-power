@@ -827,14 +827,21 @@ function BillPositionIcon({ row }: { row: BillBreakdownRow }) {
       </span>
     );
   }
-  // Only a cast YES/NO that opposes the aligned direction is a misaligned vote.
-  // NOT_VOTING / PRESENT / ABSENT are abstentions, not "against" — they render
-  // as the neutral "—" so an absence never reads as opposition.
+  // A ✗ (counts against) is either: a cast YES/NO opposing the aligned
+  // direction, OR — on an AFFIRMATIVE (YES-aligned) bill — an abstention, which
+  // counts as a no (you must show up to support it). On a NO-aligned
+  // "block the bad bill" vote, an abstention is neutral ("—").
   const castYesNo = row.legPosition === 'YES' || row.legPosition === 'NO';
-  if (castYesNo && row.legPosition !== row.alignedPosition) {
+  const abstained = !!row.legPosition && !castYesNo; // NOT_VOTING / PRESENT / ABSENT
+  const missedAffirmative = abstained && row.alignedPosition === 'YES';
+  if ((castYesNo && row.legPosition !== row.alignedPosition) || missedAffirmative) {
     return (
       <span
-        title={`Voted ${row.legPosition} (aligned position was ${row.alignedPosition})`}
+        title={
+          missedAffirmative
+            ? `${row.legPosition} — counts as a no on this affirmative bill (aligned was YES)`
+            : `Voted ${row.legPosition} (aligned position was ${row.alignedPosition})`
+        }
         className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white">
         ✗
       </span>
@@ -842,7 +849,11 @@ function BillPositionIcon({ row }: { row: BillBreakdownRow }) {
   }
   return (
     <span
-      title={row.legPosition ? `${row.legPosition} — not counted as a position` : 'No recorded vote or cosponsorship'}
+      title={
+        row.legPosition
+          ? `${row.legPosition} — not counted (neutral on this vote)`
+          : 'No recorded vote or cosponsorship'
+      }
       className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-dashed border-border text-xs text-subtle-foreground">
       —
     </span>
