@@ -86,13 +86,15 @@ const AIPAC_SPENDING: Article = {
   section: 'pac',
   publishedAt: '2026-06-24',
   chart: {
-    title: 'AIPAC super-PAC (United Democracy Project) attack spending — 2024 primaries, by party',
+    title: 'AIPAC super-PAC (United Democracy Project) independent expenditures, 2024 — by party',
     bars: [
-      { label: 'Democratic primaries', value: 19.7, valueLabel: '$19.7M+', tone: 'brick' },
-      { label: 'Republican primaries', value: 0, valueLabel: '$0', tone: 'muted' },
+      { label: 'Against Democrats', value: 20.0, valueLabel: '$20.0M', tone: 'brick' },
+      { label: 'Boosting Dem challengers', value: 12.4, valueLabel: '$12.4M', tone: 'brick' },
+      { label: 'Against Republicans', value: 3.0, valueLabel: '$3.0M', tone: 'muted' },
+      { label: 'Boosting Republicans', value: 0, valueLabel: '$0', tone: 'muted' },
     ],
     caption:
-      'Two Democratic primaries alone: $14.5M to defeat Jamaal Bowman (the most ever spent on a U.S. House primary) + $5.2M against Cori Bush. UDP ran no comparable campaign in any Republican primary. (FEC / AdImpact, 2024 cycle.)',
+      "About $32.4M of UDP's ~$35.6M in itemized independent expenditures — roughly 91% — was spent inside Democratic primaries: defeating Israel-critical incumbents and boosting their challengers. Only ~$3M went against Republicans, and effectively nothing supported them. (FactCheck.org / FEC, Sept. 2024 snapshot; final UDP independent expenditures $37.9M.)",
   },
   body: `So what is up with that chart?
 
@@ -102,10 +104,10 @@ The short answer: **AIPAC and allied pro-Israel groups are among the largest out
 
 In the 2023–24 cycle, AIPAC's two vehicles spent on the order of **$127 million** combined (FEC):
 
-- The **AIPAC PAC** (~$44.8M) bundles capped contributions directly to candidates — and it does give to both parties.
-- The **United Democracy Project (UDP)** super PAC (~$55.4M) makes **uncapped independent expenditures** — the attack ads — and *that* money concentrates in Democratic primaries. UDP is where the chart comes from.
+- The **AIPAC PAC** (~$55.2M) bundles capped contributions directly to candidates — and it does give to both parties.
+- The **United Democracy Project (UDP)** super PAC made **~$37.9M in uncapped independent expenditures** (~$61M total disbursed) — the attack ads — and *that* money concentrates in Democratic primaries. UDP is where the chart comes from.
 
-They are not alone. **Democratic Majority for Israel** (DMFI PAC, ~$4.2M in 2024) runs the same play on a smaller scale. And on a different issue entirely, the crypto industry's **Fairshake** network deployed ~$133M in 2024 — including ~$10M to sink Katie Porter in California's Senate primary — proving the mechanism isn't unique to one cause: **a single national network can now decide a low-turnout primary with a late surge of uncapped money.**
+They are not alone. **Democratic Majority for Israel** (DMFI PAC, ~$4.8M in 2024) runs the same play on a smaller scale. And on a different issue entirely, the crypto industry's **Fairshake** network deployed ~$133M in 2024 — including ~$10M to sink Katie Porter in California's Senate primary — proving the mechanism isn't unique to one cause: **a single national network can now decide a low-turnout primary with a late surge of uncapped money.**
 
 ## Why primaries, and why Democrats
 
@@ -132,10 +134,10 @@ AIPAC and its supporters say independent expenditures are lawful, fully disclose
     },
     {
       race: 'MO-01 · 2024 Democratic primary',
-      spend: '~$5.2M (UDP) + DMFI',
+      spend: '~$8.5M (UDP) + DMFI',
       targeted: 'Rep. Cori Bush',
       targetedStance:
-        "Ceasefire advocate and critic of U.S. military aid to Israel. AIPAC's UDP plus Democratic Majority for Israel spent to defeat her in the primary.",
+        'Ceasefire advocate and critic of U.S. military aid to Israel. UDP spent ~$8.5M here — over $5.2M to defeat her plus ~$3.3M to boost Wesley Bell — the second-most-expensive House primary in history; DMFI added more.',
       winner: 'Rep. Wesley Bell',
       winnerRecord:
         "Now in the 119th Congress. Scorecard PAC Score 31. Same pattern as NY-16 — NO on the H.R.1 Medicaid cuts, YES on the workforce and housing bills. A different stance on the lobby's issue; a familiar Democratic record on everything else.",
@@ -163,6 +165,10 @@ AIPAC and its supporters say independent expenditures are lawful, fully disclose
     {
       label: 'FEC — DMFI PAC (C00710848), 2024 cycle totals',
       url: 'https://www.fec.gov/data/committee/C00710848/?cycle=2024',
+    },
+    {
+      label: 'FactCheck.org — United Democracy Project IE itemized by party (oppose/support, by race)',
+      url: 'https://www.factcheck.org/2024/09/united-democracy-project-2/',
     },
     {
       label: 'AdImpact — NY-16 the most expensive House primary in history (UDP ~60% of spend)',
