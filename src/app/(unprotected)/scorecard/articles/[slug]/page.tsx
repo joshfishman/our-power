@@ -189,7 +189,7 @@ export default async function ArticlePage(props: Props) {
 
       {article.cases && article.cases.length > 0 ? (
         <section className="mt-10">
-          <h2 className="font-serif text-2xl font-bold text-foreground">The races, and what the money bought</h2>
+          <h2 className="font-serif text-2xl font-bold text-foreground">Example AIPAC Races</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Where the spending concentrated — the targeted member and how they stood, the backed winner and how they
             have voted since.
@@ -207,24 +207,22 @@ export default async function ArticlePage(props: Props) {
                   <div className="rounded border border-border bg-secondary p-3">
                     <div className="flex items-center justify-between gap-2">
                       <p className="font-mono text-[10px] uppercase tracking-wide text-subtle-foreground">
-                        AIPAC target — how they stood
+                        AIPAC target
                       </p>
                       <span className="shrink-0 rounded bg-[#8B3A3A] px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wide text-[#F5DEB3]">
-                        ✕ Defeated
+                        Defeated
                       </span>
                     </div>
-                    <p className="mt-1 font-serif text-sm font-bold text-foreground line-through decoration-[#8B3A3A] decoration-2">
-                      {c.targeted}
-                    </p>
+                    <p className="mt-1 font-serif text-sm font-bold text-foreground">{c.targeted}</p>
                     <p className="mt-1 text-xs text-muted-foreground">{c.targetedStance}</p>
                   </div>
                   <div className="rounded border border-[#8B3A3A]/40 bg-[#8B3A3A]/10 p-3">
                     <div className="flex items-center justify-between gap-2">
                       <p className="font-mono text-[10px] uppercase tracking-wide text-subtle-foreground">
-                        Backed winner — how they voted
+                        Backed winner
                       </p>
                       <span className="shrink-0 rounded border border-[#C8B98A]/50 bg-[#2C4A5E] px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wide text-[#F5DEB3]">
-                        ✓ AIPAC-backed · Won
+                        AIPAC-backed · Won
                       </span>
                     </div>
                     <p className="mt-1 font-serif text-sm font-bold text-foreground">{c.winner}</p>

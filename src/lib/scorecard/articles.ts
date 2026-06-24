@@ -158,16 +158,27 @@ AIPAC and its supporters say independent expenditures are lawful, fully disclose
         'https://www.opensecrets.org/news/2024/11/the-crypto-trio-how-the-cryptocurrency-industry-has-made-its-mark-on-2024-elections/',
     },
     {
-      race: 'OH-11 (2021) · MD-04 (2022) — earlier examples',
-      spend: 'DMFI + UDP, several million per race',
-      targeted: 'Nina Turner (OH-11) · Donna Edwards (MD-04)',
+      race: 'OH-11 · 2021 Democratic primary',
+      spend: '~$2M (DMFI / pro-Israel)',
+      targeted: 'Nina Turner',
       targetedStance:
-        'Both were progressives critical of unconditional Israel aid. Pro-Israel groups spent heavily against each in open-seat Democratic primaries.',
-      winner: 'Shontel Brown · Glenn Ivey',
+        "Progressive who backed Israel aid but wanted it conditioned on human rights and would not condemn BDS — the reason Democratic Majority for Israel gave for opposing her. DMFI's PAC spent ~$941K in the 2021 special alone ($738K against Turner + $203K to boost Brown), ~$2M across the cycle.",
+      winner: 'Shontel Brown',
       winnerRecord:
-        'Both backed candidates won and now sit in Congress. The pattern predates 2024: the spending concentrates in Democratic primaries, cycle after cycle, wherever a critic of the aid relationship is on a Democratic ballot.',
+        'Now in the 119th Congress. In July 2025 she voted with the 422–6 majority to keep $500M in U.S.–Israel missile-defense funding (against an amendment to cut it) and has urged dropping conditions on Israel aid — the posture the spending was meant to secure.',
       sourceUrl:
-        'https://jewishinsider.com/2022/06/united-democracy-project-haley-stevens-andy-levin-donna-edwards-glenn-ivey/',
+        'https://truthout.org/articles/pro-israel-pac-has-spent-nearly-1-million-to-try-to-sink-nina-turners-campaign/',
+    },
+    {
+      race: 'MD-04 · 2022 Democratic primary',
+      spend: '~$6M (pro-Israel total)',
+      targeted: 'Donna Edwards',
+      targetedStance:
+        'Former congresswoman and progressive critic of unconditional Israel aid, running to reclaim her old seat. AIPAC’s super PAC (UDP) spent roughly $5.5–6M against her / for Ivey, with DMFI adding ~$400K — and the ads attacked her as “ineffective” without ever mentioning Israel.',
+      winner: 'Glenn Ivey',
+      winnerRecord:
+        'Now in the 119th Congress. Consistently votes for Israel military aid and opposes conditioning it — the position the campaign was waged to install. A different stance on the lobby’s issue; the seat itself stayed Democratic.',
+      sourceUrl: 'https://theintercept.com/2022/07/20/aipac-maryland-donna-edwards-glenn-ivey-democrat/',
     },
   ],
   sources: [
