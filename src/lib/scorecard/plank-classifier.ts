@@ -259,14 +259,26 @@ const DEFENSE_POSTURE_SIGNAL =
 export function isSubstantiveVote(voteQuestion: string, _voteType: string): boolean {
   const q = voteQuestion.trim();
   if (PROCEDURAL_QUESTIONS.has(q)) return false;
+  // Procedural-motion guard (regex, so suffixed variants are caught too — e.g.
+  // "On Motion to Recommit with Instructions", "On Ordering the Previous
+  // Question (H. Res. …)"). A Motion to Recommit is the minority party's
+  // procedural tool: scoring it inverts direction (the party voting YES on its
+  // own MTR is taking the PRO-platform side, but the underlying bill's aligned
+  // direction is the opposite). These motions never represent a clean,
+  // scorable policy position — exclude them all.
+  if (
+    /Previous Question|Motion to Recommit|Motion to Table|Motion to Adjourn|Approving the Journal|Question of Consideration|Election of|On the Speaker|Quorum/i.test(
+      q,
+    )
+  )
+    return false;
   // "On Agreeing to the Resolution" is procedural when the underlying resolution is a
   // rule for considering a bill. We'd need to check the resolution's text. For v1.6
   // we err on excluding these.
   if (/On (Ordering|Approving|Adjourning)/i.test(q)) return false;
-  if (/Election of/i.test(q)) return false;
   // Common substantive vote questions:
   if (
-    /On Passage|On Final Passage|On Motion to Suspend the Rules and Pass|On Concurring|On Agreeing to the Conference Report|On Motion to Recommit/i.test(
+    /On Passage|On Final Passage|On Motion to Suspend the Rules and Pass|On Concurring|On Agreeing to the Conference Report/i.test(
       q,
     )
   )
