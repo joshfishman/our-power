@@ -102,7 +102,19 @@ export default async function BillionaireProfilePage(props: Props) {
       {/* What the number is */}
       <section className="mt-4 rounded-lg border border-border bg-secondary p-5">
         <h2 className="font-serif text-lg font-bold text-foreground">What this number counts</h2>
-        <p className="mt-2 text-sm text-muted-foreground">{profile.headline.description}</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {generous.amount > (profile.headline.figure ?? 0) ? (
+            <>
+              <strong>{generous.label}</strong> is the most generous reading: the sum of every money-in line below —
+              contracts, loans, subsidies, and credits of all kinds. The most rigorous <em>single sourced</em> figure is{' '}
+              <strong>{profile.headline.label}</strong> — {profile.headline.description}
+            </>
+          ) : (
+            <>
+              <strong>{generous.label}</strong> — {profile.headline.description}
+            </>
+          )}
+        </p>
         <p className="mt-2 font-mono text-xs text-subtle-foreground">{profile.headline.composition}</p>
         <a
           href={profile.headline.source_url}
@@ -119,9 +131,9 @@ export default async function BillionaireProfilePage(props: Props) {
           ))}
         </ul>
         <p className="mt-3 text-xs italic text-subtle-foreground">
-          This headline takes the most generous defensible total — the larger of the sourced figure and the sum of every
-          money-in line below. The kinds of money differ (a contract the government chose to buy is not a subsidy or a
-          handout); each is broken out below so you can judge it yourself.
+          The kinds of money differ — a contract the government chose to buy is not a subsidy, a loan gets repaid, and
+          demand-side flows (e.g. SNAP dollars spent at a store) aren&apos;t a check written to the company. Each is
+          broken out below so you can judge it yourself.
         </p>
       </section>
 
