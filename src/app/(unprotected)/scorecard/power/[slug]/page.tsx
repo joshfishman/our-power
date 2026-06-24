@@ -6,6 +6,7 @@ import {
   PROFILE_SLUGS,
   splitMoney,
   groupByType,
+  mostGenerousTotal,
   TYPE_LABEL,
   TYPE_NOTE,
   type MoneyLineItem,
@@ -62,6 +63,7 @@ export default async function BillionaireProfilePage(props: Props) {
   const profile = getProfile(slug);
   if (!profile) notFound();
 
+  const generous = mostGenerousTotal(profile);
   const { moneyIn, moneyOut } = splitMoney(profile.line_items);
   const inGroups = groupByType(moneyIn);
   const politicalTotal =
@@ -88,32 +90,39 @@ export default async function BillionaireProfilePage(props: Props) {
         </p>
       </header>
 
-      {/* Headline */}
+      {/* Headline — the number leads; the explanation follows below. */}
       <section className="mt-6 rounded-lg border border-[#C8B98A]/30 bg-[#2C4A5E]/60 p-6">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/70">
-          {profile.headline.description.length < 90
-            ? profile.headline.description
-            : 'Government money to these companies'}
+        <p className="font-mono text-xs uppercase tracking-widest text-[#F5DEB3]/70">Our money to this billionaire</p>
+        <div className="mt-1 font-serif text-6xl font-bold leading-none text-[#F5DEB3]">{generous.label}</div>
+        <p className="mt-3 font-mono text-[11px] uppercase tracking-wide text-[#F5DEB3]/50">
+          What that number is &amp; how to read it ↓
         </p>
-        <div className="mt-1 font-serif text-5xl font-bold leading-none text-[#F5DEB3]">{profile.headline.label}</div>
-        {profile.headline.description.length >= 90 ? (
-          <p className="mt-3 text-sm text-[#F5DEB3]/90">{profile.headline.description}</p>
-        ) : null}
-        <p className="mt-2 font-mono text-xs text-[#F5DEB3]/70">{profile.headline.composition}</p>
+      </section>
+
+      {/* What the number is */}
+      <section className="mt-4 rounded-lg border border-border bg-secondary p-5">
+        <h2 className="font-serif text-lg font-bold text-foreground">What this number counts</h2>
+        <p className="mt-2 text-sm text-muted-foreground">{profile.headline.description}</p>
+        <p className="mt-2 font-mono text-xs text-subtle-foreground">{profile.headline.composition}</p>
         <a
           href={profile.headline.source_url}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-2 inline-block font-mono text-xs text-[#F5DEB3] underline hover:decoration-[#F5DEB3]">
+          className="mt-2 inline-block font-mono text-xs text-accent underline hover:text-foreground">
           source ↗
         </a>
-        <ul className="mt-3 space-y-1 border-t border-[#C8B98A]/20 pt-3">
+        <ul className="mt-3 space-y-1 border-t border-border pt-3">
           {profile.headline.caveats.map((c) => (
-            <li key={c.slice(0, 32)} className="text-xs text-[#F5DEB3]/80">
+            <li key={c.slice(0, 32)} className="text-xs text-muted-foreground">
               • {c}
             </li>
           ))}
         </ul>
+        <p className="mt-3 text-xs italic text-subtle-foreground">
+          This headline takes the most generous defensible total — the larger of the sourced figure and the sum of every
+          money-in line below. The kinds of money differ (a contract the government chose to buy is not a subsidy or a
+          handout); each is broken out below so you can judge it yourself.
+        </p>
       </section>
 
       {/* Money IN */}

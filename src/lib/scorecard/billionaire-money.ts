@@ -158,6 +158,38 @@ export function splitMoney(items: MoneyLineItem[]): { moneyIn: MoneyLineItem[]; 
   };
 }
 
+/** Format a dollar amount as a punchy $XXB / $XXM headline figure. */
+export function fmtBigDollars(n: number): string {
+  if (n >= 1_000_000_000) return `$${(n / 1_000_000_000).toFixed(n >= 10_000_000_000 ? 0 : 1)} billion`;
+  if (n >= 1_000_000) return `$${Math.round(n / 1_000_000)} million`;
+  return `$${Math.round(n).toLocaleString()}`;
+}
+
+/**
+ * The "most generous" headline total — the biggest defensible number to put
+ * under "Our Money to This Billionaire." We take the GREATER of the curated
+ * sourced headline figure and the sum of every money-IN line item (excluding
+ * `aggregate` rows, which would double-count their own components). This
+ * deliberately includes structural flows (e.g. SNAP register revenue, worker
+ * public assistance) — the page states plainly below what's counted and how
+ * the kinds differ, so the bold number leads and the nuance follows.
+ */
+export function mostGenerousTotal(profile: BillionaireMoneyProfile): { amount: number; label: string } {
+  const moneyIn = [
+    'FEDERAL_CONTRACT',
+    'FEDERAL_GRANT',
+    'FEDERAL_LOAN',
+    'TAX_CREDIT_SUBSIDY',
+    'STATE_LOCAL_SUBSIDY',
+    'REGULATORY_CREDIT',
+  ];
+  const sum = profile.line_items
+    .filter((i) => moneyIn.includes(i.type) && !/aggregate/i.test(i.category) && typeof i.amount === 'number')
+    .reduce((s, i) => s + (i.amount ?? 0), 0);
+  const amount = Math.max(sum, profile.headline.figure ?? 0);
+  return { amount, label: fmtBigDollars(amount) };
+}
+
 /** Group line items by money type, preserving a sensible display order. */
 export function groupByType(items: MoneyLineItem[]): Array<{ type: MoneyType; items: MoneyLineItem[] }> {
   const order: MoneyType[] = [
