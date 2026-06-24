@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { getArticleBySlug, getAllArticles, type ArticleChart } from '@/lib/scorecard/articles';
+import { getArticleBySlug, getAllArticles, type ArticleChart, type ArticleCaseSide } from '@/lib/scorecard/articles';
 import { getPlankBySlug } from '@/lib/scorecard/queries';
 
 type Props = { params: Promise<{ slug: string }> };
@@ -135,6 +135,80 @@ function ChartBlock({ chart }: { chart: ArticleChart }) {
   );
 }
 
+/** A case-study headshot. Defeated members are greyed and crossed out with a brick ✕. */
+function CasePhoto({ src, name, crossedOut }: { src?: string; name: string; crossedOut?: boolean }) {
+  const initials = name
+    .replace(/^Rep\.\s+/, '')
+    .split(/\s+/)
+    .map((w) => w[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('');
+  return (
+    <div className="relative h-20 w-16 shrink-0 overflow-hidden rounded border border-border bg-secondary">
+      {src ? (
+        // Public headshots (bioguide.congress.gov / Wikimedia); plain img avoids next/image remote config.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={src}
+          alt={name}
+          loading="lazy"
+          className={`h-full w-full object-cover object-top ${crossedOut ? 'grayscale' : ''}`}
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center font-serif text-lg text-subtle-foreground">
+          {initials}
+        </div>
+      )}
+      {crossedOut ? (
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full" aria-hidden>
+          <line x1="8" y1="8" x2="92" y2="92" stroke="#8B3A3A" strokeWidth="9" strokeLinecap="round" />
+          <line x1="92" y1="8" x2="8" y2="92" stroke="#8B3A3A" strokeWidth="9" strokeLinecap="round" />
+        </svg>
+      ) : null}
+    </div>
+  );
+}
+
+/** One side of a case card: photo, label/badge, name, summary, and bullet points. */
+function CaseSide({
+  side,
+  label,
+  badge,
+  defeated,
+}: {
+  side: ArticleCaseSide;
+  label: string;
+  badge: ReactNode;
+  defeated?: boolean;
+}) {
+  const wrap = defeated
+    ? 'rounded border border-border bg-secondary p-3'
+    : 'rounded border border-[#8B3A3A]/40 bg-[#8B3A3A]/10 p-3';
+  return (
+    <div className={wrap}>
+      <div className="flex items-center justify-between gap-2">
+        <p className="font-mono text-[10px] uppercase tracking-wide text-subtle-foreground">{label}</p>
+        {badge}
+      </div>
+      <div className="mt-2 flex items-start gap-3">
+        <CasePhoto src={side.photo} name={side.name} crossedOut={defeated} />
+        <div className="min-w-0">
+          <p className="font-serif text-sm font-bold text-foreground">{side.name}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{side.summary}</p>
+        </div>
+      </div>
+      <ul className="mt-2 list-disc space-y-1 pl-4">
+        {side.bullets.map((b) => (
+          <li key={b.slice(0, 40)} className="text-xs text-muted-foreground">
+            {b}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export default async function ArticlePage(props: Props) {
   const params = await props.params;
   const article = getArticleBySlug(decodeURIComponent(params.slug));
@@ -204,30 +278,25 @@ export default async function ArticlePage(props: Props) {
                   <span className="font-mono text-xs font-bold text-[#8B3A3A]">{c.spend}</span>
                 </div>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded border border-border bg-secondary p-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="font-mono text-[10px] uppercase tracking-wide text-subtle-foreground">
-                        AIPAC target
-                      </p>
+                  <CaseSide
+                    side={c.targeted}
+                    label="AIPAC target"
+                    defeated
+                    badge={
                       <span className="shrink-0 rounded bg-[#8B3A3A] px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wide text-[#F5DEB3]">
                         Defeated
                       </span>
-                    </div>
-                    <p className="mt-1 font-serif text-sm font-bold text-foreground">{c.targeted}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{c.targetedStance}</p>
-                  </div>
-                  <div className="rounded border border-[#8B3A3A]/40 bg-[#8B3A3A]/10 p-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="font-mono text-[10px] uppercase tracking-wide text-subtle-foreground">
-                        Backed winner
-                      </p>
+                    }
+                  />
+                  <CaseSide
+                    side={c.winner}
+                    label="Backed winner"
+                    badge={
                       <span className="shrink-0 rounded border border-[#C8B98A]/50 bg-[#2C4A5E] px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wide text-[#F5DEB3]">
                         AIPAC-backed · Won
                       </span>
-                    </div>
-                    <p className="mt-1 font-serif text-sm font-bold text-foreground">{c.winner}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{c.winnerRecord}</p>
-                  </div>
+                    }
+                  />
                 </div>
                 {c.sourceUrl ? (
                   <a

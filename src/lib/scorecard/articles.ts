@@ -42,18 +42,27 @@ export interface ArticleChart {
   note?: string;
 }
 
-/** A targeted-primary case study: who was targeted, how they stood, who won, how the winner voted. */
+/** One side of a primary case — the targeted member or the backed winner. */
+export interface ArticleCaseSide {
+  name: string;
+  /** Public headshot URL (bioguide.congress.gov or Wikimedia Commons). */
+  photo?: string;
+  /** One-sentence who-they-are summary. */
+  summary: string;
+  /** Bullet points: spending against them and/or their voting record. */
+  bullets: string[];
+}
+
+/** A targeted-primary case study: who was targeted, who won, the money, and the records. */
 export interface ArticleCase {
   /** e.g. "NY-16 · 2024 Democratic primary". */
   race: string;
-  /** Outside money + source, e.g. "~$14.5M (AIPAC / United Democracy Project)". */
+  /** Outside money + source, e.g. "~$19M+ (pro-Israel total)". */
   spend: string;
-  /** The targeted candidate and their stance ("how they wanted to vote"). */
-  targeted: string;
-  targetedStance: string;
-  /** The backed winner and how they have voted since (or "newly seated"). */
-  winner: string;
-  winnerRecord: string;
+  /** The targeted candidate (defeated). */
+  targeted: ArticleCaseSide;
+  /** The backed winner. */
+  winner: ArticleCaseSide;
   sourceUrl?: string;
 }
 
@@ -137,47 +146,105 @@ AIPAC and its supporters say independent expenditures are lawful, fully disclose
     {
       race: 'NY-16 · 2024 Democratic primary',
       spend: '~$19M+ (pro-Israel total)',
-      targeted: 'Rep. Jamaal Bowman',
-      targetedStance:
-        "Squad member and sharp critic of U.S. military aid to Israel; early ceasefire advocate. AIPAC's super PAC (UDP) alone spent ~$14.5M — ~$9.9M to defeat him plus ~$4.8M to boost Latimer — the most any group has ever put into a U.S. House primary; AIPAC's PAC added ~$2.5M in direct contributions, and total ad spending in NY-16 reached ~$24.8M, the most expensive House primary in history.",
-      winner: 'Rep. George Latimer',
-      winnerRecord:
-        "Now in the 119th Congress. Scorecard PAC Score 61. On the domestic bills we track he votes with his caucus — NO on the H.R.1 reconciliation's Medicaid cuts, YES on the workforce-bargaining and housing bills. What the money changed was the seat's posture on Israel, the issue it was spent over — not the district's domestic voting record.",
+      targeted: {
+        name: 'Rep. Jamaal Bowman',
+        photo: 'https://bioguide.congress.gov/photo/B001223.jpg',
+        summary:
+          "Two-term NY-16 progressive (the Squad) and one of the House's sharpest critics of U.S. military aid to Israel; an early Gaza-ceasefire backer.",
+        bullets: [
+          "Targeted by AIPAC's super PAC (UDP): ~$14.5M — roughly $9.9M in attack ads plus ~$4.8M to boost Latimer; AIPAC's PAC added ~$2.5M in direct giving.",
+          'The most expensive U.S. House primary in history (~$24.8M total ad spend).',
+          'Lost the June 2024 primary to George Latimer.',
+        ],
+      },
+      winner: {
+        name: 'Rep. George Latimer',
+        photo: 'https://bioguide.congress.gov/photo/L000606.jpg',
+        summary:
+          'Former Westchester County Executive; now NY-16’s member in the 119th Congress. Scorecard PAC Score 61.',
+        bullets: [
+          "On the domestic bills we track he votes with his caucus: NO on the H.R.1 reconciliation's Medicaid cuts; YES on the workforce-bargaining and housing bills.",
+          "What the money changed was the seat's posture on Israel — not its bread-and-butter voting record.",
+        ],
+      },
       sourceUrl: 'https://adimpact.com/blogs/blog/ny-cd-16-primary-2024',
     },
     {
       race: 'MO-01 · 2024 Democratic primary',
       spend: '~$11M+ (pro-Israel total)',
-      targeted: 'Rep. Cori Bush',
-      targetedStance:
-        "Ceasefire advocate and critic of U.S. military aid to Israel. AIPAC's super PAC (UDP) spent ~$8.5M — over $5.2M to defeat her plus ~$3.3M to boost Wesley Bell — the second-most-expensive House primary in history; AIPAC's PAC added ~$2.4M in direct giving (making Bell its #2 all-time recipient) and DMFI spent more on top.",
-      winner: 'Rep. Wesley Bell',
-      winnerRecord:
-        "Now in the 119th Congress. Scorecard PAC Score 31. Same pattern as NY-16 — NO on the H.R.1 Medicaid cuts, YES on the workforce and housing bills. A different stance on the lobby's issue; a familiar Democratic record on everything else.",
+      targeted: {
+        name: 'Rep. Cori Bush',
+        photo: 'https://bioguide.congress.gov/photo/B001224.jpg',
+        summary:
+          'Two-term MO-01 progressive (the Squad); led the first post-Oct-7 congressional ceasefire resolution and voted against the Israel military-aid package.',
+        bullets: [
+          "Targeted by AIPAC's super PAC (UDP): ~$8.5M — over $5.2M in attack ads plus ~$3.3M to boost Bell; AIPAC's PAC added ~$2.4M direct (making Bell its #2 all-time recipient); DMFI spent more on top.",
+          'The second-most-expensive House primary in history.',
+          'Lost the August 2024 primary to Wesley Bell.',
+        ],
+      },
+      winner: {
+        name: 'Rep. Wesley Bell',
+        photo: 'https://bioguide.congress.gov/photo/B001324.jpg',
+        summary:
+          'St. Louis County Prosecuting Attorney; now MO-01’s member in the 119th Congress. Scorecard PAC Score 31.',
+        bullets: [
+          'Same pattern as NY-16: NO on the H.R.1 Medicaid cuts; YES on the workforce and housing bills.',
+          "A different stance on the lobby's issue; a familiar Democratic record on everything else.",
+        ],
+      },
       sourceUrl:
         'https://www.opensecrets.org/news/2024/11/the-crypto-trio-how-the-cryptocurrency-industry-has-made-its-mark-on-2024-elections/',
     },
     {
       race: 'OH-11 · 2021 Democratic primary',
       spend: '~$2M (DMFI / pro-Israel)',
-      targeted: 'Nina Turner',
-      targetedStance:
-        "Progressive who backed Israel aid but wanted it conditioned on human rights and would not condemn BDS — the reason Democratic Majority for Israel gave for opposing her. DMFI's PAC spent ~$941K in the 2021 special alone ($738K against Turner + $203K to boost Brown), ~$2M across the cycle.",
-      winner: 'Shontel Brown',
-      winnerRecord:
-        'Now in the 119th Congress. In July 2025 she voted with the 422–6 majority to keep $500M in U.S.–Israel missile-defense funding (against an amendment to cut it) and has urged dropping conditions on Israel aid — the posture the spending was meant to secure.',
+      targeted: {
+        name: 'Nina Turner',
+        photo:
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/Nina_Turner_crop_light_and_color_corrected.jpg/500px-Nina_Turner_crop_light_and_color_corrected.jpg',
+        summary:
+          'Former Ohio state senator and Bernie Sanders campaign co-chair; backed Israel aid but wanted it conditioned on human rights and would not condemn BDS.',
+        bullets: [
+          'Targeted by Democratic Majority for Israel: ~$941K in the 2021 special alone ($738K in attack ads + $203K to boost Brown), ~$2M across the cycle.',
+          'Lost the August 2021 special primary to Shontel Brown (and a 2022 rematch).',
+        ],
+      },
+      winner: {
+        name: 'Shontel Brown',
+        photo: 'https://bioguide.congress.gov/photo/B001313.jpg',
+        summary: 'Cuyahoga County Democratic Party chair; now OH-11’s member in the 119th Congress.',
+        bullets: [
+          'July 2025: voted with the 422–6 majority to keep $500M in U.S.–Israel missile-defense funding (against an amendment to cut it).',
+          'Has urged dropping conditions on Israel aid — the posture the spending was meant to secure.',
+        ],
+      },
       sourceUrl:
         'https://truthout.org/articles/pro-israel-pac-has-spent-nearly-1-million-to-try-to-sink-nina-turners-campaign/',
     },
     {
       race: 'MD-04 · 2022 Democratic primary',
       spend: '~$6M (pro-Israel total)',
-      targeted: 'Donna Edwards',
-      targetedStance:
-        'Former congresswoman and progressive critic of unconditional Israel aid, running to reclaim her old seat. AIPAC’s super PAC (UDP) spent roughly $5.5–6M against her / for Ivey, with DMFI adding ~$400K — and the ads attacked her as “ineffective” without ever mentioning Israel.',
-      winner: 'Glenn Ivey',
-      winnerRecord:
-        'Now in the 119th Congress. Consistently votes for Israel military aid and opposes conditioning it — the position the campaign was waged to install. A different stance on the lobby’s issue; the seat itself stayed Democratic.',
+      targeted: {
+        name: 'Donna Edwards',
+        photo: 'https://bioguide.congress.gov/photo/E000290.jpg',
+        summary:
+          'Former MD-04 congresswoman (2008–2017) and progressive critic of unconditional Israel aid, running to reclaim her old seat.',
+        bullets: [
+          "Targeted by AIPAC's super PAC (UDP): roughly $5.5–6M against her / for Ivey, with DMFI adding ~$400K.",
+          'The ads attacked her as “ineffective” and never mentioned Israel.',
+          'Lost the July 2022 primary to Glenn Ivey.',
+        ],
+      },
+      winner: {
+        name: 'Glenn Ivey',
+        photo: 'https://bioguide.congress.gov/photo/I000058.jpg',
+        summary: 'Former Prince George’s County State’s Attorney; now MD-04’s member in the 119th Congress.',
+        bullets: [
+          'Consistently votes for Israel military aid and opposes conditioning it — the position the campaign was waged to install.',
+          'A different stance on the lobby’s issue; the seat itself stayed Democratic.',
+        ],
+      },
       sourceUrl: 'https://theintercept.com/2022/07/20/aipac-maryland-donna-edwards-glenn-ivey-democrat/',
     },
   ],
