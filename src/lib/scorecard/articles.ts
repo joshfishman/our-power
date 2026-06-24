@@ -123,10 +123,10 @@ AIPAC and its supporters say independent expenditures are lawful, fully disclose
   cases: [
     {
       race: 'NY-16 · 2024 Democratic primary',
-      spend: '~$14.5M (AIPAC / United Democracy Project)',
+      spend: '~$19M+ (pro-Israel total)',
       targeted: 'Rep. Jamaal Bowman',
       targetedStance:
-        "Squad member and sharp critic of U.S. military aid to Israel; early ceasefire advocate. UDP's spend against him was the most any group has ever put into a U.S. House primary; total ad spending in NY-16 (~$24.8M) made it the most expensive House primary in history.",
+        "Squad member and sharp critic of U.S. military aid to Israel; early ceasefire advocate. AIPAC's super PAC (UDP) alone spent ~$14.5M — ~$9.9M to defeat him plus ~$4.8M to boost Latimer — the most any group has ever put into a U.S. House primary; AIPAC's PAC added ~$2.5M in direct contributions, and total ad spending in NY-16 reached ~$24.8M, the most expensive House primary in history.",
       winner: 'Rep. George Latimer',
       winnerRecord:
         "Now in the 119th Congress. Scorecard PAC Score 61. On the domestic bills we track he votes with his caucus — NO on the H.R.1 reconciliation's Medicaid cuts, YES on the workforce-bargaining and housing bills. What the money changed was the seat's posture on Israel, the issue it was spent over — not the district's domestic voting record.",
@@ -134,10 +134,10 @@ AIPAC and its supporters say independent expenditures are lawful, fully disclose
     },
     {
       race: 'MO-01 · 2024 Democratic primary',
-      spend: '~$8.5M (UDP) + DMFI',
+      spend: '~$11M+ (pro-Israel total)',
       targeted: 'Rep. Cori Bush',
       targetedStance:
-        'Ceasefire advocate and critic of U.S. military aid to Israel. UDP spent ~$8.5M here — over $5.2M to defeat her plus ~$3.3M to boost Wesley Bell — the second-most-expensive House primary in history; DMFI added more.',
+        "Ceasefire advocate and critic of U.S. military aid to Israel. AIPAC's super PAC (UDP) spent ~$8.5M — over $5.2M to defeat her plus ~$3.3M to boost Wesley Bell — the second-most-expensive House primary in history; AIPAC's PAC added ~$2.4M in direct giving (making Bell its #2 all-time recipient) and DMFI spent more on top.",
       winner: 'Rep. Wesley Bell',
       winnerRecord:
         "Now in the 119th Congress. Scorecard PAC Score 31. Same pattern as NY-16 — NO on the H.R.1 Medicaid cuts, YES on the workforce and housing bills. A different stance on the lobby's issue; a familiar Democratic record on everything else.",
