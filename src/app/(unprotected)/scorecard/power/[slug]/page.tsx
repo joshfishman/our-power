@@ -7,6 +7,7 @@ import {
   splitMoney,
   groupByType,
   mostGenerousTotal,
+  fmtBigDollars,
   TYPE_LABEL,
   TYPE_NOTE,
   type MoneyLineItem,
@@ -64,6 +65,8 @@ export default async function BillionaireProfilePage(props: Props) {
   if (!profile) notFound();
 
   const generous = mostGenerousTotal(profile);
+  // A family / multi-person fortune (e.g. the Waltons) reads "these billionaires".
+  const pluralSubject = /family|families|brothers|sisters|&|\band\b|,/i.test(profile.subject);
   const { moneyIn, moneyOut } = splitMoney(profile.line_items);
   const inGroups = groupByType(moneyIn);
   const politicalTotal =
@@ -92,7 +95,9 @@ export default async function BillionaireProfilePage(props: Props) {
 
       {/* Headline — the number leads; the explanation follows below. */}
       <section className="mt-6 rounded-lg border border-[#C8B98A]/30 bg-[#2C4A5E]/60 p-6">
-        <p className="font-mono text-xs uppercase tracking-widest text-[#F5DEB3]/70">Our money to this billionaire</p>
+        <p className="font-mono text-xs uppercase tracking-widest text-[#F5DEB3]/70">
+          {pluralSubject ? 'Our money to these billionaires' : 'Our money to this billionaire'}
+        </p>
         <div className="mt-1 font-serif text-6xl font-bold leading-none text-[#F5DEB3]">{generous.label}</div>
         <p className="mt-3 font-mono text-[11px] uppercase tracking-wide text-[#F5DEB3]/50">
           What that number is &amp; how to read it ↓
@@ -143,18 +148,33 @@ export default async function BillionaireProfilePage(props: Props) {
         Broken out by kind, because they are not the same thing. A contract buys a service; a subsidy is closer to a
         gift; a loan gets repaid.
       </p>
-      <div className="mt-4 space-y-6">
-        {inGroups.map((g) => (
-          <section key={g.type} className="rounded-lg border border-border p-4">
-            <h3 className="font-serif text-lg font-bold text-foreground">{TYPE_LABEL[g.type]}</h3>
-            <p className="mt-0.5 text-xs text-subtle-foreground">{TYPE_NOTE[g.type]}</p>
-            <ul className="mt-2">
-              {g.items.map((item) => (
-                <LineItem key={item.id} item={item} />
-              ))}
-            </ul>
-          </section>
-        ))}
+      <div className="mt-4 space-y-4">
+        {inGroups.map((g) => {
+          const groupTotal = g.items.reduce((s, i) => s + (typeof i.amount === 'number' ? i.amount : 0), 0);
+          return (
+            <details key={g.type} className="group rounded-lg border border-border p-4">
+              <summary className="flex cursor-pointer list-none items-start justify-between gap-3">
+                <span className="min-w-0">
+                  <span className="font-serif text-lg font-bold text-foreground">{TYPE_LABEL[g.type]}</span>
+                  <span className="mt-0.5 block text-xs text-subtle-foreground">{TYPE_NOTE[g.type]}</span>
+                </span>
+                <span className="flex shrink-0 items-baseline gap-2">
+                  <span className="font-serif text-xl font-bold text-foreground">
+                    {groupTotal > 0 ? fmtBigDollars(groupTotal) : '—'}
+                  </span>
+                  <span className="font-mono text-xs text-subtle-foreground transition-transform group-open:rotate-180">
+                    ▾
+                  </span>
+                </span>
+              </summary>
+              <ul className="mt-3 border-t border-border pt-1">
+                {g.items.map((item) => (
+                  <LineItem key={item.id} item={item} />
+                ))}
+              </ul>
+            </details>
+          );
+        })}
       </div>
 
       {/* Money OUT */}
