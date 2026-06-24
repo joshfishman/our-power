@@ -827,7 +827,11 @@ function BillPositionIcon({ row }: { row: BillBreakdownRow }) {
       </span>
     );
   }
-  if (row.legPosition && row.legPosition !== row.alignedPosition) {
+  // Only a cast YES/NO that opposes the aligned direction is a misaligned vote.
+  // NOT_VOTING / PRESENT / ABSENT are abstentions, not "against" — they render
+  // as the neutral "—" so an absence never reads as opposition.
+  const castYesNo = row.legPosition === 'YES' || row.legPosition === 'NO';
+  if (castYesNo && row.legPosition !== row.alignedPosition) {
     return (
       <span
         title={`Voted ${row.legPosition} (aligned position was ${row.alignedPosition})`}
@@ -838,7 +842,7 @@ function BillPositionIcon({ row }: { row: BillBreakdownRow }) {
   }
   return (
     <span
-      title="No recorded vote or cosponsorship"
+      title={row.legPosition ? `${row.legPosition} — not counted as a position` : 'No recorded vote or cosponsorship'}
       className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-dashed border-border text-xs text-subtle-foreground">
       —
     </span>
