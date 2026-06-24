@@ -74,9 +74,83 @@ export default async function ArticlePage(props: Props) {
         <p className="mt-3 font-mono text-xs uppercase tracking-wide text-subtle-foreground">{formattedDate}</p>
       </header>
 
+      {article.chart ? (
+        <section className="mt-8 rounded-lg border border-[#C8B98A]/30 bg-[#2C4A5E]/60 p-5">
+          <h2 className="font-serif text-lg font-bold text-[#F5DEB3]">{article.chart.title}</h2>
+          <ul className="mt-4 space-y-2.5">
+            {article.chart.bars.map((b) => {
+              const max = Math.max(...article.chart!.bars.map((x) => x.value), 1);
+              const pct = Math.max(2, Math.round((100 * b.value) / max));
+              const bar = b.tone === 'navy' ? 'bg-[#C8B98A]' : b.tone === 'muted' ? 'bg-[#F5DEB3]/30' : 'bg-[#8B3A3A]';
+              return (
+                <li key={b.label} className="flex items-center gap-3">
+                  <span className="w-40 shrink-0 font-mono text-xs text-[#F5DEB3]">{b.label}</span>
+                  <span className="h-3 flex-1 overflow-hidden rounded bg-[#F5DEB3]/10">
+                    <span className={`block h-full ${bar}`} style={{ width: `${pct}%` }} />
+                  </span>
+                  <span className="w-24 shrink-0 text-right font-mono text-xs font-bold text-[#F5DEB3]">
+                    {b.valueLabel}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          {article.chart.caption ? (
+            <p className="mt-3 border-t border-[#C8B98A]/20 pt-2 text-xs text-[#F5DEB3]/70">{article.chart.caption}</p>
+          ) : null}
+        </section>
+      ) : null}
+
       <article className={PROSE_CLASS}>
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{article.body}</ReactMarkdown>
       </article>
+
+      {article.cases && article.cases.length > 0 ? (
+        <section className="mt-10">
+          <h2 className="font-serif text-2xl font-bold text-foreground">The races, and what the money bought</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Where the spending concentrated — the targeted member and how they stood, the backed winner and how they
+            have voted since.
+          </p>
+          <div className="mt-4 space-y-4">
+            {article.cases.map((c) => (
+              <div key={c.race} className="rounded-lg border border-border p-4">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <span className="font-mono text-xs font-semibold uppercase tracking-wide text-foreground">
+                    {c.race}
+                  </span>
+                  <span className="font-mono text-xs font-bold text-[#8B3A3A]">{c.spend}</span>
+                </div>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded border border-border bg-secondary p-3">
+                    <p className="font-mono text-[10px] uppercase tracking-wide text-subtle-foreground">
+                      Targeted — how they stood
+                    </p>
+                    <p className="mt-1 font-serif text-sm font-bold text-foreground">{c.targeted}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{c.targetedStance}</p>
+                  </div>
+                  <div className="rounded border border-[#8B3A3A]/40 bg-[#8B3A3A]/10 p-3">
+                    <p className="font-mono text-[10px] uppercase tracking-wide text-subtle-foreground">
+                      Backed winner — how they voted
+                    </p>
+                    <p className="mt-1 font-serif text-sm font-bold text-foreground">{c.winner}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{c.winnerRecord}</p>
+                  </div>
+                </div>
+                {c.sourceUrl ? (
+                  <a
+                    href={c.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-block font-mono text-xs text-accent underline hover:text-foreground">
+                    source ↗
+                  </a>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className="mt-12 border-t-2 border-border pt-6">
         <h2 className="font-mono text-xs uppercase tracking-widest text-foreground">Sources</h2>

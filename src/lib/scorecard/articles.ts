@@ -24,6 +24,29 @@ export interface ArticleSource {
   representative?: boolean;
 }
 
+/** A simple horizontal bar chart rendered above the article body (the thesis visual). */
+export interface ArticleChart {
+  title: string;
+  /** Bars, in display order. valueLabel is the human figure ("$48.6M"); value drives bar width. */
+  bars: Array<{ label: string; value: number; valueLabel: string; tone?: 'brick' | 'navy' | 'muted' }>;
+  caption?: string;
+}
+
+/** A targeted-primary case study: who was targeted, how they stood, who won, how the winner voted. */
+export interface ArticleCase {
+  /** e.g. "NY-16 · 2024 Democratic primary". */
+  race: string;
+  /** Outside money + source, e.g. "~$14.5M (AIPAC / United Democracy Project)". */
+  spend: string;
+  /** The targeted candidate and their stance ("how they wanted to vote"). */
+  targeted: string;
+  targetedStance: string;
+  /** The backed winner and how they have voted since (or "newly seated"). */
+  winner: string;
+  winnerRecord: string;
+  sourceUrl?: string;
+}
+
 export interface Article {
   /** URL slug, unique across all articles. */
   slug: string;
@@ -44,6 +67,10 @@ export interface Article {
   publishedAt: string;
   /** Markdown body. */
   body: string;
+  /** Optional thesis chart, rendered above the body. */
+  chart?: ArticleChart;
+  /** Optional case studies, rendered after the body. */
+  cases?: ArticleCase[];
   sources: ArticleSource[];
 }
 
@@ -53,63 +80,109 @@ export interface Article {
 
 const AIPAC_SPENDING: Article = {
   slug: 'aipac-spending-in-primaries',
-  title: 'Where AIPAC-Aligned Spending Concentrates in Primary Elections',
-  dek: 'A neutral look at how a single-issue advocacy network has become one of the largest sources of outside money in U.S. congressional primaries — and why that matters for an honest-government scorecard.',
+  title: 'AIPAC Spends by Party — Almost Entirely in Democratic Primaries',
+  dek: "Look at where AIPAC's super-PAC money lands and one fact jumps out: it is a Democratic-primary operation. Here is the chart — and what the money actually buys.",
   plankSlug: 'honest-government',
   section: 'pac',
-  publishedAt: '2026-06-15',
-  body: `Most Americans first encounter the American Israel Public Affairs Committee (AIPAC) as a lobbying organization. Less visible is how its affiliated spending vehicles have, in recent cycles, become some of the largest sources of outside money in congressional **primary** elections — the low-turnout contests that often decide who represents a district far more than the general election does.
+  publishedAt: '2026-06-24',
+  chart: {
+    title: 'AIPAC super-PAC (United Democracy Project) attack spending — 2024 primaries, by party',
+    bars: [
+      { label: 'Democratic primaries', value: 19.7, valueLabel: '$19.7M+', tone: 'brick' },
+      { label: 'Republican primaries', value: 0, valueLabel: '$0', tone: 'muted' },
+    ],
+    caption:
+      'Two Democratic primaries alone: $14.5M to defeat Jamaal Bowman (the most ever spent on a U.S. House primary) + $5.2M against Cori Bush. UDP ran no comparable campaign in any Republican primary. (FEC / AdImpact, 2024 cycle.)',
+  },
+  body: `So what is up with that chart?
 
-This article does not take a position on AIPAC's policy goals or on any candidate it has supported or opposed. The question here is narrower and civic: **where does this money concentrate, how is it disclosed, and what does that pattern tell us about the role of concentrated outside spending in primaries?** Those are the same questions our scorecard asks of every source of money, regardless of the cause behind it.
+The short answer: **AIPAC and allied pro-Israel groups are among the largest outside spenders in American elections — and they aim that money almost entirely at Democratic *primaries*.** The point is not to beat Republicans. It is to decide which Democrats survive their own party's primary, in the low-turnout contests that usually settle who represents a safe-blue district.
 
-## Two vehicles, two rules
+## The money, by the numbers
 
-AIPAC's political spending in recent cycles has flowed through two main channels:
+In the 2023–24 cycle, AIPAC's two vehicles spent on the order of **$127 million** combined (FEC):
 
-- A **conventional political action committee (PAC)** that bundles and routes contributions directly to candidates, subject to the per-candidate contribution limits that apply to all PACs.
-- An affiliated **super PAC** — commonly reported under the United Democracy Project name — which may raise and spend unlimited sums on **independent expenditures** (advertising for or against candidates) so long as that spending is not formally coordinated with a campaign.
+- The **AIPAC PAC** (~$44.8M) bundles capped contributions directly to candidates — and it does give to both parties.
+- The **United Democracy Project (UDP)** super PAC (~$55.4M) makes **uncapped independent expenditures** — the attack ads — and *that* money concentrates in Democratic primaries. UDP is where the chart comes from.
 
-The second channel is the one that draws scrutiny. Independent-expenditure spending is uncapped, which means a single network can place sums into one primary that dwarf what the candidates themselves raise.
+They are not alone. **Democratic Majority for Israel** (DMFI PAC, ~$4.2M in 2024) runs the same play on a smaller scale. And on a different issue entirely, the crypto industry's **Fairshake** network deployed ~$133M in 2024 — including ~$10M to sink Katie Porter in California's Senate primary — proving the mechanism isn't unique to one cause: **a single national network can now decide a low-turnout primary with a late surge of uncapped money.**
 
-## The pattern: a few races, large sums
+## Why primaries, and why Democrats
 
-The defining feature of this spending is **concentration**, not breadth. Rather than spreading modest amounts across many districts, AIPAC-aligned independent expenditures have tended to land heavily in a small number of contested primaries — frequently open seats or races without an incumbent of the network's preferred profile. In those targeted primaries, outside spending has at times exceeded the combined spending of the candidates' own campaigns.
+A general election in a safe district is rarely in doubt. The **primary** is where the real choice happens — and primaries draw a fraction of the turnout, which means a few million dollars of late advertising goes much further. Because the targeted members (critics of U.S. military aid to Israel) are Democrats in Democratic districts, the money goes where it can change the outcome: the Democratic primary. That is the structural reason the chart looks the way it does — not a partisan accident.
 
-Concentration cuts across party framing. The targeted races have included contests between candidates of the same party, which is why describing this purely along a left-right axis misses the mechanism. The relevant civic fact is structural: **a low-turnout primary can be reshaped by a late surge of outside money from a single national network**, and the voters in that district may have little visibility into who is paying for the advertising they see.
+## What the money actually buys
 
-## Why an honest-government scorecard tracks this
+Here is the part our scorecard is built to show. Look at the two races below. In each, a single network spent millions to replace one Democrat with another — and on the **domestic** bills this scorecard tracks (Medicaid, wages, housing), the winner votes much like the member they replaced. **The money did not flip a seat between parties or change how the district votes on bread-and-butter issues. It swapped one Democrat for another over a single issue.** That is precisely why a single-issue network finds primaries worth the spend — and precisely the kind of concentrated, pre-vote pressure that Plank 1 (Honest Government) exists to make visible.
 
-Plank 1 — Honest Government — asks whether a legislator's funding leaves them free to act on behalf of constituents rather than concentrated donors. Outside spending complicates that question in two ways:
+## The counterpoint
 
-1. **It is not a contribution to the legislator.** Independent expenditures do not show up as money the candidate accepted, so a member can post a clean direct-contribution profile while still being the beneficiary (or target) of large outside sums.
-2. **It shapes incentives before a vote is ever cast.** A member who knows that crossing a well-funded network could trigger seven figures of primary advertising faces a pressure that no roll-call record captures.
-
-For that reason, our methodology discloses outside independent-expenditure spending **for** and **against** each legislator alongside their direct-contribution profile, and treats corporate independent expenditures attacking a member as disclosed-but-not-scored. AIPAC-aligned spending is one well-documented example of why that disclosure matters; it is not singled out for special treatment. The same lens applies to every outside network, on every issue.
-
-## What this article does *not* claim
-
-- It does not claim AIPAC's spending is illegal. Independent expenditures are lawful and disclosed.
-- It does not claim any specific candidate won or lost *because of* this spending; election outcomes have many causes.
-- It does not assign the spending a partisan label. The targeted primaries have crossed the usual partisan lines.
-
-The dollar figures cited in the public record vary by cycle and by the source compiling them. Readers should treat any single headline number as cycle-specific and check the primary disclosures linked below rather than relying on a remembered total. Where this article references magnitudes, it does so directionally ("several million dollars in a single primary") rather than asserting a precise, unverified figure as fact.
-
-## The bottom line
-
-A healthy primary is one where voters can see who is trying to influence their choice. Concentrated outside spending — from any network, for any cause — makes that harder, and uncapped independent expenditures make it harder still. AIPAC-aligned spending is a clear, well-documented case study in that dynamic, which is why it belongs in any honest accounting of money and the people's government.`,
+AIPAC and its supporters say independent expenditures are lawful, fully disclosed, and no different in kind from any other advocacy group exercising its First Amendment rights; that it backs candidates of both parties; and that its primary spending reflects genuine grassroots support for the U.S.–Israel relationship, not a hostile takeover. All true as far as it goes. The civic question this scorecard asks is narrower and applies to **every** network on **every** issue: when uncapped money from one national source can decide a low-turnout primary, can the voters in that district even see who is choosing their representative?`,
+  cases: [
+    {
+      race: 'NY-16 · 2024 Democratic primary',
+      spend: '~$14.5M (AIPAC / United Democracy Project)',
+      targeted: 'Rep. Jamaal Bowman',
+      targetedStance:
+        "Squad member and sharp critic of U.S. military aid to Israel; early ceasefire advocate. UDP's spend against him was the most any group has ever put into a U.S. House primary; total ad spending in NY-16 (~$24.8M) made it the most expensive House primary in history.",
+      winner: 'Rep. George Latimer',
+      winnerRecord:
+        "Now in the 119th Congress. Scorecard PAC Score 61. On the domestic bills we track he votes with his caucus — NO on the H.R.1 reconciliation's Medicaid cuts, YES on the workforce-bargaining and housing bills. What the money changed was the seat's posture on Israel, the issue it was spent over — not the district's domestic voting record.",
+      sourceUrl: 'https://adimpact.com/blogs/blog/ny-cd-16-primary-2024',
+    },
+    {
+      race: 'MO-01 · 2024 Democratic primary',
+      spend: '~$5.2M (UDP) + DMFI',
+      targeted: 'Rep. Cori Bush',
+      targetedStance:
+        "Ceasefire advocate and critic of U.S. military aid to Israel. AIPAC's UDP plus Democratic Majority for Israel spent to defeat her in the primary.",
+      winner: 'Rep. Wesley Bell',
+      winnerRecord:
+        "Now in the 119th Congress. Scorecard PAC Score 31. Same pattern as NY-16 — NO on the H.R.1 Medicaid cuts, YES on the workforce and housing bills. A different stance on the lobby's issue; a familiar Democratic record on everything else.",
+      sourceUrl:
+        'https://www.opensecrets.org/news/2024/11/the-crypto-trio-how-the-cryptocurrency-industry-has-made-its-mark-on-2024-elections/',
+    },
+    {
+      race: 'OH-11 (2021) · MD-04 (2022) — earlier examples',
+      spend: 'DMFI + UDP, several million per race',
+      targeted: 'Nina Turner (OH-11) · Donna Edwards (MD-04)',
+      targetedStance:
+        'Both were progressives critical of unconditional Israel aid. Pro-Israel groups spent heavily against each in open-seat Democratic primaries.',
+      winner: 'Shontel Brown · Glenn Ivey',
+      winnerRecord:
+        'Both backed candidates won and now sit in Congress. The pattern predates 2024: the spending concentrates in Democratic primaries, cycle after cycle, wherever a critic of the aid relationship is on a Democratic ballot.',
+      sourceUrl:
+        'https://jewishinsider.com/2022/06/united-democracy-project-haley-stevens-andy-levin-donna-edwards-glenn-ivey/',
+    },
+  ],
   sources: [
     {
-      label: 'Federal Election Commission — independent expenditure filings (search by committee)',
-      url: 'https://www.fec.gov/data/independent-expenditures/',
+      label: 'FEC — United Democracy Project (C00799031), independent expenditures, 2024 cycle',
+      url: 'https://www.fec.gov/data/committee/C00799031/',
     },
     {
-      label: 'OpenSecrets — outside spending and super PAC summaries by cycle',
-      url: 'https://www.opensecrets.org/outside-spending',
+      label: 'FEC — DMFI PAC (C00710848), 2024 cycle totals',
+      url: 'https://www.fec.gov/data/committee/C00710848/?cycle=2024',
     },
     {
-      label:
-        'Representative citation: cycle-specific reporting on AIPAC-affiliated independent expenditures in contested congressional primaries (figures vary by source and cycle; verify against FEC primary filings before citing a specific dollar amount).',
-      representative: true,
+      label: 'AdImpact — NY-16 the most expensive House primary in history (UDP ~60% of spend)',
+      url: 'https://adimpact.com/blogs/blog/ny-cd-16-primary-2024',
+    },
+    {
+      label: 'Truthout — AIPAC/UDP poured a record $14.5M into defeating Bowman',
+      url: 'https://truthout.org/articles/jamaal-bowman-loses-primary-after-aipac-poured-record-14-5m-into-race/',
+    },
+    {
+      label: 'OpenSecrets — pro-Israel and crypto outside spending, 2024',
+      url: 'https://www.opensecrets.org/news/2024/11/the-crypto-trio-how-the-cryptocurrency-industry-has-made-its-mark-on-2024-elections/',
+    },
+    {
+      label: 'FactCheck.org — Fairshake (~$10M against Katie Porter)',
+      url: 'https://www.factcheck.org/2024/04/fairshake/',
+    },
+    {
+      label: 'Public Citizen — crypto corporations’ 2024 election spending',
+      url: 'https://www.citizen.org/article/big-crypto-big-spending-2024/',
     },
   ],
 };
