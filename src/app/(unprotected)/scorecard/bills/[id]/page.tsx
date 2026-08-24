@@ -25,7 +25,7 @@ const PARTY_LABEL: Record<string, string> = {
 const POSITION_COLOR: Record<string, string> = {
   YES: 'border-success bg-success/10 text-success',
   NO: 'border-destructive bg-destructive/10 text-destructive',
-  NOT_VOTING: 'border-warning bg-warning/15 text-warning-foreground',
+  NOT_VOTING: 'border-warning-foreground/50 bg-warning text-warning-foreground',
   EXCUSED: 'border-border bg-muted text-muted-foreground',
   PRESENT: 'border-info bg-info/10 text-info',
   ABSTAINED: 'border-border bg-muted text-muted-foreground',
@@ -630,15 +630,15 @@ function ProcedureTimeline({ history }: { history: unknown }) {
             tone === 'death'
               ? 'bg-accent border-accent'
               : tone === 'win'
-              ? 'bg-green-400 border-green-400'
+              ? 'bg-score-6 border-score-6'
               : tone === 'milestone'
-              ? 'bg-warning border-border'
+              ? 'bg-score-3 border-score-3'
               : 'bg-secondary border-border';
           const textClass =
             tone === 'death'
-              ? 'text-[#FFB4B4] font-semibold'
+              ? 'text-destructive font-semibold'
               : tone === 'win'
-              ? 'text-green-200 font-semibold'
+              ? 'text-score-6 font-semibold'
               : tone === 'milestone'
               ? 'text-foreground'
               : 'text-muted-foreground';

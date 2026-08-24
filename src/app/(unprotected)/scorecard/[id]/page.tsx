@@ -227,7 +227,7 @@ export default async function LegislatorScorecardPage(props: Props) {
       </header>
 
       {headlinePending && (
-        <div className="mt-6 rounded border border-warning bg-warning/15 px-4 py-3 text-sm text-warning-foreground">
+        <div className="mt-6 rounded border border-warning-foreground/30 bg-warning px-4 py-3 text-sm text-warning-foreground">
           <p className="font-semibold">Scoring is in development.</p>
           <p className="mt-1">
             The methodology and marker definitions are public. The automated pipeline that pulls cosponsorship, vote,
@@ -405,23 +405,18 @@ export default async function LegislatorScorecardPage(props: Props) {
             {caMoneyTrail.cycles.length ? ` (${caMoneyTrail.cycles.join(', ')} cycles)` : ''} — $
             {Math.round(caMoneyTrail.total).toLocaleString()} from PACs, grouped by the kind of money.
           </p>
-          <div className="mt-4 rounded-lg border border-[#C8B98A]/30 bg-[#2C4A5E]/60 p-4">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-[#F5DEB3]/70">By source</p>
+          <div className="mt-4 rounded-lg border border-border bg-surface-elevated p-4">
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground">By source</p>
             <ul className="mt-2 space-y-1.5">
               {caMoneyTrail.byClass.map((c) => {
                 const pct = caMoneyTrail.total > 0 ? (100 * c.amount) / caMoneyTrail.total : 0;
                 return (
                   <li key={c.class} className="flex items-center gap-3">
-                    <span className="w-32 shrink-0 font-mono text-xs text-[#F5DEB3]">
-                      {CA_CLASS_LABEL[c.class] ?? c.class}
+                    <span className="w-32 shrink-0 text-xs text-foreground">{CA_CLASS_LABEL[c.class] ?? c.class}</span>
+                    <span className="h-2 flex-1 overflow-hidden rounded bg-muted-foreground/20">
+                      <span className="block h-full bg-score-1" style={{ width: `${Math.max(2, Math.round(pct))}%` }} />
                     </span>
-                    <span className="h-2 flex-1 overflow-hidden rounded bg-[#F5DEB3]/10">
-                      <span
-                        className="block h-full bg-[#8B3A3A]"
-                        style={{ width: `${Math.max(2, Math.round(pct))}%` }}
-                      />
-                    </span>
-                    <span className="w-28 shrink-0 text-right font-mono text-xs text-[#F5DEB3]/90">
+                    <span className="w-28 shrink-0 text-right font-mono text-xs tabular-nums text-foreground">
                       ${Math.round(c.amount).toLocaleString()} ({pct.toFixed(0)}%)
                     </span>
                   </li>
@@ -796,7 +791,7 @@ function BillBreakdownList({ breakdown }: { breakdown: BillBreakdownRow[] }) {
               {b.billTitle ?? <span className="text-subtle-foreground">(no title)</span>}
             </span>
             {b.cosponsored && (
-              <span className="rounded bg-accent px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide text-white">
+              <span className="rounded bg-accent px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide text-accent-foreground">
                 cosponsor
               </span>
             )}
@@ -1017,7 +1012,7 @@ function MoneyTrail({
                 <div className="flex-1">
                   <div className="h-2 w-full overflow-hidden rounded-full bg-surface-elevated">
                     <div
-                      className={`h-full ${tone.countsAgainst ? 'bg-red-500' : 'bg-warning'}`}
+                      className={`h-full ${tone.countsAgainst ? 'bg-score-1' : 'bg-score-3'}`}
                       style={{ width: `${Math.min(100, pct)}%` }}
                     />
                   </div>
@@ -1491,7 +1486,7 @@ function IndividualMoneySection({
                   </span>
                   <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-elevated">
                     <div
-                      className={`h-full ${isFinance ? 'bg-amber-400/80' : 'bg-warning'}`}
+                      className={`h-full ${isFinance ? 'bg-score-2' : 'bg-score-3'}`}
                       style={{ width: `${Math.max(2, widthPct)}%` }}
                     />
                   </div>
@@ -1527,7 +1522,7 @@ function IndividualMoneySection({
                     {e.employer}
                   </span>
                   <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-elevated">
-                    <div className="h-full bg-warning" style={{ width: `${Math.max(2, widthPct)}%` }} />
+                    <div className="h-full bg-score-3" style={{ width: `${Math.max(2, widthPct)}%` }} />
                   </div>
                   <span className="w-24 shrink-0 text-right font-mono text-xs tabular-nums text-foreground">
                     ${e.total.toLocaleString()}
@@ -1594,9 +1589,9 @@ function DonorProfileSection({ profile, party }: { profile: DimeProfile; party: 
           <p className="mt-0.5 text-xs text-muted-foreground">{cfLabel}</p>
           {cf !== null && (
             <div className="mt-2">
-              <div className="relative h-2 w-full rounded-full bg-gradient-to-r from-[#1d4ed8] via-[#9ca3af] to-[#b91c1c]">
+              <div className="relative h-2 w-full rounded-full bg-gradient-to-r from-info via-score-4 to-score-1">
                 <span
-                  className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-black/70"
+                  className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background bg-foreground"
                   style={{ left: `${cfPos}%` }}
                 />
               </div>
@@ -1618,8 +1613,8 @@ function DonorProfileSection({ profile, party }: { profile: DimeProfile; party: 
             of individual money is small-dollar (&lt;$200) — grassroots vs big-check signal.
           </p>
           {smallDollarPct !== null && (
-            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-black/40">
-              <div className="h-full bg-warning" style={{ width: `${Math.min(100, smallDollarPct)}%` }} />
+            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-surface-elevated">
+              <div className="h-full bg-score-3" style={{ width: `${Math.min(100, smallDollarPct)}%` }} />
             </div>
           )}
           {totalUnitemized + totalIndivContribs > 0 ? (

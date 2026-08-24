@@ -177,7 +177,7 @@ function FilterLink({
       href={href}
       className={`rounded border px-2 py-0.5 font-mono text-xs uppercase tracking-wide ${
         current
-          ? 'border-accent bg-accent text-white'
+          ? 'border-accent bg-accent text-accent-foreground'
           : 'border-border bg-surface text-muted-foreground hover:border-accent hover:text-accent'
       }`}>
       {children}

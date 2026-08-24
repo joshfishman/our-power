@@ -59,5 +59,23 @@
   },
   "globals": {
     "JSX": "readonly"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["src/app/**/*.{ts,tsx}", "src/components/**/*.{ts,tsx}"],
+      "rules": {
+        "no-restricted-syntax": [
+          "error",
+          {
+            "selector": "Literal[value=/\\[#[0-9a-fA-F]{3,8}/]",
+            "message": "Arbitrary hex color classes are banned. Use a semantic token utility instead (bg-surface, bg-surface-elevated, bg-muted, text-foreground, text-muted-foreground, text-subtle-foreground, text-accent, border-border, text-score-1..7, …). See docs/design/color-scheme.md."
+          },
+          {
+            "selector": "TemplateElement[value.raw=/\\[#[0-9a-fA-F]{3,8}/]",
+            "message": "Arbitrary hex color classes are banned. Use a semantic token utility instead (bg-surface, bg-surface-elevated, bg-muted, text-foreground, text-muted-foreground, text-subtle-foreground, text-accent, border-border, text-score-1..7, …). See docs/design/color-scheme.md."
+          }
+        ]
+      }
+    }
+  ]
 }

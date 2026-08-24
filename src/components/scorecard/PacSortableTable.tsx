@@ -197,7 +197,7 @@ export function PacSortableTable({ rows, hideStateColumn = false }: Props) {
                   {(l.pct * 100).toFixed(1)}%
                 </span>
                 {passes && (
-                  <span className="ml-2 rounded bg-accent px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-white">
+                  <span className="ml-2 rounded bg-accent px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-accent-foreground">
                     ✓
                   </span>
                 )}

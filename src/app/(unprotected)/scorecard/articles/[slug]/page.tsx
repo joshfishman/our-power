@@ -29,6 +29,18 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 const PROSE_CLASS =
   'mt-6 text-foreground [&_a]:text-accent [&_a]:underline hover:[&_a]:text-foreground [&_blockquote]:mt-4 [&_blockquote]:border-l-4 [&_blockquote]:border-accent [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-foreground [&_code]:rounded [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-xs [&_h2]:mt-10 [&_h2]:font-serif [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:text-foreground [&_h3]:mt-6 [&_h3]:font-serif [&_h3]:text-xl [&_h3]:font-semibold [&_h3]:text-foreground [&_li]:mt-1 [&_ol]:mt-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:mt-3 [&_p]:leading-relaxed [&_p]:text-foreground [&_strong]:font-semibold [&_strong]:text-foreground [&_ul]:mt-3 [&_ul]:list-disc [&_ul]:pl-6';
 
+/**
+ * Chart series fills, resolved from the semantic token layer so they follow
+ * light/dark. `default` is the emphasized series, `navy` the contrasting one,
+ * `muted` the de-emphasized remainder. (The tone names are historical — they
+ * used to be literal brand hex.)
+ */
+const SERIES_FILL: Record<string, string> = {
+  default: 'rgb(var(--score-1))',
+  navy: 'rgb(var(--score-4))',
+  muted: 'rgb(var(--subtle-foreground))',
+};
+
 /** Renders an article's thesis chart — a horizontal bar set or a donut with a center highlight + % legend. */
 function ChartBlock({ chart }: { chart: ArticleChart }) {
   const total = chart.bars.reduce((s, b) => s + b.value, 0) || 1;
@@ -37,13 +49,13 @@ function ChartBlock({ chart }: { chart: ArticleChart }) {
     <ul className="w-full flex-1 space-y-2">
       {chart.bars.map((b) => {
         const pct = Math.round((100 * b.value) / total);
-        const fill = b.color ?? (b.tone === 'navy' ? '#C8B98A' : b.tone === 'muted' ? '#6B7C87' : '#8B3A3A');
+        const fill = b.color ?? SERIES_FILL[b.tone ?? 'default'] ?? SERIES_FILL.default;
         return (
           <li key={b.label} className="flex items-center gap-3">
             <span aria-hidden className="h-3 w-3 shrink-0 rounded-sm" style={{ backgroundColor: fill }} />
-            <span className="flex-1 font-mono text-xs text-[#F5DEB3]">{b.label}</span>
-            <span className="font-mono text-xs text-[#F5DEB3]/60">{b.valueLabel}</span>
-            <span className="w-12 text-right font-mono text-base font-bold text-[#F5DEB3]">{pct}%</span>
+            <span className="flex-1 text-xs text-foreground">{b.label}</span>
+            <span className="font-mono text-xs tabular-nums text-muted-foreground">{b.valueLabel}</span>
+            <span className="w-12 text-right font-mono text-base font-bold tabular-nums text-foreground">{pct}%</span>
           </li>
         );
       })}
@@ -60,7 +72,7 @@ function ChartBlock({ chart }: { chart: ArticleChart }) {
       .filter((b) => b.value > 0)
       .map((b) => {
         const frac = b.value / total;
-        const fill = b.color ?? (b.tone === 'navy' ? '#C8B98A' : b.tone === 'muted' ? '#6B7C87' : '#8B3A3A');
+        const fill = b.color ?? SERIES_FILL[b.tone ?? 'default'] ?? SERIES_FILL.default;
         const seg = { label: b.label, frac, offset: acc, fill };
         acc += frac;
         return seg;
@@ -69,7 +81,15 @@ function ChartBlock({ chart }: { chart: ArticleChart }) {
       <div className="mt-5 flex flex-col items-center gap-6 sm:flex-row sm:gap-8">
         <div className="relative h-44 w-44 shrink-0">
           <svg viewBox="0 0 180 180" className="h-full w-full">
-            <circle cx={cx} cy={cx} r={r} fill="none" stroke="#F5DEB3" strokeOpacity={0.1} strokeWidth={26} />
+            <circle
+              cx={cx}
+              cy={cx}
+              r={r}
+              fill="none"
+              stroke="rgb(var(--muted-foreground))"
+              strokeOpacity={0.2}
+              strokeWidth={26}
+            />
             {slices.map((s) => (
               <circle
                 key={s.label}
@@ -86,8 +106,10 @@ function ChartBlock({ chart }: { chart: ArticleChart }) {
           </svg>
           {chart.highlight ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
-              <span className="font-serif text-4xl font-bold leading-none text-[#F5DEB3]">{chart.highlight.value}</span>
-              <span className="mt-1 font-mono text-[9px] uppercase leading-tight tracking-wide text-[#F5DEB3]/70">
+              <span className="font-serif text-4xl font-bold tabular-nums leading-none text-foreground">
+                {chart.highlight.value}
+              </span>
+              <span className="mt-1 text-[9px] uppercase leading-tight tracking-wide text-muted-foreground">
                 {chart.highlight.label}
               </span>
             </div>
@@ -102,14 +124,14 @@ function ChartBlock({ chart }: { chart: ArticleChart }) {
         {chart.bars.map((b) => {
           const max = Math.max(...chart.bars.map((x) => x.value), 1);
           const pct = Math.max(2, Math.round((100 * b.value) / max));
-          const bar = b.tone === 'navy' ? 'bg-[#C8B98A]' : b.tone === 'muted' ? 'bg-[#F5DEB3]/30' : 'bg-[#8B3A3A]';
+          const bar = b.tone === 'navy' ? 'bg-score-4' : b.tone === 'muted' ? 'bg-subtle-foreground' : 'bg-score-1';
           return (
             <li key={b.label} className="flex items-center gap-3">
-              <span className="w-40 shrink-0 font-mono text-xs text-[#F5DEB3]">{b.label}</span>
-              <span className="h-3 flex-1 overflow-hidden rounded bg-[#F5DEB3]/10">
+              <span className="w-40 shrink-0 text-xs text-foreground">{b.label}</span>
+              <span className="h-3 flex-1 overflow-hidden rounded bg-muted-foreground/20">
                 <span className={`block h-full ${bar}`} style={{ width: `${pct}%` }} />
               </span>
-              <span className="w-24 shrink-0 text-right font-mono text-xs font-bold text-[#F5DEB3]">
+              <span className="w-24 shrink-0 text-right font-mono text-xs font-bold tabular-nums text-foreground">
                 {b.valueLabel}
               </span>
             </li>
@@ -120,14 +142,14 @@ function ChartBlock({ chart }: { chart: ArticleChart }) {
   }
 
   return (
-    <section className="mt-8 rounded-lg border border-[#C8B98A]/30 bg-[#2C4A5E]/60 p-5">
-      <h2 className="font-serif text-lg font-bold text-[#F5DEB3]">{chart.title}</h2>
+    <section className="mt-8 rounded-lg border border-border bg-surface-elevated p-5">
+      <h2 className="font-serif text-lg font-bold text-foreground">{chart.title}</h2>
       {body}
       {chart.caption ? (
-        <p className="mt-3 border-t border-[#C8B98A]/20 pt-2 text-xs text-[#F5DEB3]/70">{chart.caption}</p>
+        <p className="mt-3 border-t border-border pt-2 text-xs text-muted-foreground">{chart.caption}</p>
       ) : null}
       {chart.note ? (
-        <p className="mt-3 rounded border border-[#C8B98A]/30 bg-[#8B3A3A]/20 p-3 text-xs text-[#F5DEB3]">
+        <p className="mt-3 rounded border border-warning-foreground/30 bg-warning p-3 text-xs text-warning-foreground">
           {chart.note}
         </p>
       ) : null}
@@ -135,7 +157,7 @@ function ChartBlock({ chart }: { chart: ArticleChart }) {
   );
 }
 
-/** A case-study headshot. Defeated members are greyed and crossed out with a brick ✕. */
+/** A case-study headshot. Defeated members are greyed and crossed out in the destructive color. */
 function CasePhoto({ src, name, crossedOut }: { src?: string; name: string; crossedOut?: boolean }) {
   const initials = name
     .replace(/^Rep\.\s+/, '')
@@ -162,8 +184,8 @@ function CasePhoto({ src, name, crossedOut }: { src?: string; name: string; cros
       )}
       {crossedOut ? (
         <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full" aria-hidden>
-          <line x1="8" y1="8" x2="92" y2="92" stroke="#8B3A3A" strokeWidth="9" strokeLinecap="round" />
-          <line x1="92" y1="8" x2="8" y2="92" stroke="#8B3A3A" strokeWidth="9" strokeLinecap="round" />
+          <line x1="8" y1="8" x2="92" y2="92" stroke="rgb(var(--destructive))" strokeWidth="9" strokeLinecap="round" />
+          <line x1="92" y1="8" x2="8" y2="92" stroke="rgb(var(--destructive))" strokeWidth="9" strokeLinecap="round" />
         </svg>
       ) : null}
     </div>
@@ -184,11 +206,11 @@ function CaseSide({
 }) {
   const wrap = defeated
     ? 'rounded border border-border bg-secondary p-3'
-    : 'rounded border border-[#8B3A3A]/40 bg-[#8B3A3A]/10 p-3';
+    : 'rounded border border-destructive/40 bg-destructive/10 p-3';
   return (
     <div className={wrap}>
       <div className="flex items-center justify-between gap-2">
-        <p className="font-mono text-[10px] uppercase tracking-wide text-subtle-foreground">{label}</p>
+        <p className="text-[10px] uppercase tracking-wide text-subtle-foreground">{label}</p>
         {badge}
       </div>
       <div className="mt-2 flex items-start gap-3">
@@ -272,10 +294,8 @@ export default async function ArticlePage(props: Props) {
             {article.cases.map((c) => (
               <div key={c.race} className="rounded-lg border border-border p-4">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <span className="font-mono text-xs font-semibold uppercase tracking-wide text-foreground">
-                    {c.race}
-                  </span>
-                  <span className="font-mono text-xs font-bold text-[#8B3A3A]">{c.spend}</span>
+                  <span className="text-xs font-semibold uppercase tracking-wide text-foreground">{c.race}</span>
+                  <span className="font-mono text-xs font-bold tabular-nums text-destructive">{c.spend}</span>
                 </div>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
                   <CaseSide
@@ -283,7 +303,7 @@ export default async function ArticlePage(props: Props) {
                     label="AIPAC target"
                     defeated
                     badge={
-                      <span className="shrink-0 rounded bg-[#8B3A3A] px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wide text-[#F5DEB3]">
+                      <span className="shrink-0 rounded bg-destructive px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-destructive-foreground">
                         Defeated
                       </span>
                     }
@@ -292,7 +312,7 @@ export default async function ArticlePage(props: Props) {
                     side={c.winner}
                     label="Backed winner"
                     badge={
-                      <span className="shrink-0 rounded border border-[#C8B98A]/50 bg-[#2C4A5E] px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wide text-[#F5DEB3]">
+                      <span className="shrink-0 rounded bg-accent px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-accent-foreground">
                         AIPAC-backed · Won
                       </span>
                     }

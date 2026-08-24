@@ -4,15 +4,43 @@ import 'swiper/css/zoom';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 import 'react-datepicker/dist/react-datepicker.css';
-import { Poppins } from 'next/font/google';
+import { IBM_Plex_Mono, Poppins, Source_Serif_4 } from 'next/font/google';
 import { cn } from '@/lib/cn';
 import { Providers } from '@/components/Providers';
 import { auth } from '@/auth';
 import React from 'react';
 
+/* ---------------------------------------------------------------------------
+ * Typography system — exactly three families, each with one job.
+ *
+ *   font-sans  (Poppins)         — ALL user-interface and body copy. Default.
+ *   font-serif (Source Serif 4)  — editorial headings ONLY (article/essay h1-h3).
+ *   font-mono  (IBM Plex Mono)   — numeric and tabular data ONLY: money, scores,
+ *                                  percentages, vote counts, IDs, dates in tables.
+ *                                  Pair with `tabular-nums` so columns align.
+ *
+ * Never use font-mono for prose, labels, or eyebrow text — it was doing that on
+ * the scorecard pages and is being unwound. See docs/design/color-scheme.md.
+ * ------------------------------------------------------------------------- */
 const poppins = Poppins({
   weight: ['400', '500', '600', '700'],
   subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-sans',
+});
+
+const sourceSerif = Source_Serif_4({
+  weight: ['400', '600', '700'],
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-serif',
+});
+
+const ibmPlexMono = IBM_Plex_Mono({
+  weight: ['400', '500', '600'],
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-mono',
 });
 
 export const metadata = {
@@ -37,7 +65,7 @@ export const metadata = {
 export default async function Layout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   return (
-    <html lang="en" className="overflow-y-scroll">
+    <html lang="en" className={cn('overflow-y-scroll', poppins.variable, sourceSerif.variable, ibmPlexMono.variable)}>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
         <link rel="alternate" type="application/rss+xml" title="Our Power - Campaigns" href="/api/rss/campaigns" />
@@ -54,7 +82,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
           }}
         />
       </head>
-      <body className={cn('bg-background text-foreground', poppins.className)}>
+      <body className={cn('bg-background font-sans text-foreground')}>
         <Providers session={session}>{children}</Providers>
       </body>
     </html>

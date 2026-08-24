@@ -106,7 +106,7 @@ function FilterPill({ label, active, onClick }: FilterPillProps) {
       onClick={onClick}
       className={`rounded border px-2.5 py-1 font-mono text-xs uppercase tracking-wide transition ${
         active
-          ? 'border-accent bg-accent text-white'
+          ? 'border-accent bg-accent text-accent-foreground'
           : 'border-border bg-surface text-muted-foreground hover:border-accent hover:text-accent'
       }`}>
       {label}

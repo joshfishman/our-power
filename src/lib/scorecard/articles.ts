@@ -109,10 +109,11 @@ const AIPAC_SPENDING: Article = {
     title: 'AIPAC’s super-PAC spending — 2024 primaries, by party',
     highlight: { value: '~91%', label: 'spent inside Democratic primaries' },
     bars: [
-      { label: 'Against Democrats', value: 20.0, valueLabel: '$20.0M', color: '#8B3A3A' },
-      { label: 'Boosting Dem challengers', value: 12.4, valueLabel: '$12.4M', color: '#B5685A' },
-      { label: 'Against Republicans', value: 3.0, valueLabel: '$3.0M', color: '#C8B98A' },
-      { label: 'Boosting Republicans', value: 0, valueLabel: '$0', color: '#6B7C87' },
+      // Series colors reference the semantic token layer so charts follow light/dark.
+      { label: 'Against Democrats', value: 20.0, valueLabel: '$20.0M', color: 'rgb(var(--score-1))' },
+      { label: 'Boosting Dem challengers', value: 12.4, valueLabel: '$12.4M', color: 'rgb(var(--score-2))' },
+      { label: 'Against Republicans', value: 3.0, valueLabel: '$3.0M', color: 'rgb(var(--score-4))' },
+      { label: 'Boosting Republicans', value: 0, valueLabel: '$0', color: 'rgb(var(--subtle-foreground))' },
     ],
     caption:
       'The bars are AIPAC’s super PAC, the United Democracy Project — the single largest pro-Israel super-PAC vehicle (FactCheck.org / FEC, Sept. 2024 snapshot of ~$35.6M in itemized independent expenditures; $37.9M final). About $32.4M — roughly 91% — landed inside Democratic primaries; only ~$3M went against Republicans, and nothing supported them. Democratic Majority for Israel and other pro-Israel groups spend the same way on a smaller scale.',

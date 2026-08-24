@@ -17,8 +17,8 @@ export function AppLogo({ size = 40, showText = true, textClass = 'text-2xl', cl
   return (
     <span className={cn('inline-flex items-center gap-2', className)}>
       <span
-        className="inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full"
-        style={{ width: size, height: size, backgroundColor: '#F5DEB3' }}>
+        className="inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted"
+        style={{ width: size, height: size }}>
         <Image src="/logo.png" alt="Our Power" width={size} height={size} className="object-contain" priority />
       </span>
       {showText && <span className={cn('font-bold text-primary', textClass)}>Our Power</span>}
