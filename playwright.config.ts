@@ -3,6 +3,10 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './e2e',
+  // Visual-regression specs live in ./e2e/visual and run under their own config
+  // (playwright.visual.config.ts, via `npm run test:visual`). They must never
+  // run as part of the functional suite / CI.
+  testIgnore: ['**/visual/**'],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
