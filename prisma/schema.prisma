@@ -1027,6 +1027,11 @@ enum AchievementReviewAction {
   REJECT
   /// Withdraw a previous VERIFY, returning the row to PENDING. Admin-only.
   REVOKE
+  /// Written by `scripts/sync-marker-bills.ts`, not by a person. Fires when a
+  /// re-sync rewrites the evidence fields underneath a row a reviewer had
+  /// already approved: the approval covered evidence that no longer exists, so
+  /// the row drops back to PENDING and this row records what changed.
+  AUTO_INVALIDATE
 }
 
 /// v1.7.1 PAC classification — one row per FEC committee_id mapping to its

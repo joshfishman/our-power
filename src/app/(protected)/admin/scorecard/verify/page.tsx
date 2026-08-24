@@ -195,6 +195,8 @@ export default async function ScorecardVerificationPage({ searchParams }: { sear
         <h2 className="font-serif text-xl font-bold text-foreground">Recent review activity</h2>
         <p className="mt-1 text-xs text-muted-foreground">
           Append-only. Every verification, rejection, and revocation is recorded against the reviewer who made it.
+          AUTO_INVALIDATE entries are the sync returning a row to the queue because its evidence changed underneath an
+          approval — no person took that action.
         </p>
         <ul className="mt-3 space-y-2">
           {recentReviews.map((review) => (

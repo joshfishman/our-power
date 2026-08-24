@@ -16,7 +16,7 @@
 //   npx tsx scripts/sync-marker-bills.ts                       # both jurisdictions (API)
 //   npx tsx scripts/sync-marker-bills.ts --jurisdiction=CA
 //   npx tsx scripts/sync-marker-bills.ts --jurisdiction=FEDERAL
-//   npx tsx scripts/sync-marker-bills.ts --dry-run             # no DB writes
+//   npx tsx scripts/sync-marker-bills.ts --dry-run             # no DB writes; reports what it would invalidate
 //   npx tsx scripts/sync-marker-bills.ts --bill=AB-2200        # one bill only
 //   npx tsx scripts/sync-marker-bills.ts --source=bulk         # offline / fallback
 //
@@ -27,6 +27,13 @@
 // pipeline is proven, register a cron in vercel.json (or equivalent)
 // pointing at `npx tsx scripts/sync-marker-bills.ts` with appropriate
 // flags. Until then, run it by hand and review the summary output.
+//
+// STALE-VERIFICATION GUARD: this script rewrites MarkerAchievement evidence on
+// every run. When a rewrite lands on a row a reviewer already approved, the
+// approval no longer covers what the row says, so the row is reset to PENDING
+// and a MarkerAchievementReview row records the automatic invalidation. See
+// src/lib/scorecard/evidence-invalidation.ts. Run with --dry-run first to see
+// how many verified rows a sync would push back into the queue.
 //
 // Refuses to run against MarkerBills with isProvisional=true. Verify
 // each bill on Congress.gov / leginfo.legislature.ca.gov first, then
@@ -50,6 +57,16 @@ import type {
   NormalizedRollCall,
   VotePosition,
 } from '../src/lib/scorecard/clients/types';
+import {
+  planEvidenceInvalidation,
+  newInvalidationReport,
+  recordInvalidation,
+  formatInvalidationReport,
+  type EvidenceSnapshot,
+  type InvalidationReport,
+  type ReviewedAchievementRow,
+} from '../src/lib/scorecard/evidence-invalidation';
+import type { ReviewStatus } from '../src/lib/scorecard/verification';
 
 const adapter = new PrismaPg({
   connectionString: process.env.DIRECT_URL || process.env.DATABASE_URL!,
@@ -102,6 +119,8 @@ interface SyncStats {
   billsNotFound: number;
   achievementsWritten: number;
   achievementsCleared: number;
+  /** Verified rows returned to PENDING because their evidence changed. */
+  verificationsInvalidated: number;
   rollCallsWritten: number;
   rollCallVotesWritten: number;
   unmappedSponsors: number;
@@ -115,6 +134,7 @@ const newStats = (): SyncStats => ({
   billsNotFound: 0,
   achievementsWritten: 0,
   achievementsCleared: 0,
+  verificationsInvalidated: 0,
   rollCallsWritten: 0,
   rollCallVotesWritten: 0,
   unmappedSponsors: 0,
@@ -423,10 +443,12 @@ async function syncBill(
     legiscanBillId: number | null;
     billNumber: string;
     actionType: string;
-    marker: { id: string; plank: { jurisdiction: 'FEDERAL' | 'CA' } };
+    marker: { id: string; name: string; plank: { jurisdiction: 'FEDERAL' | 'CA' } };
   },
   flags: CliFlags,
   stats: SyncStats,
+  /** Mutable holder: `recordInvalidation` is pure and returns a new report. */
+  reportRef: { current: InvalidationReport },
 ): Promise<void> {
   const jurisdiction = markerBill.marker.plank.jurisdiction;
 
@@ -577,38 +599,102 @@ async function syncBill(
   // recorded vote went the wrong way). NO_RECORD legislators never get a
   // row — absence in the table is the truthful state.
   const observed = new Set<string>([...sponsorMap.keys(), ...legislatorVotes.keys()]);
+
+  // Pull the current rows for this marker up front — one query instead of one
+  // per observed legislator — so each write can be compared against what a
+  // reviewer may already have approved.
+  const existingRows = await prisma.markerAchievement.findMany({
+    where: { markerId: markerBill.marker.id, legislatorId: { in: [...observed] } },
+    select: {
+      id: true,
+      legislatorId: true,
+      reviewStatus: true,
+      verifiedAt: true,
+      verifierUserId: true,
+      verifiedFromUrl: true,
+      actionTaken: true,
+      evidenceType: true,
+      evidenceSourceUrl: true,
+      evidenceNotes: true,
+      sponsorTier: true,
+      legislator: { select: { fullName: true } },
+    },
+  });
+  const existingByLegislator = new Map(existingRows.map((row) => [row.legislatorId, row]));
+
   for (const legislatorId of observed) {
     const result = determineAchievement(markerBill.actionType, legislatorId, bill, sponsorMap, legislatorVotes);
     if (result.actionTaken === 'NO_RECORD' || !result.evidence) continue;
 
+    const incoming: EvidenceSnapshot = {
+      actionTaken: result.actionTaken,
+      evidenceType: result.evidence.type,
+      evidenceSourceUrl: result.evidence.sourceUrl,
+      evidenceNotes: result.evidence.notes,
+      sponsorTier: result.sponsorTier,
+    };
+
+    // Does this write pull the evidence out from under an existing approval?
+    // Planned in both modes: --dry-run's whole purpose is to answer this
+    // question before anything is written.
+    const existing = existingByLegislator.get(legislatorId);
+    const current: ReviewedAchievementRow | null = existing
+      ? {
+          id: existing.id,
+          reviewStatus: existing.reviewStatus as ReviewStatus,
+          verifiedAt: existing.verifiedAt,
+          verifierUserId: existing.verifierUserId,
+          verifiedFromUrl: existing.verifiedFromUrl,
+          actionTaken: existing.actionTaken,
+          evidenceType: existing.evidenceType,
+          evidenceSourceUrl: existing.evidenceSourceUrl,
+          evidenceNotes: existing.evidenceNotes,
+          sponsorTier: existing.sponsorTier,
+        }
+      : null;
+    const invalidation = planEvidenceInvalidation(current, incoming);
+    if (invalidation) {
+      reportRef.current = recordInvalidation(reportRef.current, invalidation, {
+        legislatorName: existing?.legislator.fullName ?? legislatorId,
+        markerName: markerBill.marker.name,
+      });
+      stats.verificationsInvalidated += 1;
+    }
+
     if (!flags.dryRun) {
-      await prisma.markerAchievement.upsert({
-        where: {
-          legislatorId_markerId: {
+      const evidenceWrite = {
+        achieved: result.achieved,
+        actionTaken: result.actionTaken,
+        sponsorTier: result.sponsorTier,
+        evidenceType: result.evidence.type,
+        evidenceSourceUrl: result.evidence.sourceUrl,
+        evidenceNotes: result.evidence.notes,
+      };
+
+      // The evidence write and its invalidation must land together. A partial
+      // apply would leave a row either verified against evidence nobody saw
+      // (the bug this closes) or reset with no audit row explaining why.
+      await prisma.$transaction(async (tx) => {
+        await tx.markerAchievement.upsert({
+          where: {
+            legislatorId_markerId: {
+              legislatorId,
+              markerId: markerBill.marker.id,
+            },
+          },
+          create: {
             legislatorId,
             markerId: markerBill.marker.id,
+            ...evidenceWrite,
+            // verifiedAt left null — Phase 6 verification gate must flip this
+            // before any score derived from this achievement is published.
           },
-        },
-        create: {
-          legislatorId,
-          markerId: markerBill.marker.id,
-          achieved: result.achieved,
-          actionTaken: result.actionTaken,
-          sponsorTier: result.sponsorTier,
-          evidenceType: result.evidence.type,
-          evidenceSourceUrl: result.evidence.sourceUrl,
-          evidenceNotes: result.evidence.notes,
-          // verifiedAt left null — Phase 6 verification gate must flip this
-          // before any score derived from this achievement is published.
-        },
-        update: {
-          achieved: result.achieved,
-          actionTaken: result.actionTaken,
-          sponsorTier: result.sponsorTier,
-          evidenceType: result.evidence.type,
-          evidenceSourceUrl: result.evidence.sourceUrl,
-          evidenceNotes: result.evidence.notes,
-        },
+          update: invalidation ? { ...evidenceWrite, ...invalidation.update } : evidenceWrite,
+        });
+
+        if (invalidation) {
+          await tx.markerAchievementReview.create({ data: invalidation.audit });
+        }
       });
       stats.achievementsWritten += 1;
     }
@@ -656,11 +742,12 @@ async function main(): Promise<void> {
   const client = buildClient(flags.source);
   console.log(`[sync-marker-bills] using source: ${client.name}`);
   const stats = newStats();
+  const reportRef = { current: newInvalidationReport() };
 
   for (const bill of eligibleBills) {
     console.log(`  [bill] ${bill.marker.plank.jurisdiction} ${bill.billNumber} — ${bill.billTitle}`);
     try {
-      await syncBill(client, bill, flags, stats);
+      await syncBill(client, bill, flags, stats, reportRef);
     } catch (err) {
       stats.errors += 1;
       console.error(`  [error] ${bill.billNumber}: ${err instanceof Error ? err.message : err}`);
@@ -669,8 +756,21 @@ async function main(): Promise<void> {
 
   stats.billsSkippedProvisional = provisionalCount;
   console.log(`[sync-marker-bills] summary: ${JSON.stringify(stats, null, 2)}`);
+
+  // Printed last, and always — a re-sync must never be able to quietly dump a
+  // backlog of already-reviewed rows back into the verification queue.
+  const report = reportRef.current;
+  console.log(formatInvalidationReport(report, { dryRun: flags.dryRun }));
+
   if (flags.dryRun) {
     console.log('[sync-marker-bills] DRY RUN — no DB writes performed.');
+    if (report.humanVerified > 0) {
+      console.log(
+        `[sync-marker-bills] Running this for real would send ${report.humanVerified} human-verified achievement${
+          report.humanVerified === 1 ? '' : 's'
+        } back to /admin/scorecard/verify for re-review.`,
+      );
+    }
   }
 }
 
