@@ -12,10 +12,13 @@
 //   npx tsx scripts/compute-scores.ts --jurisdiction=CA --publish
 //   npx tsx scripts/compute-scores.ts --dry-run                # no DB writes
 //
-// `--auto-verify` is a STAND-IN for Phase 6's admin verification UI. It
-// bulk-flips every MarkerAchievement.verifiedAt to NOW() with verifiedBy
-// = "auto-verify-temp". Real human verification is still the goal —
-// this just unblocks demo / dev-mode work in the meantime. Logs loudly.
+// `--auto-verify` is SUPERSEDED by the Phase 6 admin verification UI at
+// /admin/scorecard/verify. It survives only as a seeding / disaster-recovery
+// tool for bringing a fresh or restored database to a demoable state. Rows it
+// touches carry verifiedBy = "auto-verify-temp", which is a machine label:
+// they render as YELLOW (machine-verified) in the trust model and do NOT
+// satisfy the methodology's human-verification promise. It never touches rows
+// a human rejected. Logs loudly.
 
 import './load-env';
 
@@ -159,9 +162,23 @@ async function computePacAchievements(
         evidenceNotes: `cycle=${pac.cycleYear}, combined-corporate=${(ratio * 100).toFixed(
           2,
         )}%, continuous-score=${continuousScore.toFixed(2)}`,
-        verifiedAt: new Date(),
-        verifiedBy: 'pac-engine-v1.4',
+        // verifiedAt / verifiedBy deliberately absent here — see below.
       },
+    });
+
+    // The PAC engine legitimately auto-verifies: FEC and Cal-Access filings are
+    // already public primary documents, so the achievement is reproducible from
+    // the filing. But it must not overwrite a HUMAN verification (that would
+    // silently demote GREEN back to YELLOW on every run) and must not resurrect
+    // a rejected row. Scope the verification stamp to machine-owned rows only.
+    await prisma.markerAchievement.updateMany({
+      where: {
+        legislatorId: leg.id,
+        markerId: marker.id,
+        verifierUserId: null,
+        reviewStatus: { not: 'REJECTED' },
+      },
+      data: { verifiedAt: new Date(), verifiedBy: 'pac-engine-v1.4' },
     });
     written += 1;
   }
@@ -170,12 +187,26 @@ async function computePacAchievements(
 
 async function autoVerifyAll(jurisdiction: CliFlags['jurisdiction'], dryRun: boolean): Promise<number> {
   console.warn(
-    '⚠️  [compute-scores] --auto-verify is set. Bulk-flipping all unverified MarkerAchievements ' +
-      'to verified. This is a TEMPORARY STAND-IN for Phase 6 admin verification UI; do not run ' +
-      'in production with real-world data without human review.',
+    '\n' +
+      '════════════════════════════════════════════════════════════════════════\n' +
+      '⚠️  --auto-verify: SEEDING / DISASTER-RECOVERY ONLY. SUPERSEDED.\n' +
+      '════════════════════════════════════════════════════════════════════════\n' +
+      '  This bulk-flips every unverified MarkerAchievement to verifiedBy =\n' +
+      "  'auto-verify-temp'. That is a machine label, not a reviewer. Rows it\n" +
+      '  touches are YELLOW (machine-verified) in the Phase 6 trust model and\n' +
+      '  do NOT satisfy the published methodology promise that every score\n' +
+      '  traces to evidence a named human checked.\n' +
+      '\n' +
+      '  Production verification is now the admin UI at /admin/scorecard/verify.\n' +
+      '  Use that instead. This flag remains only to bring a fresh or restored\n' +
+      '  database to a demoable state.\n' +
+      '════════════════════════════════════════════════════════════════════════\n',
   );
   const where = {
     verifiedAt: null,
+    // Never resurrect a row a human explicitly rejected. Without this the
+    // bulk flip would silently undo human review decisions.
+    reviewStatus: { not: 'REJECTED' as const },
     ...(jurisdiction !== 'BOTH' ? { marker: { plank: { jurisdiction } } } : {}),
   };
   if (dryRun) {
