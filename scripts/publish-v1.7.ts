@@ -5,7 +5,7 @@
 //
 // Background: the public Voting Record (src/lib/scorecard/queries.ts) was
 // reading signed-integer score rows written under the PAC/scoring engine's
-// METHODOLOGY_VERSION (v1.9.1) and averaging them through computePublishedTotal's
+// PLANK_ENGINE_VERSION (v1.9.1) and averaging them through computePublishedTotal's
 // [0,100] heuristic, which collapsed every legislator to ~4%. The correct
 // 0-100 alignment percentages already exist under methodologyVersion 'v1.7'
 // (~3070 rows, all 658 legislators) but were never published. The display has

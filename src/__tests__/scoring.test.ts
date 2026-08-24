@@ -3,6 +3,8 @@ import {
   scoreLegislator,
   scorePlank,
   METHODOLOGY_VERSION,
+  PLANK_ENGINE_VERSION,
+  VOTING_DISPLAY_METHODOLOGY,
   weightForAchievement,
   pacScoreFromRatio,
   rawToPercent,
@@ -103,9 +105,49 @@ describe('scoreLegislator — v1.3', () => {
   });
 });
 
-describe('METHODOLOGY_VERSION', () => {
-  it('is v1.9.1', () => {
-    expect(METHODOLOGY_VERSION).toBe('v1.9.1');
+describe('methodology-version constants', () => {
+  // Three genuinely distinct things get versioned independently — see the
+  // header comment in scoring.ts. All three must be defined ONLY there;
+  // every other file imports rather than redeclares.
+  it('METHODOLOGY_VERSION is the current overall public version', () => {
+    expect(METHODOLOGY_VERSION).toBe('v2.0.2');
+  });
+
+  it('PLANK_ENGINE_VERSION versions the marker/achievement weighting engine', () => {
+    expect(PLANK_ENGINE_VERSION).toBe('v1.9.1');
+  });
+
+  it('VOTING_DISPLAY_METHODOLOGY versions the public Voting Record', () => {
+    expect(VOTING_DISPLAY_METHODOLOGY).toBe('v2.0');
+  });
+
+  it('the three constants are distinct from one another', () => {
+    const values = [METHODOLOGY_VERSION, PLANK_ENGINE_VERSION, VOTING_DISPLAY_METHODOLOGY];
+    expect(new Set(values).size).toBe(values.length);
+  });
+
+  it('no script hardcodes its own METHODOLOGY_VERSION literal instead of importing one', async () => {
+    // Regression guard for the exact drift this test suite was added to catch:
+    // scripts/compute-scores-v2.ts and scripts/compute-scores.ts each used to
+    // declare `const METHODOLOGY_VERSION = '...'` locally, silently diverging
+    // from src/lib/scorecard/scoring.ts. Both must now import the constant.
+    const { readFile } = await import('node:fs/promises');
+    const { fileURLToPath } = await import('node:url');
+    const path = await import('node:path');
+    const testDir = path.dirname(fileURLToPath(import.meta.url));
+    const repoRoot = path.resolve(testDir, '..', '..');
+    const offendingFiles = [
+      path.join(repoRoot, 'scripts', 'compute-scores-v2.ts'),
+      path.join(repoRoot, 'scripts', 'compute-scores.ts'),
+    ];
+    const localRedeclare = /const\s+METHODOLOGY_VERSION\s*=\s*['"]/;
+    const sources = await Promise.all(offendingFiles.map((file) => readFile(file, 'utf8')));
+    sources.forEach((source, i) => {
+      expect(
+        localRedeclare.test(source),
+        `${offendingFiles[i]} must import its methodology version, not redeclare it`,
+      ).toBe(false);
+    });
   });
 });
 

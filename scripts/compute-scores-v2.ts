@@ -34,12 +34,20 @@ import './load-env';
 import { PrismaClient } from '../src/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { CURATED_VOTE_BILLS, isCuratedVoteBill } from '../src/lib/scorecard/curated-votes';
+import { VOTING_DISPLAY_METHODOLOGY as METHODOLOGY_VERSION } from '../src/lib/scorecard/scoring';
 
 const url = new URL(process.env.DATABASE_URL!);
 if (!url.searchParams.has('pgbouncer')) url.searchParams.set('pgbouncer', 'true');
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url.toString() }) });
 
-const METHODOLOGY_VERSION = 'v2.0';
+// Methodology version written to RepresentativeScore.methodologyVersion — the
+// single source of truth for this constant lives in src/lib/scorecard/
+// scoring.ts as VOTING_DISPLAY_METHODOLOGY (imported above, aliased for
+// minimal diff in the rest of this file). Curation-only re-runs (dropping or
+// restoring a curated bill, tweaking the abstention rule) do NOT bump this —
+// they're the same v2.0 model with different inputs. Bump
+// VOTING_DISPLAY_METHODOLOGY only for an actual change to the scoring model
+// (a new numerator/denominator definition).
 const POPULAR_SUPPORT_FLOOR = 55;
 
 // Curated vote-bills live in src/lib/scorecard/curated-votes.ts (shared with the

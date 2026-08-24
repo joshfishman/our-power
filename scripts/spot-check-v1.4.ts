@@ -1,7 +1,7 @@
 // One-off spot check: prints v1.4 percent + raw + plank breakdown for five
 // representative legislators. No DB writes.
 import prisma from '@/lib/prisma/prisma';
-import { rawToPercent, METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
+import { rawToPercent, PLANK_ENGINE_VERSION as METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
 
 const TARGETS = [
   { last: 'Brown', state: 'OH', chamber: 'SEN', party: 'D' },

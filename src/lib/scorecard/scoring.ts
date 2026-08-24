@@ -1,8 +1,40 @@
-// Phase 4 scoring engine — methodology v1.9.1 (see METHODOLOGY_VERSION
+// Phase 4 scoring engine — methodology v1.9.1 (see PLANK_ENGINE_VERSION
 // below for the runtime source of truth, and docs/scorecard-methodology.md
 // for the full version history). This file documents the +1/−1 point
 // model introduced in v1.2; later weight tables (v1.3 sponsor tier, v1.4
 // continuous PAC gradient) layer on top.
+//
+// ─── Single source of truth for ALL methodology-version constants ──────────
+// Three genuinely distinct things get versioned independently in this
+// codebase, and every one of them is defined HERE and imported everywhere
+// else — no other file may redeclare a `METHODOLOGY_VERSION`-shaped literal.
+// See docs/scorecard-methodology.md's version table for the full changelog
+// (a single sequence spanning all three).
+//
+//   1. METHODOLOGY_VERSION      — the CURRENT OVERALL public methodology
+//      version. This is what's shown as the "Methodology vX.Y.Z →" footer
+//      link on every /scorecard page and returned as the top-level
+//      `methodologyVersion` field from the public API. It tracks the latest
+//      row in the docs version table, even when that row's change lives in
+//      the Voting Record engine, the PAC engine, or a display-only fix.
+//
+//   2. PLANK_ENGINE_VERSION     — versions THIS FILE's marker/achievement
+//      weighting engine (the signed +1/−1 point model, PAC continuous
+//      gradient, sponsor-tier weights) and `scripts/compute-scores.ts`,
+//      which writes RepresentativeScore + ScoreCalibration rows tagged with
+//      it. Frozen at v1.9.1 since that engine was superseded by the Voting
+//      Record's curated-vote model for public display — bump it only when
+//      this file's weighting logic itself changes.
+//
+//   3. VOTING_DISPLAY_METHODOLOGY — versions the public Voting Record (the
+//      0-100 per-plank alignment %) computed by
+//      `scripts/compute-scores-v2.ts` from the curated landmark-vote model.
+//      Sub-patches to the curation (dropping/restoring a bill, tweaking the
+//      abstention rule — v2.0.1, v2.0.2, ...) are re-runs of the SAME v2.0
+//      model, so the literal value written to
+//      `RepresentativeScore.methodologyVersion` intentionally stays 'v2.0'
+//      across those patches; only a genuine model change (a new numerator/
+//      denominator definition) should bump this constant.
 //
 // Simple +1 / -1 point model:
 //   ACTED_FOR     → +1
@@ -25,7 +57,16 @@
 // "+0 with full coverage" — the same evidence transparency goal as the
 // three-state rendering.
 
-export const METHODOLOGY_VERSION = 'v1.9.1';
+export const PLANK_ENGINE_VERSION = 'v1.9.1';
+
+// Public Voting Record display version — see the module header above. Its
+// natural "owner" script is scripts/compute-scores-v2.ts, but it is defined
+// here (not there) so it has exactly one source of truth that every consumer
+// imports rather than redeclares.
+export const VOTING_DISPLAY_METHODOLOGY = 'v2.0';
+
+// Current overall public methodology version — see the module header above.
+export const METHODOLOGY_VERSION = 'v2.0.2';
 
 /**
  * Popular-support floor (methodology v1.9.2).
@@ -212,7 +253,7 @@ export function scorePlank(plank: ScoringPlank, achievements: readonly Achieveme
     againstCount,
     measuredMarkers: forCount + againstCount,
     totalMarkers: plank.markers.length,
-    notes: `methodology=${METHODOLOGY_VERSION}, score=${
+    notes: `methodology=${PLANK_ENGINE_VERSION}, score=${
       score >= 0 ? '+' : ''
     }${score} from ${forCount} for / ${againstCount} against`,
   };

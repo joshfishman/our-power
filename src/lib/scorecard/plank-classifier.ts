@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
 // Plank classifier (introduced v1.6, current under v1.9.1 — see
-// METHODOLOGY_VERSION in scoring.ts and docs/scorecard-methodology.md
+// PLANK_ENGINE_VERSION in scoring.ts and docs/scorecard-methodology.md
 // for the full version history). Maps roll-call votes (via their bill's
 // policy area + subjects + title) onto one or more of the 5 Common Ground
 // planks.

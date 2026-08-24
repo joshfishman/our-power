@@ -3,7 +3,7 @@
 
 import { unstable_cache } from 'next/cache';
 import prisma from '@/lib/prisma/prisma';
-import { METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
+import { PLANK_ENGINE_VERSION, VOTING_DISPLAY_METHODOLOGY } from '@/lib/scorecard/scoring';
 import { classifyEmployer, SECTOR_LABEL } from '@/lib/scorecard/employer-industry';
 import { CURATED_VOTE_BILLS, curatedDirection } from '@/lib/scorecard/curated-votes';
 
@@ -58,29 +58,32 @@ export interface LegislatorListFilter {
  * next to each score — surfacing activity even where the total score
  * is low.
  */
-// Source of truth for scoring methodology version on display. Old v1.0/v1.1/...
-// score rows linger in the DB but are filtered out here so a legislator's
-// total reflects only the current methodology pass. We re-export the value
-// from `scoring.ts` to keep a single source of truth: the methodology version
-// the engine writes is the same version the public reads.
-export const CURRENT_METHODOLOGY = METHODOLOGY_VERSION;
+// Source of truth for the plank/achievement-engine's scoring methodology
+// version. Old v1.0/v1.1/... score rows linger in the DB but are filtered out
+// here so a legislator's total reflects only the current methodology pass.
+// Re-exported from `scoring.ts` (the single source of truth for every
+// methodology-version constant — see that file's header for the full
+// breakdown of METHODOLOGY_VERSION / PLANK_ENGINE_VERSION /
+// VOTING_DISPLAY_METHODOLOGY and why they're kept separate).
+export const CURRENT_METHODOLOGY = PLANK_ENGINE_VERSION;
 
-// Source of truth for the methodology version that drives the PUBLIC VOTING
-// RECORD (the 0-100 per-plank alignment % and its mean).
+// Re-exported so existing imports of `VOTING_DISPLAY_METHODOLOGY` from this
+// module keep working — the constant itself is defined once, in scoring.ts.
 //
 // This is DELIBERATELY decoupled from `CURRENT_METHODOLOGY` (the PAC engine's
-// METHODOLOGY_VERSION, currently v1.9.1). The PAC engine writes signed-integer
+// PLANK_ENGINE_VERSION, v1.9.1). The PAC engine writes signed-integer
 // RepresentativeScore rows (range roughly −3..7) under its own version; those
 // are NOT the bill-level alignment percentages the Voting Record displays.
 // Reading them through `computePublishedTotal` collapsed every legislator to
-// ~4%. The correct Voting Record numbers are the pre-existing v1.7 bill-level
-// alignment-% rows (every score in [0, 100], all 658 legislators covered).
+// ~4%. The correct Voting Record numbers are the curated-vote v2.0 rows
+// (every score in [0, 100]).
 //
-// Keeping this constant separate means the PAC/scoring engine can keep bumping
-// METHODOLOGY_VERSION without silently swapping the public Voting Record back
-// to the signed-integer rows. The PAC Score is computed separately (read-time
-// from PacContribution/PacMoneyData) and is unaffected by this value.
-export const VOTING_DISPLAY_METHODOLOGY = 'v2.0';
+// Keeping this constant separate means the PAC/scoring engine can keep its
+// own PLANK_ENGINE_VERSION without silently swapping the public Voting Record
+// back to the signed-integer rows. The PAC Score is computed separately
+// (read-time from PacContribution/PacMoneyData) and is unaffected by this
+// value.
+export { VOTING_DISPLAY_METHODOLOGY };
 
 // ─── v1.9.3 Minimum-bills floor on the Voting Record ────────────────────────
 //
@@ -2053,7 +2056,7 @@ export const getScorecardBase = unstable_cache(
     const [legislators, featuredBills, calibration] = await Promise.all([
       getLegislatorList({ jurisdiction }),
       getFeaturedBills(jurisdiction),
-      getScoreCalibration(METHODOLOGY_VERSION),
+      getScoreCalibration(PLANK_ENGINE_VERSION),
     ]);
     // v2.0.2 — read the PRECOMPUTED PAC score column instead of aggregating
     // ~1.8M PacContribution rows live (that request-time query timed out and

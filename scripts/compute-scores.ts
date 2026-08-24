@@ -22,7 +22,7 @@ import './load-env';
 import { PrismaClient } from '../src/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import {
-  METHODOLOGY_VERSION,
+  PLANK_ENGINE_VERSION as METHODOLOGY_VERSION,
   markerMeetsPopularSupportFloor,
   pacScoreFromRatio,
   scoreLegislator,
