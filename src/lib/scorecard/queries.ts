@@ -1506,9 +1506,15 @@ export async function getLegislatorBillBreakdown(
         legPosition: legPos as BillAgg['legPosition'],
         votedAligned: isAligned,
       });
+    } else if (isAligned) {
+      // A curated bill can have several roll calls (e.g. a procedural Motion to
+      // Recommit plus final passage). If the leg voted the aligned direction on
+      // ANY roll call, show that aligned cast — so HR1 reads "Voted NO" from
+      // final passage, not "Voted YES" from the Democratic motion-to-recommit.
+      existing.votedAligned = true;
+      existing.legPosition = legPos as BillAgg['legPosition']; // legPos === dir here
     } else {
-      if (isAligned) existing.votedAligned = true;
-      // Prefer a real cast YES/NO over a procedural/absent position from another roll call.
+      // Otherwise prefer any real cast YES/NO over a procedural/absent position.
       const haveCast = existing.legPosition === 'YES' || existing.legPosition === 'NO';
       if (!haveCast && legPos) existing.legPosition = legPos as BillAgg['legPosition'];
     }

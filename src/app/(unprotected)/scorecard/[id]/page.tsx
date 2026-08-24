@@ -337,46 +337,53 @@ export default async function LegislatorScorecardPage(props: Props) {
                   );
                 }
                 return (
-                  <ul className="mt-4 space-y-2">
-                    {positioned.map((marker) => {
-                      const achievement = achievementByMarker.get(marker.id);
-                      const status = ((achievement as unknown as { actionTaken?: AchievementStatus | null })
-                        ?.actionTaken ?? (achievement?.achieved ? 'ACTED_FOR' : 'NO_RECORD')) as AchievementStatus;
-                      return (
-                        <li key={marker.id} className="flex items-start gap-3 text-sm">
-                          <MarkerStatusIcon status={status} />
-                          <div className="flex-1">
-                            <p className="font-medium text-foreground">
-                              {marker.name}
-                              {/* "Primary" / "GOP alt" badges hidden until we have clearer copy
+                  <>
+                    <p className="mt-4 font-mono text-[10px] uppercase tracking-widest text-subtle-foreground">
+                      Cosponsorships &amp; positions
+                    </p>
+                    <ul className="mt-2 space-y-2">
+                      {positioned.map((marker) => {
+                        const achievement = achievementByMarker.get(marker.id);
+                        const status = ((achievement as unknown as { actionTaken?: AchievementStatus | null })
+                          ?.actionTaken ?? (achievement?.achieved ? 'ACTED_FOR' : 'NO_RECORD')) as AchievementStatus;
+                        return (
+                          <li key={marker.id} className="flex items-start gap-3 text-sm">
+                            <MarkerStatusIcon status={status} />
+                            <div className="flex-1">
+                              <p className="font-medium text-foreground">
+                                {marker.name}
+                                {/* "Primary" / "GOP alt" badges hidden until we have clearer copy
                                   for what they mean (they were being read as per-legislator
                                   credit rather than marker-type labels). */}
-                              <SponsorBadge
-                                tier={(achievement as unknown as { sponsorTier?: string | null })?.sponsorTier ?? null}
-                              />
-                              {marker.slug?.includes('corporate-pac-refusal') ? (
-                                <PacContinuousScore
-                                  achievementScore={
-                                    (achievement as unknown as { achievementScore?: unknown })?.achievementScore
+                                <SponsorBadge
+                                  tier={
+                                    (achievement as unknown as { sponsorTier?: string | null })?.sponsorTier ?? null
                                   }
-                                  evidenceNotes={achievement?.evidenceNotes ?? null}
                                 />
-                              ) : null}
-                            </p>
-                            {achievement?.evidenceSourceUrl && (
-                              <a
-                                href={achievement.evidenceSourceUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="mt-0.5 block text-xs text-muted-foreground underline hover:text-foreground">
-                                Evidence →
-                              </a>
-                            )}
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
+                                {marker.slug?.includes('corporate-pac-refusal') ? (
+                                  <PacContinuousScore
+                                    achievementScore={
+                                      (achievement as unknown as { achievementScore?: unknown })?.achievementScore
+                                    }
+                                    evidenceNotes={achievement?.evidenceNotes ?? null}
+                                  />
+                                ) : null}
+                              </p>
+                              {achievement?.evidenceSourceUrl && (
+                                <a
+                                  href={achievement.evidenceSourceUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="mt-0.5 block text-xs text-muted-foreground underline hover:text-foreground">
+                                  Evidence →
+                                </a>
+                              )}
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </>
                 );
               })()}
             </article>
@@ -634,7 +641,7 @@ function MarkerStatusIcon({ status }: { status: AchievementStatus }) {
       <span
         aria-label="Acted for"
         title="Acted for — cosponsored / voted yes"
-        className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-bold text-white">
+        className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green-600 text-xs font-bold text-white">
         ✓
       </span>
     );
@@ -820,10 +827,21 @@ function BillPositionIcon({ row }: { row: BillBreakdownRow }) {
       </span>
     );
   }
-  if (row.legPosition && row.legPosition !== row.alignedPosition) {
+  // A ✗ (counts against) is either: a cast YES/NO opposing the aligned
+  // direction, OR — on an AFFIRMATIVE (YES-aligned) bill — an abstention, which
+  // counts as a no (you must show up to support it). On a NO-aligned
+  // "block the bad bill" vote, an abstention is neutral ("—").
+  const castYesNo = row.legPosition === 'YES' || row.legPosition === 'NO';
+  const abstained = !!row.legPosition && !castYesNo; // NOT_VOTING / PRESENT / ABSENT
+  const missedAffirmative = abstained && row.alignedPosition === 'YES';
+  if ((castYesNo && row.legPosition !== row.alignedPosition) || missedAffirmative) {
     return (
       <span
-        title={`Voted ${row.legPosition} (aligned position was ${row.alignedPosition})`}
+        title={
+          missedAffirmative
+            ? `${row.legPosition} — counts as a no on this affirmative bill (aligned was YES)`
+            : `Voted ${row.legPosition} (aligned position was ${row.alignedPosition})`
+        }
         className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white">
         ✗
       </span>
@@ -831,7 +849,11 @@ function BillPositionIcon({ row }: { row: BillBreakdownRow }) {
   }
   return (
     <span
-      title="No recorded vote or cosponsorship"
+      title={
+        row.legPosition
+          ? `${row.legPosition} — not counted (neutral on this vote)`
+          : 'No recorded vote or cosponsorship'
+      }
       className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-dashed border-border text-xs text-subtle-foreground">
       —
     </span>

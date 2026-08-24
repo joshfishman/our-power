@@ -1,10 +1,11 @@
 /* eslint-disable react/no-children-prop */
 import type { Metadata } from 'next';
+import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { getArticleBySlug, getAllArticles } from '@/lib/scorecard/articles';
+import { getArticleBySlug, getAllArticles, type ArticleChart, type ArticleCaseSide } from '@/lib/scorecard/articles';
 import { getPlankBySlug } from '@/lib/scorecard/queries';
 
 type Props = { params: Promise<{ slug: string }> };
@@ -27,6 +28,186 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 
 const PROSE_CLASS =
   'mt-6 text-foreground [&_a]:text-accent [&_a]:underline hover:[&_a]:text-foreground [&_blockquote]:mt-4 [&_blockquote]:border-l-4 [&_blockquote]:border-accent [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-foreground [&_code]:rounded [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-xs [&_h2]:mt-10 [&_h2]:font-serif [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:text-foreground [&_h3]:mt-6 [&_h3]:font-serif [&_h3]:text-xl [&_h3]:font-semibold [&_h3]:text-foreground [&_li]:mt-1 [&_ol]:mt-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:mt-3 [&_p]:leading-relaxed [&_p]:text-foreground [&_strong]:font-semibold [&_strong]:text-foreground [&_ul]:mt-3 [&_ul]:list-disc [&_ul]:pl-6';
+
+/** Renders an article's thesis chart — a horizontal bar set or a donut with a center highlight + % legend. */
+function ChartBlock({ chart }: { chart: ArticleChart }) {
+  const total = chart.bars.reduce((s, b) => s + b.value, 0) || 1;
+
+  const legend = (
+    <ul className="w-full flex-1 space-y-2">
+      {chart.bars.map((b) => {
+        const pct = Math.round((100 * b.value) / total);
+        const fill = b.color ?? (b.tone === 'navy' ? '#C8B98A' : b.tone === 'muted' ? '#6B7C87' : '#8B3A3A');
+        return (
+          <li key={b.label} className="flex items-center gap-3">
+            <span aria-hidden className="h-3 w-3 shrink-0 rounded-sm" style={{ backgroundColor: fill }} />
+            <span className="flex-1 font-mono text-xs text-[#F5DEB3]">{b.label}</span>
+            <span className="font-mono text-xs text-[#F5DEB3]/60">{b.valueLabel}</span>
+            <span className="w-12 text-right font-mono text-base font-bold text-[#F5DEB3]">{pct}%</span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+
+  let body: ReactNode;
+  if (chart.kind === 'pie') {
+    const r = 70;
+    const cx = 90;
+    const circ = 2 * Math.PI * r;
+    let acc = 0;
+    const slices = chart.bars
+      .filter((b) => b.value > 0)
+      .map((b) => {
+        const frac = b.value / total;
+        const fill = b.color ?? (b.tone === 'navy' ? '#C8B98A' : b.tone === 'muted' ? '#6B7C87' : '#8B3A3A');
+        const seg = { label: b.label, frac, offset: acc, fill };
+        acc += frac;
+        return seg;
+      });
+    body = (
+      <div className="mt-5 flex flex-col items-center gap-6 sm:flex-row sm:gap-8">
+        <div className="relative h-44 w-44 shrink-0">
+          <svg viewBox="0 0 180 180" className="h-full w-full">
+            <circle cx={cx} cy={cx} r={r} fill="none" stroke="#F5DEB3" strokeOpacity={0.1} strokeWidth={26} />
+            {slices.map((s) => (
+              <circle
+                key={s.label}
+                cx={cx}
+                cy={cx}
+                r={r}
+                fill="none"
+                stroke={s.fill}
+                strokeWidth={26}
+                strokeDasharray={`${s.frac * circ} ${circ}`}
+                transform={`rotate(${s.offset * 360 - 90} ${cx} ${cx})`}
+              />
+            ))}
+          </svg>
+          {chart.highlight ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
+              <span className="font-serif text-4xl font-bold leading-none text-[#F5DEB3]">{chart.highlight.value}</span>
+              <span className="mt-1 font-mono text-[9px] uppercase leading-tight tracking-wide text-[#F5DEB3]/70">
+                {chart.highlight.label}
+              </span>
+            </div>
+          ) : null}
+        </div>
+        {legend}
+      </div>
+    );
+  } else {
+    body = (
+      <ul className="mt-4 space-y-2.5">
+        {chart.bars.map((b) => {
+          const max = Math.max(...chart.bars.map((x) => x.value), 1);
+          const pct = Math.max(2, Math.round((100 * b.value) / max));
+          const bar = b.tone === 'navy' ? 'bg-[#C8B98A]' : b.tone === 'muted' ? 'bg-[#F5DEB3]/30' : 'bg-[#8B3A3A]';
+          return (
+            <li key={b.label} className="flex items-center gap-3">
+              <span className="w-40 shrink-0 font-mono text-xs text-[#F5DEB3]">{b.label}</span>
+              <span className="h-3 flex-1 overflow-hidden rounded bg-[#F5DEB3]/10">
+                <span className={`block h-full ${bar}`} style={{ width: `${pct}%` }} />
+              </span>
+              <span className="w-24 shrink-0 text-right font-mono text-xs font-bold text-[#F5DEB3]">
+                {b.valueLabel}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    );
+  }
+
+  return (
+    <section className="mt-8 rounded-lg border border-[#C8B98A]/30 bg-[#2C4A5E]/60 p-5">
+      <h2 className="font-serif text-lg font-bold text-[#F5DEB3]">{chart.title}</h2>
+      {body}
+      {chart.caption ? (
+        <p className="mt-3 border-t border-[#C8B98A]/20 pt-2 text-xs text-[#F5DEB3]/70">{chart.caption}</p>
+      ) : null}
+      {chart.note ? (
+        <p className="mt-3 rounded border border-[#C8B98A]/30 bg-[#8B3A3A]/20 p-3 text-xs text-[#F5DEB3]">
+          {chart.note}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+/** A case-study headshot. Defeated members are greyed and crossed out with a brick ✕. */
+function CasePhoto({ src, name, crossedOut }: { src?: string; name: string; crossedOut?: boolean }) {
+  const initials = name
+    .replace(/^Rep\.\s+/, '')
+    .split(/\s+/)
+    .map((w) => w[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('');
+  return (
+    <div className="relative h-20 w-16 shrink-0 overflow-hidden rounded border border-border bg-secondary">
+      {src ? (
+        // Public headshots (bioguide.congress.gov / Wikimedia); plain img avoids next/image remote config.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={src}
+          alt={name}
+          loading="lazy"
+          className={`h-full w-full object-cover object-top ${crossedOut ? 'grayscale' : ''}`}
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center font-serif text-lg text-subtle-foreground">
+          {initials}
+        </div>
+      )}
+      {crossedOut ? (
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full" aria-hidden>
+          <line x1="8" y1="8" x2="92" y2="92" stroke="#8B3A3A" strokeWidth="9" strokeLinecap="round" />
+          <line x1="92" y1="8" x2="8" y2="92" stroke="#8B3A3A" strokeWidth="9" strokeLinecap="round" />
+        </svg>
+      ) : null}
+    </div>
+  );
+}
+
+/** One side of a case card: photo, label/badge, name, summary, and bullet points. */
+function CaseSide({
+  side,
+  label,
+  badge,
+  defeated,
+}: {
+  side: ArticleCaseSide;
+  label: string;
+  badge: ReactNode;
+  defeated?: boolean;
+}) {
+  const wrap = defeated
+    ? 'rounded border border-border bg-secondary p-3'
+    : 'rounded border border-[#8B3A3A]/40 bg-[#8B3A3A]/10 p-3';
+  return (
+    <div className={wrap}>
+      <div className="flex items-center justify-between gap-2">
+        <p className="font-mono text-[10px] uppercase tracking-wide text-subtle-foreground">{label}</p>
+        {badge}
+      </div>
+      <div className="mt-2 flex items-start gap-3">
+        <CasePhoto src={side.photo} name={side.name} crossedOut={defeated} />
+        <div className="min-w-0">
+          <p className="font-serif text-sm font-bold text-foreground">{side.name}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{side.summary}</p>
+        </div>
+      </div>
+      <ul className="mt-2 list-disc space-y-1 pl-4">
+        {side.bullets.map((b) => (
+          <li key={b.slice(0, 40)} className="text-xs text-muted-foreground">
+            {b}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 export default async function ArticlePage(props: Props) {
   const params = await props.params;
@@ -74,9 +255,63 @@ export default async function ArticlePage(props: Props) {
         <p className="mt-3 font-mono text-xs uppercase tracking-wide text-subtle-foreground">{formattedDate}</p>
       </header>
 
+      {article.chart ? <ChartBlock chart={article.chart} /> : null}
+
       <article className={PROSE_CLASS}>
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{article.body}</ReactMarkdown>
       </article>
+
+      {article.cases && article.cases.length > 0 ? (
+        <section className="mt-10">
+          <h2 className="font-serif text-2xl font-bold text-foreground">Example AIPAC Races</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Where the spending concentrated — the targeted member and how they stood, the backed winner and how they
+            have voted since.
+          </p>
+          <div className="mt-4 space-y-4">
+            {article.cases.map((c) => (
+              <div key={c.race} className="rounded-lg border border-border p-4">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <span className="font-mono text-xs font-semibold uppercase tracking-wide text-foreground">
+                    {c.race}
+                  </span>
+                  <span className="font-mono text-xs font-bold text-[#8B3A3A]">{c.spend}</span>
+                </div>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <CaseSide
+                    side={c.targeted}
+                    label="AIPAC target"
+                    defeated
+                    badge={
+                      <span className="shrink-0 rounded bg-[#8B3A3A] px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wide text-[#F5DEB3]">
+                        Defeated
+                      </span>
+                    }
+                  />
+                  <CaseSide
+                    side={c.winner}
+                    label="Backed winner"
+                    badge={
+                      <span className="shrink-0 rounded border border-[#C8B98A]/50 bg-[#2C4A5E] px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wide text-[#F5DEB3]">
+                        AIPAC-backed · Won
+                      </span>
+                    }
+                  />
+                </div>
+                {c.sourceUrl ? (
+                  <a
+                    href={c.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-block font-mono text-xs text-accent underline hover:text-foreground">
+                    source ↗
+                  </a>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className="mt-12 border-t-2 border-border pt-6">
         <h2 className="font-mono text-xs uppercase tracking-widest text-foreground">Sources</h2>

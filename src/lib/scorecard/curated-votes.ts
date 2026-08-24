@@ -13,6 +13,15 @@
 // web-verified (party-split + bill-text check) — the DB's auto-classified
 // alignedPosition is intentionally ignored for these.
 //
+// Defend-the-floor votes: a bill whose people-serving direction is NO (block a
+// harmful repeal/cut) IS scored — voting NO counts, exactly like voting YES on
+// an affirmative bill. HR4758 (repeal IRA clean-energy rebates → vote NO) and
+// HR1 (Medicaid-cuts reconciliation → vote NO) are both in.
+//
+// Abstention rule (asymmetric, v2.0.2): on a YES-aligned (affirmative) bill, a
+// recorded abstention counts AS A NO (you must show up to support it). On a
+// NO-aligned (block-the-bad-bill) vote, an abstention does NOT count (neutral).
+//
 // Curation log (rejected and why):
 //  • HR5184 "Affordable HOMES", HR6703 "Lower Health Care Premiums" (119) —
 //    deceptively-named GOP bills Democrats voted against (party-split flipped them).
