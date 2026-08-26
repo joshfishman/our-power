@@ -185,11 +185,11 @@ Three families, three jobs. Loaded in `src/app/layout.tsx` via `next/font/google
 exposed as `--font-sans` / `--font-serif` / `--font-mono` and wired into
 `tailwind.config.js → theme.extend.fontFamily`.
 
-| Utility      | Family         | Use for                                                                                       | Never use for           |
-| ------------ | -------------- | --------------------------------------------------------------------------------------------- | ----------------------- |
-| `font-sans`  | Poppins        | All UI and body copy. Default on `<body>`.                                                    | —                       |
-| `font-serif` | Source Serif 4 | Editorial headings only — article/essay h1–h3.                                                | Body copy, labels       |
-| `font-mono`  | IBM Plex Mono  | Numeric/tabular data: money, scores, percentages, vote counts, IDs. Pair with `tabular-nums`. | Prose, labels, eyebrows |
+| Utility      | Family        | Use for                                                                                       | Never use for           |
+| ------------ | ------------- | --------------------------------------------------------------------------------------------- | ----------------------- |
+| `font-sans`  | Poppins       | All UI and body copy. Default on `<body>`.                                                    | —                       |
+| `font-serif` | Poppins Bold  | Editorial headings only — article/essay h1–h3. Same wordmark face as the logo; not a serif.   | Body copy, labels       |
+| `font-mono`  | IBM Plex Mono | Numeric/tabular data: money, scores, percentages, vote counts, IDs. Pair with `tabular-nums`. | Prose, labels, eyebrows |
 
 The rule exists because the codebase had Poppins at root fighting 298 `font-mono`
 and 110 `font-serif` uses, most of them mono-as-prose. Phase 1 defines the system

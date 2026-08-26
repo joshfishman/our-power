@@ -4,7 +4,7 @@ import 'swiper/css/zoom';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 import 'react-datepicker/dist/react-datepicker.css';
-import { IBM_Plex_Mono, Poppins, Source_Serif_4 } from 'next/font/google';
+import { IBM_Plex_Mono, Poppins } from 'next/font/google';
 import { cn } from '@/lib/cn';
 import { Providers } from '@/components/Providers';
 import { auth } from '@/auth';
@@ -14,7 +14,14 @@ import React from 'react';
  * Typography system — exactly three families, each with one job.
  *
  *   font-sans  (Poppins)         — ALL user-interface and body copy. Default.
- *   font-serif (Source Serif 4)  — editorial headings ONLY (article/essay h1-h3).
+ *   font-serif (Poppins Bold)    — editorial headings ONLY (article/essay h1-h3).
+ *                                  Deliberately NOT a serif: headings use the
+ *                                  same Poppins Bold as the "Our Power" logo
+ *                                  wordmark, so the masthead and the page
+ *                                  headings are one voice. The utility keeps
+ *                                  the `font-serif` name only because ~109 call
+ *                                  sites use it; every one already pairs it
+ *                                  with font-bold/font-semibold.
  *   font-mono  (IBM Plex Mono)   — numeric and tabular data ONLY: money, scores,
  *                                  percentages, vote counts, IDs, dates in tables.
  *                                  Pair with `tabular-nums` so columns align.
@@ -27,13 +34,6 @@ const poppins = Poppins({
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-sans',
-});
-
-const sourceSerif = Source_Serif_4({
-  weight: ['400', '600', '700'],
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-serif',
 });
 
 const ibmPlexMono = IBM_Plex_Mono({
@@ -65,7 +65,7 @@ export const metadata = {
 export default async function Layout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   return (
-    <html lang="en" className={cn('overflow-y-scroll', poppins.variable, sourceSerif.variable, ibmPlexMono.variable)}>
+    <html lang="en" className={cn('overflow-y-scroll', poppins.variable, ibmPlexMono.variable)}>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
         <link rel="alternate" type="application/rss+xml" title="Our Power - Campaigns" href="/api/rss/campaigns" />

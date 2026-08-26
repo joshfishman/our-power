@@ -147,9 +147,11 @@ function Showcase() {
             </p>
           </div>
           <div>
-            <p className="font-serif text-xl font-bold text-foreground">font-serif — Source Serif 4</p>
+            <p className="font-serif text-xl font-bold text-foreground">font-serif — Poppins Bold</p>
             <p className="text-[11px] text-muted-foreground">
-              Editorial headings only — article and essay h1–h3. Never body copy, never labels.
+              Editorial headings only — article and essay h1–h3. Not a serif: it is the same Poppins Bold as the
+              &ldquo;Our Power&rdquo; logo wordmark, so headings and the masthead read as one voice. Never body copy,
+              never labels.
             </p>
           </div>
           <div>

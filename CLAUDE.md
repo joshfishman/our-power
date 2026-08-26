@@ -195,7 +195,7 @@ Voice register is unchanged and is editorial, not visual: civic / Lincoln-Eisenh
 
 - **Never write arbitrary hex color classes.** `bg-[#8B3A3A]`, `text-[#F5DEB3]/70`, `border-[#C8B98A]/30` are ESLint errors under `src/app/**` and `src/components/**` (`no-restricted-syntax` in `.eslintrc.json`). Use the semantic token utilities.
 - **Every text-on-surface pairing clears WCAG AA 4.5:1 in both themes.** `npm run design:contrast` re-measures all of them straight from `globals.css` and exits non-zero on a regression. Run it after any token change.
-- **Typography — three families, three jobs** (`layout.tsx` + `tailwind.config.js`): `font-sans` (Poppins) for all UI and body copy; `font-serif` (Source Serif 4) for editorial headings only; `font-mono` (IBM Plex Mono) for numeric/tabular data only, paired with `tabular-nums`. Never `font-mono` for prose.
+- **Typography — three families, three jobs** (`layout.tsx` + `tailwind.config.js`): `font-sans` (Poppins) for all UI and body copy; `font-serif` (Poppins **Bold** — deliberately not a serif; the same wordmark face as the "Our Power" logo, so headings and masthead are one voice) for editorial headings only; `font-mono` (IBM Plex Mono) for numeric/tabular data only, paired with `tabular-nums`. Never `font-mono` for prose.
 
 Full palette, measured ratios, and the migration map: `docs/design/color-scheme.md`. Remaining phases: `docs/design/redesign-plan.md`.
 

@@ -18,7 +18,11 @@ module.exports = {
        *   mono  — numeric / tabular data only; pair with `tabular-nums` */
       fontFamily: {
         sans: ['var(--font-sans)', ...defaultTheme.fontFamily.sans],
-        serif: ['var(--font-serif)', ...defaultTheme.fontFamily.serif],
+        // `font-serif` is the EDITORIAL HEADING face, and it is not a serif:
+        // it resolves to Poppins Bold — the same wordmark face as the logo.
+        // Kept under the `serif` key so the ~109 existing call sites (all of
+        // which already pair it with font-bold/semibold) keep working.
+        serif: ['var(--font-sans)', ...defaultTheme.fontFamily.sans],
         mono: ['var(--font-mono)', ...defaultTheme.fontFamily.mono],
       },
       colors: {
