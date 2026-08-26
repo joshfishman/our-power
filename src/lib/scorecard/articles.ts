@@ -115,13 +115,16 @@ const AIPAC_SPENDING: Article = {
       { label: 'Against Republicans', value: 3.0, valueLabel: '$3.0M', color: 'rgb(var(--score-4))' },
       { label: 'Boosting Republicans', value: 0, valueLabel: '$0', color: 'rgb(var(--subtle-foreground))' },
     ],
-    caption:
-      'The bars are AIPAC’s super PAC, the United Democracy Project — the single largest pro-Israel super-PAC vehicle (FactCheck.org / FEC, Sept. 2024 snapshot of ~$35.6M in itemized independent expenditures; $37.9M final). About $32.4M — roughly 91% — landed inside Democratic primaries; only ~$3M went against Republicans, and nothing supported them. Democratic Majority for Israel and other pro-Israel groups spend the same way on a smaller scale.',
-    note: '“UDP” is the United Democracy Project — AIPAC’s own super PAC, created and funded by AIPAC’s donor network to make the uncapped “independent expenditure” ads a candidate-contribution PAC legally can’t. When you see UDP money, you are seeing AIPAC money. (AIPAC’s separate, capped PAC does give to both parties — but the uncapped attack money shown here is the part aimed at primaries.)',
   },
-  body: `So what is up with that chart?
+  body: `## AIPAC’s super PAC, the United Democracy Project (UDP)
 
-The short answer: **AIPAC and allied pro-Israel groups are among the largest outside spenders in American elections — and they aim that money almost entirely at Democratic *primaries*.** The point is not to beat Republicans. It is to decide which Democrats survive their own party's primary, in the low-turnout contests that usually settle who represents a safe-blue district.
+UDP is the single largest pro-Israel super-PAC vehicle (FactCheck.org / FEC, Sept. 2024 snapshot of ~$35.6M in itemized independent expenditures; $37.9M final). About $32.4M — roughly 91% — landed inside Democratic primaries; only ~$3M went against Republicans, and nothing supported them. Democratic Majority for Israel and other pro-Israel groups spend the same way on a smaller scale.
+
+“UDP” is the United Democracy Project — AIPAC’s own super PAC, created and funded by AIPAC’s donor network to make the uncapped “independent expenditure” ads a candidate-contribution PAC legally can’t. When you see UDP money, you are seeing AIPAC money. (AIPAC’s separate, capped PAC does give to both parties — but the uncapped attack money shown here is the part aimed at primaries.)
+
+## The Wrap on AIPAC in our politics
+
+**AIPAC and allied pro-Israel groups are among the largest outside spenders in American elections — and they aim that money almost entirely at Democratic *primaries*.** The point is not to beat Republicans. It is to decide which Democrats survive their own party's primary, in the low-turnout contests that usually settle who represents a safe-blue district.
 
 ## The money, by the numbers
 
