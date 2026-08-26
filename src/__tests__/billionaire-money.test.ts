@@ -71,7 +71,7 @@ describe('billionaire money profiles', () => {
     expect(credits.type).toBe('REGULATORY_CREDIT');
     // Neither may be inside the headline "given" figure.
     expect(transferTotal(musk).amount).toBeLessThan((loan.amount ?? 0) + (credits.amount ?? 0) + 1e12);
-    expect(transferTotal(musk).amount).toBe(2_136_500_000 + 756_000_000);
+    expect(transferTotal(musk).amount).toBe(2_136_500_000 + 1_685_000_000);
   });
 
   it('never sums announced ceilings or roll-up aggregates', () => {
@@ -87,10 +87,10 @@ describe('billionaire money profiles', () => {
     expect(musk.line_items.find((i) => i.id === 'spacex-cumulative')!.exclude_from_total).toBe(true);
   });
 
-  it("treats Palantir's 10-K government revenue as revenue, not as contract awards", () => {
+  it("treats Palantir's reported government revenue as revenue, not as contract awards", () => {
     const thiel = getProfile('thiel')!;
     const reported = thiel.line_items.filter((i) => i.id.startsWith('palantir-us-govt-rev-'));
-    expect(reported).toHaveLength(4);
+    expect(reported).toHaveLength(5);
     for (const row of reported) {
       expect(row.type).toBe('COMPANY_REPORTED_GOV_REVENUE');
       // Overlapping annual snapshots — summing them would invent money.
@@ -106,7 +106,7 @@ describe('billionaire money profiles', () => {
     const snap = walton.line_items.find((i) => i.id === 'walmart-snap-register-revenue')!;
     expect(snap.type).toBe('COMPANY_REPORTED_GOV_REVENUE');
     // The "given" headline is the documented direct subsidy figure alone.
-    expect(transferTotal(walton).amount).toBe(1_000_000_000);
+    expect(transferTotal(walton).amount).toBe(287_206_318);
   });
 
   describe('federal revenue series (USAspending)', () => {
@@ -137,7 +137,7 @@ describe('billionaire money profiles', () => {
   describe('fmtBigDollars', () => {
     it('formats across magnitudes', () => {
       expect(fmtBigDollars(14_487_696_070)).toBe('$14 billion');
-      expect(fmtBigDollars(2_892_500_000)).toBe('$2.9 billion');
+      expect(fmtBigDollars(3_821_500_000)).toBe('$3.8 billion');
       expect(fmtBigDollars(750_000_000)).toBe('$750 million');
       expect(fmtBigDollars(452_284)).toBe('$452,284');
       expect(fmtBigDollars(0)).toBe('—');

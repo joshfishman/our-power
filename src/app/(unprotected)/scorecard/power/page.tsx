@@ -5,7 +5,7 @@ import { listProfiles } from '@/lib/scorecard/billionaire-money';
 export const metadata: Metadata = {
   title: 'Power — public money & private fortunes | Common Ground',
   description:
-    'The scorecard tracks money flowing to politicians. This is the other direction: how much public money — contracts, loans, subsidies, tax breaks — flows to a handful of private fortunes, shown beside the politics they fund. Every figure traces to a public source.',
+    'The scorecard tracks money flowing to politicians. This is the other direction: what a handful of private fortunes earn selling to the government, and separately what they are given in subsidies and tax breaks, shown beside the politics they fund. Every figure traces to a public source.',
 };
 
 const LEAN_LABEL: Record<string, string> = { left: 'leans left', right: 'leans right', mixed: 'mixed' };
