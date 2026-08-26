@@ -148,16 +148,16 @@
       "category": "State/local subsidy (data centers, component of headline)",
       "company": "Amazon / Amazon Web Services / Amazon Data Services",
       "amount": null,
-      "amount_label": "billions (fast-growing share of the GJF total; no single clean figure)",
-      "time_period": "2010s-2025",
-      "description": "State/local subsidies specifically for AWS / Amazon Data Services data-center campuses (Virginia 'Data Center Alley', Ohio/St. Joseph County Indiana, Oregon, Mississippi, etc.) — sales-tax exemptions on servers, property-tax abatements, and grants. The fastest-growing slice of Amazon's subsidy footprint.",
+      "amount_label": "$15.16 billion (Amazon, Good Jobs First Subsidy Tracker)",
+      "time_period": "cumulative across 447 awards, earliest 1996; retrieved 2026-08-26",
+      "description": "Good Jobs First’s Subsidy Tracker now totals $15.16 billion in state and local subsidies to Amazon across 447 awards — no federal subsidies at all. Indiana leads at $8.39 billion, almost all of it a single 2024 data-center deal worth $8.28 billion, followed by Oregon ($1.63 billion), Virginia ($966 million), and Washington ($799 million).",
       "type": "STATE_LOCAL_SUBSIDY",
       "agency": "Multiple state/local governments (per Good Jobs First Subsidy Tracker)",
-      "source_url": "https://subsidytracker.goodjobsfirst.org/subsidy-tracker/in-amazon-data-services-inc",
+      "source_url": "https://subsidytracker.goodjobsfirst.org/parent/amazoncom",
       "corroborating_url": "https://goodjobsfirst.org/amazon-tracker/",
       "value_basis": "component of the ~$11.6B headline; GJF tracks individual deals but the data-center subtotal is not published as one clean number",
       "confidence": "medium",
-      "notes": "SUBSET of the headline aggregate — do NOT add to the $11.6B (it is contained in it). amount=null because no single published data-center subtotal exists; the individual deals are in the Subsidy Tracker. Notable: a 16-building Indiana (St. Joseph County) data-center complex tied to >$11B private investment over ~30 years.",
+      "notes": "Good Jobs First’s own headline Amazon Tracker still reads \"$11.6 Billion and Counting,\" last updated January 2025 — well behind its Subsidy Tracker parent page. We cite the higher, more current parent-page figure and flag the discrepancy rather than quietly picking one. Both are floors.",
       "exclude_from_total": true
     },
     {
@@ -174,7 +174,7 @@
       "corroborating_url": "https://money.cnn.com/2018/09/05/technology/jeff-bezos-donation-with-honor/index.html",
       "value_basis": "publicly announced / FEC-reported contribution",
       "confidence": "high",
-      "notes": "NOT government money received — this is Bezos spending. Notably NONPARTISAN (veterans of both parties), not a one-party play. This is his LARGEST-EVER direct political donation — orders of magnitude below Musk's 2024 giving."
+      "notes": "This 2018 gift is Jeff Bezos’s own. Later With Honor money often reported as \"Bezos\" money comes from his parents, Miguel and Jacklyn Bezos — a distinction worth holding onto."
     },
     {
       "id": "bezos-political-marriage-2012",
@@ -196,17 +196,17 @@
       "category": "Political spending (money OUT, mostly corporate PAC not personal)",
       "company": "Amazon + Bezos family",
       "amount": 17000000,
-      "amount_label": "nearly $17 million (Amazon + Bezos family, mostly corporate PAC)",
-      "time_period": "2023-2024 cycle (Jan 1 2023 - Sept 30 2024)",
-      "description": "Combined 2024-cycle political spending by Amazon and the Bezos family per United for Respect: nearly $17M, of which over two-thirds went to Republicans and LESS THAN 10% went directly to candidates (most flowed to other PACs). This is overwhelmingly Amazon's CORPORATE PAC, not Bezos's personal checkbook.",
+      "amount_label": "$1.46 million (Amazon PAC contributions to federal candidates)",
+      "time_period": "2024 cycle (2023-01-01 to 2024-12-31; final)",
+      "description": "The Amazon PAC gave $1,457,500 to federal candidates in the 2024 cycle on total receipts of $1.58 million. In the 2026 cycle it has already given $1,533,500 — more than the whole of 2024, with months still to run.",
       "type": "POLITICAL_SPENDING",
       "agency": "FEC-reported (aggregated by United for Respect)",
-      "source_url": "https://united4respect.org/reports/amazon-political-spending-2024/",
+      "source_url": "https://www.fec.gov/data/committee/C00360354/",
       "corroborating_url": "https://www.opensecrets.org/donor-lookup/results?name=jeffrey+bezos",
       "value_basis": "advocacy-group tally of FEC filings, blending Amazon corporate PAC + Bezos-family contributions",
-      "confidence": "medium",
+      "confidence": "high",
       "is_estimate": true,
-      "notes": "AGGREGATE and ATTRIBUTION-LOOSE: 'Amazon + Bezos family' blends Amazon's corporate PAC with family member contributions; the report does NOT isolate Bezos's personal giving (which remained small). Compiled by an advocacy group critical of Amazon. Bezos personally is a LOW direct political donor."
+      "notes": "A corporate PAC of this kind is funded entirely by employee and executive contributions; it cannot legally take company treasury money. 2026 figures run through July 31 and are partial."
     },
     {
       "id": "amazon-bezos-trump-inauguration-2025",
@@ -223,6 +223,47 @@
       "value_basis": "company-confirmed donation; in-kind value of the Prime stream is estimated",
       "confidence": "high",
       "notes": "Corporate (Amazon) donation, not strictly Bezos personal, though widely read as a Bezos-Trump rapprochement gesture. NOT government money received."
+    },
+    {
+      "id": "amazon-no-government-revenue-disclosure",
+      "category": "Amazon government revenue (not disclosed)",
+      "company": "Amazon",
+      "amount": null,
+      "amount_label": "not disclosed — no figure exists",
+      "time_period": "FY2025 10-K (and every prior year)",
+      "description": "Amazon publishes no government or public-sector revenue figure. The phrase \"public sector\" appears zero times in its 2025 and 2024 annual reports; AWS is reported as a single segment ($128.7 billion in 2025) with no split by customer type. Its stated accounting policy is that government incentives \"are recorded as reductions to the cost of related assets or expenses\" — so subsidies disappear into cost lines and are never separately quantified.",
+      "type": "COMPANY_REPORTED_GOV_REVENUE",
+      "source_url": "https://www.sec.gov/Archives/edgar/data/1018724/000101872426000004/amzn-20251231.htm",
+      "confidence": "high",
+      "exclude_from_total": true,
+      "notes": "This absence is itself the finding. Of the four fortunes profiled here, Amazon is the one whose public money is hardest to see, and that is a disclosure choice rather than an accident of scale."
+    },
+    {
+      "id": "amazon-indiana-datacenter-2025",
+      "category": "State/local subsidy (data centers)",
+      "company": "Amazon",
+      "amount": 611500000,
+      "amount_label": "$611.5 million (Indiana alone, 2024-2025)",
+      "time_period": "2024 ($50.5M) and 2025 ($561M)",
+      "description": "Indiana disclosed $655 million lost to its data-center sales and use tax exemption as of 2025, and that more than 83% of it went to Amazon — $50.5 million in 2024 and $561 million in 2025. A 1,011% increase in a single year, to one company.",
+      "type": "STATE_LOCAL_SUBSIDY",
+      "agency": "State of Indiana",
+      "source_url": "https://goodjobsfirst.org/even-cloudier-with-a-greater-loss-of-spending-control-how-data-center-tax-abatements-undermine-public-budgets/",
+      "confidence": "high",
+      "notes": "From Indiana’s own disclosure, reported by Good Jobs First in June 2026. Data-center abatements are the fastest-growing category of subsidy to this fortune, and 14 of the 37 states offering them publish no timely loss figure at all — so every national total understates."
+    },
+    {
+      "id": "bezos-personal-giving-2024-2026",
+      "category": "Political spending (money OUT, personal)",
+      "company": "Jeff Bezos (personal)",
+      "amount": 15000,
+      "amount_label": "$15,000 per cycle",
+      "time_period": "2024 cycle and 2026 cycle-to-date",
+      "description": "Bezos’s own federal political giving is remarkably small: $15,000 in the 2024 cycle and $15,000 so far in 2026, each time $10,000 to the Amazon PAC and $5,000 to the Blue Origin PAC. No candidates, no parties, no super PACs.",
+      "type": "POLITICAL_SPENDING",
+      "source_url": "https://www.fec.gov/data/receipts/individual-contributions/",
+      "confidence": "high",
+      "notes": "Beware a common attribution error: the multi-million-dollar \"Bezos\" money attached to the With Honor Fund belongs to Miguel and Jacklyn Bezos, his parents — including a $5,000,000 gift from Miguel in April 2026. Jeff Bezos’s name appears on none of it. His own $10M With Honor gift was in 2018."
     }
   ],
   "caveats": "CRITICAL DISTINCTIONS (read before citing any number):\n\n1. THERE IS NO SINGLE 'BEZOS GOT $X FROM GOVERNMENT' FIGURE. Unlike Musk (where the Washington Post built a ~$38B all-government aggregate), no comparable single published number exists for Bezos. The headline here is ONLY the Good Jobs First Amazon state/local SUBSIDY total (~$11.6B). It deliberately does NOT include AWS/Blue Origin federal contracts. Do not present the headline as 'all government money to Bezos.'\n\n2. GROSS CONTRACT VALUE != SUBSIDY != PROFIT != PERSONAL INCOME. A federal CONTRACT (AWS's CIA/NSA/JWCC cloud deals; Blue Origin's NASA Artemis lander; NSSL launches) is the government BUYING a service or product at a negotiated price — most of it is spent delivering the work (engineers, data centers, rocket hardware). A SUBSIDY or tax break (HQ2 Virginia, data-center abatements) is closer to a gift or forgone tax — the government gets no direct service in return. Never collapse contracts and subsidies into one blended figure.\n\n3. AWS CONTRACTS ARE SERVICES BOUGHT, NOT GIFTS. The CIA C2S, NSA WildandStormy, and JWCC awards are the government procuring cloud computing because AWS was judged the best/most-secure provider (each survived competitor protests). That is categorically different from a tax abatement handed over to attract a warehouse. Show the split.\n\n4. CEILING / SHARED-CEILING != OBLIGATED != AWS-ALONE. The NSA $10B and the JWCC $9B are CEILINGS, not obligated dollars. Worse, JWCC's $9B is a SHARED ceiling across FOUR companies (AWS, Microsoft, Google, Oracle) — attributing the full $9B to AWS is wrong. NSSL Phase 3 Blue Origin 'up to $2.4B' is also a ceiling contingent on New Glenn certification.\n\n5. HQ2-NEW YORK WAS CANCELLED. The ~$3B New York incentive package was announced in November 2018 and CANCELLED in February 2019 after local opposition. $0 was actually paid. It must NEVER be counted as money Bezos/Amazon received. Announced != realized — this is the cleanest example in the dataset.\n\n6. SUBSIDIES ARE ANNOUNCED/AUTHORIZED, OFTEN PERFORMANCE-BASED. The Good Jobs First ~$11.6B is a floor (many Amazon deals carry NDAs, secret project names, and undisclosed amounts) AND a tally of awarded/authorized values, much of it performance-based (e.g., Virginia HQ2 pays out only as Amazon hires) or abated taxes (money forgone, not checks written). It is not cash-in-hand.\n\n7. AGGREGATES CONTAIN THEIR LINE ITEMS — DO NOT DOUBLE-COUNT. The Good Jobs First ~$11.6B headline CONTAINS the HQ2-Virginia subsidy and the data-center subsidies listed below it. The 'amazon-bezos-2024-cycle' ~$17M contains family + corporate PAC giving. Summing the JSON 'amount' fields naively will over-count. Use the headline (for subsidies) and the individual contract line items (for federal contracts) separately; do not add everything together.\n\n8. ATTRIBUTING COMPANY MONEY TO THE PERSON IS DEFENSIBLE BUT IMPERFECT — AND MORE SO FOR BEZOS THAN MUSK. Bezos founded Amazon, is its executive chairman and largest single shareholder, and founded and owns Blue Origin. BUT he STEPPED DOWN as Amazon CEO in July 2021 (Andy Jassy runs Amazon day-to-day), and Amazon is a public company whose subsidies also benefit pension funds, index investors, and millions of small shareholders. Blue Origin is privately owned by Bezos (cleaner attribution). The honest unit of truth is the company and the award; the person is a lens, with the control relationship stated, never an implied wire transfer to a personal account.\n\n9. POLITICAL SPENDING IS MONEY OUT, NOT MONEY IN — AND BEZOS IS A NOTABLY LOW DIRECT DONOR. This is the key cross-partisan-balance point: Bezos's LARGEST-EVER personal political donation is $10M to a NONPARTISAN veterans super PAC (With Honor, 2018), plus $2.5M to a same-sex-marriage ballot measure (2012). That is orders of magnitude below Musk's $290M+ in the 2024 cycle alone. The 'nearly $17M' 2024 figure is Amazon's CORPORATE PAC plus family giving (mostly not Bezos personally), aggregated by an advocacy group. Amazon's $1M to Trump's 2025 inaugural is a corporate gesture. State plainly: as a DIRECT political donor, Bezos is modest and historically bipartisan/nonpartisan, NOT a mega-donor. Do not inflate this for symmetry with Musk."

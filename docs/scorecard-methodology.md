@@ -366,6 +366,18 @@ bills alone.
 
 - **Curated marker popular-support polls** — `data/marker-popular-support.json`, a hand-curated list of national public-opinion figures per marker (pollster, field date, source URL, question wording). Seeded onto `Marker.popularSupport` + `Marker.popularSupportPoll` by `scripts/seed-marker-support.ts` (keys entries by `(jurisdiction, plankNumber, markerSlug)`). Drives the v1.9.4 popular-support floor (`POPULAR_SUPPORT_FLOOR = 55` — markers below 55% national support are excluded from scoring; null = unassessed = still counts). **Schema LIVE (columns added v1.9.4); data NOT HELD until the curated JSON is seeded** — file is authored separately and the seed is a manual run.
 
+### Public money to private fortunes (the `/scorecard/power` pages)
+
+A separate accountability surface from the legislator scorecard: it follows public money flowing **to** large private fortunes rather than to politicians, and feeds no `RepresentativeScore`. Its governing rule is that the kinds of money are never summed together — revenue **earned** by selling to the government, money **given** as subsidies and tax credits, loans (repaid), regulatory credits (paid by rival firms, not the Treasury), and political spending **out** are reported as separate figures.
+
+- **USAspending.gov** (`api.usaspending.gov`, no API key) — federal prime-contract obligations by recipient and fiscal year. `npm run scorecard:ingest-usaspending` (supports `--dry-run`, `--entity=`, `--start-fy=`) writes `src/lib/scorecard/usaspending-federal-revenue.json`; **no database writes**. **LIVE** — FY2019-FY2025 plus FY2008-onward cumulative for SpaceX, Tesla, AWS/Amazon, Blue Origin, Palantir, Anduril, Walmart. Known undercount: classified and intelligence awards are largely absent, subawards are excluded, and purchases made through resellers (Carahsoft, Four Points, ECS) are credited to the reseller rather than the vendor — which materially understates AWS in particular.
+- **Curated per-figure datasets** — `src/lib/scorecard/{musk,bezos,thiel,walton}-government-money.json`. Hand-authored, every line item carrying a `source_url`, a `confidence` grade, and an `exclude_from_total` flag for announced ceilings, roll-up aggregates, cancelled awards, and overlapping annual snapshots. **LIVE.**
+- **SEC filings (10-K / earnings releases)** — company-reported government revenue, used where a company discloses it (Palantir's US-government segment; Tesla's regulatory-credit and §45X lines). Cited per line item; **no automated ingest**.
+- **Good Jobs First Subsidy Tracker** — state and local subsidy totals. Secondary but reputable; attributed as such. **NOT HELD** as a dataset — figures are transcribed per line item with a retrieval date.
+- **FEC** — the political-spending ("money out") rows reuse the same FEC sources as the legislator scorecard.
+
+Research notes, gaps, and what still needs manual acquisition: `docs/ideas/billionaire-revenue-research.md`.
+
 ### Ideology / external
 
 - **DIME** (`data/dime_recipients_all_1979_2024.csv`, 252MB) — Bonica/Stanford candidate-level: CFscore (recipient + donor-base ideology), small-dollar % (`total.unitemized` vs `total.indiv.contribs`), vote outcomes, 1979-2024. Joins via FEC.ID. **ON DISK — not yet ingested to a table.**
