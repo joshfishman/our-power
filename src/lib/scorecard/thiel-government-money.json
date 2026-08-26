@@ -29,12 +29,13 @@
       "amount_label": "$516 million (US-government segment, FY2022)",
       "time_period": "FY2022 (year ended Dec 31, 2022)",
       "description": "Palantir U.S.-government segment revenue for FY2022, per the audited three-year comparative in the FY2024 10-K. Total government revenue (US + international) that year was $723M; total company revenue $1,106M.",
-      "type": "FEDERAL_CONTRACT",
+      "type": "COMPANY_REPORTED_GOV_REVENUE",
       "agency": "Multiple U.S. federal agencies (DoD, IC, civilian)",
       "source_url": "https://investors.palantir.com/files/2024%20FY%20PLTR%2010-K.pdf",
       "value_basis": "audited 10-K reported revenue (not a ceiling, not an estimate)",
       "confidence": "high",
-      "notes": "Revenue from selling software/services to the U.S. government — a contract, not a subsidy."
+      "notes": "Revenue from selling software/services to the U.S. government — a contract, not a subsidy.",
+      "exclude_from_total": true
     },
     {
       "id": "palantir-us-govt-rev-2023",
@@ -44,11 +45,12 @@
       "amount_label": "$732 million (US-government segment, FY2023)",
       "time_period": "FY2023 (year ended Dec 31, 2023)",
       "description": "Palantir U.S.-government segment revenue for FY2023, per the FY2024 10-K. Total government revenue (US + international) $1,036M; total company revenue $1,466M; government ~71% of total.",
-      "type": "FEDERAL_CONTRACT",
+      "type": "COMPANY_REPORTED_GOV_REVENUE",
       "agency": "Multiple U.S. federal agencies (DoD, IC, civilian)",
       "source_url": "https://investors.palantir.com/files/2024%20FY%20PLTR%2010-K.pdf",
       "value_basis": "audited 10-K reported revenue",
-      "confidence": "high"
+      "confidence": "high",
+      "exclude_from_total": true
     },
     {
       "id": "palantir-us-govt-rev-2024",
@@ -58,11 +60,12 @@
       "amount_label": "$1.12 billion (US-government segment, FY2024)",
       "time_period": "FY2024 (year ended Dec 31, 2024)",
       "description": "Palantir U.S.-government segment revenue for FY2024, per the FY2024 10-K. Total government revenue (US + international) $1,468M; total company revenue $2,234M; Palantir disclosed a roughly 55% government / 45% commercial split as of Dec 31, 2024.",
-      "type": "FEDERAL_CONTRACT",
+      "type": "COMPANY_REPORTED_GOV_REVENUE",
       "agency": "Multiple U.S. federal agencies (DoD, IC, civilian)",
       "source_url": "https://investors.palantir.com/files/2024%20FY%20PLTR%2010-K.pdf",
       "value_basis": "audited 10-K reported revenue",
-      "confidence": "high"
+      "confidence": "high",
+      "exclude_from_total": true
     },
     {
       "id": "palantir-us-govt-rev-2025",
@@ -72,13 +75,14 @@
       "amount_label": "$1.855 billion (US-government segment, FY2025)",
       "time_period": "FY2025 (year ended Dec 31, 2025)",
       "description": "Palantir full-year U.S.-government revenue of $1.855B (+55% YoY), per the Q4/FY2025 earnings release. Q4 2025 U.S.-government revenue was $570M (+66% YoY). Total FY2025 company revenue $4.48B; commercial $2.073B; government share fell to ~54% only because commercial grew faster. This is the dataset HEADLINE figure.",
-      "type": "FEDERAL_CONTRACT",
+      "type": "COMPANY_REPORTED_GOV_REVENUE",
       "agency": "Multiple U.S. federal agencies (DoD, IC, civilian)",
       "source_url": "https://www.cnbc.com/2026/02/02/palantir-pltr-q4-2025-earnings.html",
       "corroborating_url": "https://www.businesswire.com/news/home/20260201154946/en/",
       "value_basis": "earnings-release reported revenue (FY2025 10-K not yet filed at compile time)",
       "confidence": "high",
-      "notes": "Reported figure from the company's audited earnings process; treat as high-confidence but note the formal 10-K had not posted at compile."
+      "notes": "Reported figure from the company's audited earnings process; treat as high-confidence but note the formal 10-K had not posted at compile.",
+      "exclude_from_total": true
     },
     {
       "id": "palantir-fed-obligations-cumulative",
@@ -95,7 +99,8 @@
       "value_basis": "obligated-to-date dollars per USAspending; EXCLUDES classified IC contracts and the newest 2025 awards",
       "confidence": "medium",
       "is_estimate": true,
-      "notes": "AGGREGATE — represents money actually obligated, distinct from the much larger award CEILINGS below (e.g., the $10B Army vehicle). A separate aggregator cites ~$13.7B in total AWARDS, but that counts ceilings; do not conflate obligated (~$1.9B) with ceiling (~$13.7B). USAspending is a JS app and could not be machine-fetched; figure is via aggregators citing it — verify in-browser before publication."
+      "notes": "AGGREGATE — represents money actually obligated, distinct from the much larger award CEILINGS below (e.g., the $10B Army vehicle). A separate aggregator cites ~$13.7B in total AWARDS, but that counts ceilings; do not conflate obligated (~$1.9B) with ceiling (~$13.7B). USAspending is a JS app and could not be machine-fetched; figure is via aggregators citing it — verify in-browser before publication.",
+      "exclude_from_total": true
     },
     {
       "id": "palantir-army-enterprise-2025",
@@ -112,7 +117,8 @@
       "value_basis": "MAXIMUM POTENTIAL ceiling ('up to'), an ordering vehicle — NOT obligated dollars",
       "confidence": "high",
       "is_estimate": false,
-      "notes": "Ceiling, not cash. This is a contract VEHICLE; actual spending flows through task orders over 10 years. Do not sum with the cumulative-obligated figure (different basis)."
+      "notes": "Ceiling, not cash. This is a contract VEHICLE; actual spending flows through task orders over 10 years. Do not sum with the cumulative-obligated figure (different basis).",
+      "exclude_from_total": true
     },
     {
       "id": "palantir-maven-smart-system",
@@ -241,7 +247,8 @@
       "value_basis": "~$818M obligated (CBP) vs $2B/$22B/$20B/$1B CEILINGS; Founders Fund is a minority financial investor",
       "confidence": "low",
       "is_estimate": true,
-      "notes": "INDIRECT EXPOSURE. Anduril is founded and run by Palmer Luckey (CEO Brian Schimpf), NOT Thiel. Founders Fund is an investor; attributing Anduril's contracts to Thiel personally is weak. The IVAS $22B and Army $20B are program/vehicle CEILINGS, not received dollars. Confidence LOW for person-attribution."
+      "notes": "INDIRECT EXPOSURE. Anduril is founded and run by Palmer Luckey (CEO Brian Schimpf), NOT Thiel. Founders Fund is an investor; attributing Anduril's contracts to Thiel personally is weak. The IVAS $22B and Army $20B are program/vehicle CEILINGS, not received dollars. Confidence LOW for person-attribution.",
+      "exclude_from_total": true
     },
     {
       "id": "spacex-early-stake-indirect",
@@ -258,7 +265,8 @@
       "value_basis": "amount is null on purpose — SpaceX's government revenue is NOT attributed to Thiel; only the fact of an early minority stake is recorded",
       "confidence": "low",
       "is_estimate": true,
-      "notes": "DO NOT attribute SpaceX's ~$22B government contracts to Thiel. amount=null is deliberate. This is investor exposure (minority, early), recorded for completeness; person-attribution is essentially nil for control."
+      "notes": "DO NOT attribute SpaceX's ~$22B government contracts to Thiel. amount=null is deliberate. This is investor exposure (minority, early), recorded for completeness; person-attribution is essentially nil for control.",
+      "exclude_from_total": true
     },
     {
       "id": "thiel-2016-trump",

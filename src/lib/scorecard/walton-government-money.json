@@ -45,7 +45,7 @@
       "amount_label": "~$13 billion/yr (2013, last officially disclosed); estimated ~$20B+/yr more recently",
       "time_period": "per-year; $13B figure is for 2013 (last year Walmart disclosed); Numerator put Walmart's SNAP share at 25.8% for the 12 months ending July 2024",
       "description": "Government money (SNAP / food-stamp benefits) spent BY SHOPPERS at Walmart registers. Walmart redeems roughly a quarter of ALL U.S. SNAP dollars: ~18% (~$13B) in 2013 per Walmart's own last disclosure, and 25.8% of SNAP shoppers' grocery dollars over the 12 months ending July 2024 per Numerator's SNAP Shopper Scorecard (94.3% of SNAP recipients shop at Walmart). Moody's has estimated Walmart's annual SNAP sales exceed $20 billion.",
-      "type": "FEDERAL_GRANT",
+      "type": "COMPANY_REPORTED_GOV_REVENUE",
       "agency": "USDA (SNAP) — benefits spent by recipients, redeemed by Walmart as an authorized retailer",
       "source_url": "https://www.supermarketnews.com/legislation-regulatory-news/walmart-takes-more-than-25-of-all-snap-dollars",
       "corroborating_url": "https://slate.com/business/2014/08/how-much-walmart-gets-in-food-stamp-dollars-the-answer-may-be-forthcoming.html",
@@ -53,7 +53,8 @@
       "confidence": "medium",
       "is_estimate": true,
       "critical_nuance": "DEMAND-SIDE / STRUCTURAL. This is taxpayer money flowing INTO Walmart's registers, but it is benefits SPENT BY SHOPPERS who choose Walmart — Walmart earns it as a retailer selling groceries, exactly as a grocery store earns any customer's dollar. It is NOT a subsidy, grant, or handout paid TO Walmart by the government. Listing it as 'government money to the Waltons' without this framing is misleading. It must NEVER be summed with the direct ~$1B subsidy headline. Typed FEDERAL_GRANT only because SNAP is a federal program; functionally it is program-driven retail revenue.",
-      "notes": "USDA has refused (and litigated) to release per-retailer SNAP redemption data, so exact current Walmart totals are not officially knowable; figures are disclosures/estimates."
+      "notes": "USDA has refused (and litigated) to release per-retailer SNAP redemption data, so exact current Walmart totals are not officially knowable; figures are disclosures/estimates.",
+      "exclude_from_total": true
     },
     {
       "id": "walmart-worker-public-assistance",
@@ -71,7 +72,8 @@
       "confidence": "low",
       "is_estimate": true,
       "critical_nuance": "HIGHLY CONTESTED, INDIRECT, STRUCTURAL — the most-attacked number in this dataset. This is public assistance paid to Walmart's EMPLOYEES because their wages are low; NOT money paid to Walmart. Treating it as 'Walmart got $6.2B' is a category error: it is a cost society bears, framed by critics as an implicit subsidy of Walmart's wage structure. The methodology (one state's Medicaid data extrapolated nationally) is rough; PolitiFact rated Sanders' 2018 reuse of it as relying on a dated figure. The 2020 GAO report (GAO-21-45) is the firmer corroboration: it found Walmart among the TOP FOUR employers of SNAP and Medicaid enrollees in EVERY state studied (top employer of SNAP recipients in 5 of 9 states; top Medicaid-enrollee employer in 3 of 6 states) — but GAO did NOT attach a dollar figure to Walmart specifically. MUST NEVER be summed with the direct subsidy headline.",
-      "notes": "Walmart has since raised starting wages (to $14+/hr average in recent years), which it argues reduces this figure; critics argue it remains material. The $6.2B is best presented as a contested 2014-era estimate, with GAO-21-45 as the rigorous (but dollar-less) confirmation that Walmart's workforce disproportionately relies on public aid."
+      "notes": "Walmart has since raised starting wages (to $14+/hr average in recent years), which it argues reduces this figure; critics argue it remains material. The $6.2B is best presented as a contested 2014-era estimate, with GAO-21-45 as the rigorous (but dollar-less) confirmation that Walmart's workforce disproportionately relies on public aid.",
+      "exclude_from_total": true
     },
     {
       "id": "walmart-federal-retail-sales",
@@ -88,7 +90,8 @@
       "value_basis": "no consolidated public Walmart federal-contract total; card-spending and portal participation are documented but not aggregated to a single Walmart figure",
       "confidence": "low",
       "is_estimate": true,
-      "notes": "Included for completeness to show the CONTRAST with Musk/Bezos: unlike SpaceX (NASA/DoD contracts) or Amazon (AWS/JEDI/JWCC cloud), Walmart is NOT a major federal contractor. Its government money is subsidies + structural retail revenue, not procurement. USAspending.gov would carry any prime awards; no large aggregate is publicly compiled."
+      "notes": "Included for completeness to show the CONTRAST with Musk/Bezos: unlike SpaceX (NASA/DoD contracts) or Amazon (AWS/JEDI/JWCC cloud), Walmart is NOT a major federal contractor. Its government money is subsidies + structural retail revenue, not procurement. USAspending.gov would carry any prime awards; no large aggregate is publicly compiled.",
+      "exclude_from_total": true
     },
     {
       "id": "walmart-pac-2024",

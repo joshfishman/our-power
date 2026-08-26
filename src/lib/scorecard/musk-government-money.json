@@ -107,7 +107,8 @@
       "source_url": "https://spaceflightnow.com/2025/04/05/u-s-space-force-awards-13-7-billion-in-new-national-security-launch-contracts-to-blue-origin-spacex-and-ula/",
       "value_basis": "MAXIMUM POTENTIAL ceiling ('up to'), not obligated; individual mission orders follow",
       "confidence": "medium",
-      "notes": "Ceiling value. Subsequent FY2026 task orders (Oct 2025) assigned SpaceX 5 missions for $714M."
+      "notes": "Ceiling value. Subsequent FY2026 task orders (Oct 2025) assigned SpaceX 5 missions for $714M.",
+      "exclude_from_total": true
     },
     {
       "id": "spacex-starshield-nro",
@@ -139,7 +140,8 @@
       "value_basis": "company-stated aggregate blending public + reported-classified awards",
       "confidence": "low",
       "is_estimate": true,
-      "notes": "AGGREGATE — do not sum with the individual SpaceX line items above (it contains them). Company-stated, not a single auditable line. Public USAspending.gov ('Space Exploration Technologies Corp') captures unclassified primes only and under-counts vs this claim."
+      "notes": "AGGREGATE — do not sum with the individual SpaceX line items above (it contains them). Company-stated, not a single auditable line. Public USAspending.gov ('Space Exploration Technologies Corp') captures unclassified primes only and under-counts vs this claim.",
+      "exclude_from_total": true
     },
     {
       "id": "tesla-doe-atvm-loan",
@@ -275,7 +277,8 @@
       "corroborating_url": "https://goodjobsfirst.org/elon-musks-business-empire-is-built-on-38-billion-in-government-funding/",
       "value_basis": "GJF compiled tally; scope-sensitive",
       "confidence": "medium",
-      "notes": "AGGREGATE — contains the individual state/local items above; do not sum together. Scope discipline: ~$1.5B (state/local) != ~$3.6B (subsidies+credits all levels) != $38B (all-government). The $38B is dominated by federal SpaceX contracts, not state/local incentives."
+      "notes": "AGGREGATE — contains the individual state/local items above; do not sum together. Scope discipline: ~$1.5B (state/local) != ~$3.6B (subsidies+credits all levels) != $38B (all-government). The $38B is dominated by federal SpaceX contracts, not state/local incentives.",
+      "exclude_from_total": true
     },
     {
       "id": "tesla-ev-consumer-credit-30d",
@@ -292,7 +295,8 @@
       "confidence": "high",
       "is_estimate": false,
       "critical_nuance": "DEMAND-SIDE: money does not land on Tesla's books. Treasury/IRS reported $2B+ in point-of-sale EV credits to 300,000+ buyers (all makers) since Jan 2024, and ~87% of 2024 EV sales used the credit, but no reliable figure isolates Tesla buyers' share. Any 'Tesla buyers got $X billion' number is a DERIVED ESTIMATE (sales volume x credit), not official.",
-      "notes": "Program terminated Sept 30, 2025."
+      "notes": "Program terminated Sept 30, 2025.",
+      "exclude_from_total": true
     },
     {
       "id": "tesla-45x-manufacturing-credit",
