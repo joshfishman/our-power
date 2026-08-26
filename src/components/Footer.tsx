@@ -20,6 +20,9 @@ const footerLinks = [
   {
     heading: 'Project',
     links: [
+      // Methodology lives here rather than in the scorecard nav: it is
+      // reference material, and it is not settled enough to headline the nav.
+      { label: 'Methodology', href: '/scorecard/methodology' },
       { label: 'About', href: '/about' },
       { label: 'GitHub', href: 'https://github.com/joshfishman/our-power', external: true },
       { label: 'Report a Bug', href: 'https://github.com/joshfishman/our-power/issues', external: true },

@@ -168,9 +168,15 @@ against the legislator.
 
 ### The ratio
 
-    Outside-money ratio = (direct MONEY PAC contributions + MONEY IE supporting you + MONEY IE against your opponents)
-                          ───────────────────────────────────────────────────────────────────────────────────────────
-                          (total receipts + MONEY IE supporting you + MONEY IE against your opponents)
+    Outside-money ratio =
+
+          direct MONEY PAC contributions
+        + MONEY IE supporting you
+        + MONEY IE against your opponents
+        ─────────────────────────────────
+          total receipts
+        + MONEY IE supporting you
+        + MONEY IE against your opponents
 
 The score follows the same gradient as v1.4: under 5% → +1, 0% → +2,
 above the upper anchors → −3.

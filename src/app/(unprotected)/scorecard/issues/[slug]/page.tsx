@@ -119,12 +119,18 @@ export default async function IssueScorecardPage(props: Props) {
         </p>
         <h1 className="mt-1 font-serif text-4xl font-bold text-foreground">{plank.name}</h1>
         <p className="mt-2 max-w-2xl italic text-muted-foreground">{plank.tagline}</p>
-        {/* The full plank text from the brief. Previously this rendered
-            shortDescription, which is byte-identical to the tagline on planks 1
-            and 5 and near-identical on the rest — the same line twice. `body`
-            is the long-form statement and had no surface anywhere until now;
-            the index shows the same content as a scannable commitments list. */}
-        <p className="mt-3 max-w-2xl text-base text-muted-foreground">{plank.body}</p>
+        {/* The plank's commitments, matching the People's Platform index.
+            This used to render shortDescription (byte-identical to the tagline
+            on planks 1 and 5 — the same line twice), then `body`, whose prose
+            packs six or seven separate promises into one run-on paragraph.
+            Same content, but a numbered list is what makes it readable. */}
+        {plank.commitments.length > 0 && (
+          <ol className="mt-4 max-w-2xl list-decimal space-y-1.5 pl-5 text-base text-muted-foreground marker:text-subtle-foreground">
+            {plank.commitments.map((commitment) => (
+              <li key={commitment}>{commitment}</li>
+            ))}
+          </ol>
+        )}
       </header>
 
       <nav className="mt-6 flex flex-wrap items-center gap-2 text-sm">

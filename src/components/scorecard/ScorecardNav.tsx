@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { AppLogo } from '@/components/AppLogo';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 
@@ -9,9 +10,16 @@ import { useState } from 'react';
 // (accent/brick border + secondary bg + bold). Items with `children` render a
 // click-toggle dropdown.
 
+interface NavGrandchild {
+  href: string;
+  label: string;
+}
+
 interface NavChild {
   href: string;
   label: string;
+  /** Third level — rendered as an indented group beneath this child. */
+  children?: NavGrandchild[];
 }
 
 interface NavItem {
@@ -25,35 +33,46 @@ interface NavItem {
   children?: NavChild[];
 }
 
+const PLANK_LINKS: NavGrandchild[] = [
+  { href: '/scorecard/issues/honest-government', label: '1 · Honest Government' },
+  { href: '/scorecard/issues/our-children-our-future', label: '2 · Our Children Our Future' },
+  { href: '/scorecard/issues/making-a-living', label: '3 · Making a Living' },
+  { href: '/scorecard/issues/the-care-we-owe', label: '4 · The Care We Owe' },
+  { href: '/scorecard/issues/peace-and-strength', label: '5 · Peace and Strength' },
+];
+
+// Information architecture:
+//   Scorecard          — the ranking, with PAC and the per-plank issue
+//                        scorecards beneath it (planks are the third level).
+//   People's Platform  — the five commitments themselves: what we ask for,
+//                        before any scoring. Deliberately top level, since it
+//                        is the argument the scorecard exists to serve.
+//   Articles           — the written pieces.
+// Methodology lives in the footer, not here: it is reference material, and it
+// is not settled enough to headline the nav.
+// Races is deliberately absent — the page is broken and its data does not hold.
 const NAV_ITEMS: NavItem[] = [
-  { href: '/scorecard', label: 'Scorecard', exact: true },
-  { href: '/scorecard/races', label: 'Races', alsoActiveOn: ['/scorecard/race/'] },
-  { href: '/scorecard/pac', label: 'PAC' },
+  {
+    href: '/scorecard',
+    label: 'Scorecard',
+    exact: true,
+    alsoActiveOn: ['/scorecard/pac', '/scorecard/issues/'],
+    children: [
+      { href: '/scorecard', label: 'All legislators' },
+      { href: '/scorecard/pac', label: 'PAC' },
+      { href: '/scorecard/issues/honest-government', label: 'Issues', children: PLANK_LINKS },
+    ],
+  },
+  { href: '/scorecard/issues', label: "People's Platform", exact: true },
   {
     href: '/scorecard/power',
-    label: 'Welfare for Billionaires',
-    alsoActiveOn: ['/scorecard/power/'],
+    label: 'Articles',
+    alsoActiveOn: ['/scorecard/power/', '/scorecard/articles/'],
     children: [
-      { href: '/scorecard/power', label: 'All' },
-      { href: '/scorecard/power/musk', label: 'Elon Musk' },
-      { href: '/scorecard/power/bezos', label: 'Jeff Bezos' },
-      { href: '/scorecard/power/thiel', label: 'Peter Thiel' },
-      { href: '/scorecard/power/walton', label: 'Walton family' },
+      { href: '/scorecard/power', label: 'Welfare for Billionaires' },
+      { href: '/scorecard/articles/aipac-spending-in-primaries', label: 'Who Does AIPAC Support?' },
     ],
   },
-  {
-    href: '/scorecard/issues',
-    label: 'Issues',
-    children: [
-      { href: '/scorecard/issues', label: 'All' },
-      { href: '/scorecard/issues/honest-government', label: '1 · Honest Government' },
-      { href: '/scorecard/issues/our-children-our-future', label: '2 · Our Children Our Future' },
-      { href: '/scorecard/issues/making-a-living', label: '3 · Making a Living' },
-      { href: '/scorecard/issues/the-care-we-owe', label: '4 · The Care We Owe' },
-      { href: '/scorecard/issues/peace-and-strength', label: '5 · Peace and Strength' },
-    ],
-  },
-  { href: '/scorecard/methodology', label: 'Methodology' },
 ];
 
 function isActive(pathname: string, item: NavItem): boolean {
@@ -75,10 +94,8 @@ export function ScorecardNav() {
       aria-label="Scorecard sections"
       className="sticky top-0 z-30 border-b border-border bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
       <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
-        <Link
-          href="/scorecard"
-          className="mr-2 shrink-0 font-serif text-base font-bold text-foreground hover:text-accent">
-          We the People
+        <Link href="/scorecard" className="mr-2 shrink-0" aria-label="Our Power — scorecard home">
+          <AppLogo size={32} textClass="text-lg" />
         </Link>
         <ul className="flex flex-wrap items-center gap-2 text-sm">
           {NAV_ITEMS.map((item) => {
@@ -128,6 +145,29 @@ export function ScorecardNav() {
                             }`}>
                             {child.label}
                           </Link>
+                          {child.children ? (
+                            <ul role="menu" aria-label={child.label} className="ml-3 border-l border-border pl-2">
+                              {child.children.map((grandchild) => {
+                                const grandActive = pathname === grandchild.href;
+                                return (
+                                  <li key={grandchild.href} role="none">
+                                    <Link
+                                      role="menuitem"
+                                      href={grandchild.href}
+                                      onClick={() => setOpenMenu(null)}
+                                      aria-current={grandActive ? 'page' : undefined}
+                                      className={`block rounded px-3 py-1.5 text-sm transition-colors ${
+                                        grandActive
+                                          ? 'bg-secondary font-semibold text-foreground'
+                                          : 'text-muted-foreground hover:bg-secondary-accent hover:text-foreground'
+                                      }`}>
+                                      {grandchild.label}
+                                    </Link>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          ) : null}
                         </li>
                       );
                     })}
