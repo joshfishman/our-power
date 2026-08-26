@@ -35,16 +35,23 @@ export default async function IssuesIndexPage() {
       <ul className="mt-8 divide-y divide-border border border-border">
         {federalPlanks.map((plank) => {
           const articleCount = getArticlesForPlank(plank.slug).length;
+          const href = `/scorecard/issues/${encodeURIComponent(plank.slug)}`;
+          // Markers ARE the definition of what a plank includes — they arrive
+          // ordered by displayOrder from getPublicPlanks, so this list needs no
+          // second, hand-maintained copy that could drift from the rubric.
+          const { markers } = plank;
           return (
-            <li key={plank.id} className="transition-colors hover:bg-surface-elevated">
-              <Link
-                href={`/scorecard/issues/${encodeURIComponent(plank.slug)}`}
-                className="flex items-start justify-between gap-4 px-4 py-4">
+            <li key={plank.id} className="px-4 py-4 transition-colors hover:bg-surface-elevated">
+              <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <p className="font-mono text-[11px] uppercase tracking-widest text-subtle-foreground">
                     Plank {plank.number}
                   </p>
-                  <p className="mt-0.5 font-serif text-xl font-semibold text-foreground">{plank.name}</p>
+                  <Link
+                    href={href}
+                    className="mt-0.5 block font-serif text-xl font-semibold text-foreground hover:text-accent">
+                    {plank.name}
+                  </Link>
                   <p className="mt-1 text-sm text-muted-foreground">{plank.shortDescription}</p>
                 </div>
                 {articleCount > 0 && (
@@ -52,6 +59,22 @@ export default async function IssuesIndexPage() {
                     {articleCount} article{articleCount === 1 ? '' : 's'}
                   </span>
                 )}
+              </div>
+
+              {markers.length > 0 && (
+                <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-muted-foreground marker:text-subtle-foreground">
+                  {markers.map((marker) => (
+                    // Option-C alternates need no extra tag: every marker with
+                    // isRepublicanAlternative already opens with "Republican-led".
+                    <li key={marker.id}>{marker.name}</li>
+                  ))}
+                </ol>
+              )}
+
+              <Link
+                href={href}
+                className="mt-3 inline-block text-sm font-semibold text-accent underline-offset-2 hover:underline">
+                See how every legislator scores &rarr;
               </Link>
             </li>
           );
