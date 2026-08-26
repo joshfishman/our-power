@@ -119,7 +119,12 @@ export default async function IssueScorecardPage(props: Props) {
         </p>
         <h1 className="mt-1 font-serif text-4xl font-bold text-foreground">{plank.name}</h1>
         <p className="mt-2 max-w-2xl italic text-muted-foreground">{plank.tagline}</p>
-        <p className="mt-3 max-w-2xl text-base text-muted-foreground">{plank.shortDescription}</p>
+        {/* The full plank text from the brief. Previously this rendered
+            shortDescription, which is byte-identical to the tagline on planks 1
+            and 5 and near-identical on the rest — the same line twice. `body`
+            is the long-form statement and had no surface anywhere until now;
+            the index shows the same content as a scannable commitments list. */}
+        <p className="mt-3 max-w-2xl text-base text-muted-foreground">{plank.body}</p>
       </header>
 
       <nav className="mt-6 flex flex-wrap items-center gap-2 text-sm">

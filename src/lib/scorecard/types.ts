@@ -74,6 +74,8 @@ export interface SeedPlank {
   shortDescription: string;
   tagline: string;
   body: string;
+  /** The plank's promises to the public, in display order. Seeded to Plank.commitments. */
+  commitments: string[];
   color: string;
   markers: SeedMarker[];
 }

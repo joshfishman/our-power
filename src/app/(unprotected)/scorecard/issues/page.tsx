@@ -3,7 +3,6 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getPublicPlanks } from '@/lib/scorecard/queries';
 import { getArticlesForPlank } from '@/lib/scorecard/articles';
-import { getPlankValues } from '@/lib/scorecard/plank-values';
 import { METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
 
 export const metadata: Metadata = {
@@ -37,10 +36,10 @@ export default async function IssuesIndexPage() {
         {federalPlanks.map((plank) => {
           const articleCount = getArticlesForPlank(plank.slug).length;
           const href = `/scorecard/issues/${encodeURIComponent(plank.slug)}`;
-          // The VALUES a plank commits to — not its markers. A marker is the
-          // measurable act used to score a legislator; a value is what that act
-          // is for. Readers need the second before the first makes sense.
-          const values = getPlankValues(plank.slug);
+          // The plank's own commitments — not its markers. A marker is the
+          // measurable act used to score a legislator; a commitment is what that
+          // act is for. Readers need the second before the first makes sense.
+          const { commitments } = plank;
           return (
             <li key={plank.id} className="px-4 py-4 transition-colors hover:bg-surface-elevated">
               <div className="flex items-start justify-between gap-4">
@@ -62,10 +61,10 @@ export default async function IssuesIndexPage() {
                 )}
               </div>
 
-              {values.length > 0 && (
+              {commitments.length > 0 && (
                 <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-muted-foreground marker:text-subtle-foreground">
-                  {values.map((value) => (
-                    <li key={value}>{value}</li>
+                  {commitments.map((commitment) => (
+                    <li key={commitment}>{commitment}</li>
                   ))}
                 </ol>
               )}

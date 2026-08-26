@@ -18,6 +18,14 @@ export const CA_PLANKS: SeedPlank[] = [
     shortDescription: 'End legalized bribery in Sacramento.',
     tagline: 'End legalized bribery. Public servants, not private clients.',
     body: `Members of the California Legislature work for Californians. Stop pay-to-play. Strengthen the Levine Act. Limit lobbyist gifts. Disclose dark money in state campaigns. Real cooling-off periods between Sacramento and the lobby corps next door.`,
+    commitments: [
+      'Public servants work for the public, not for private clients.',
+      'No trading stocks on inside information.',
+      'No corporate PAC money.',
+      'No walking into a lobbying job the day you leave office — real cooling-off periods.',
+      'Public financing of elections, so candidates answer to voters, not donors.',
+      'Full disclosure of dark money.',
+    ],
     color: '#8B3A3A',
     markers: [
       {
@@ -112,6 +120,15 @@ export const CA_PLANKS: SeedPlank[] = [
     shortDescription: 'Strong public schools, real climate action, infrastructure that lasts.',
     tagline: 'What we build and hand down to the next generation.',
     body: `Strong public schools — California's LCFF and TK rollouts mean every child has the chance to learn close to home. Real funding for UC, CSU, and community colleges. Climate action that meets SB 100 targets and the moment we are in. Wildfire prevention. Water infrastructure that holds for the next century. Broadband for every child.`,
+    commitments: [
+      'Strong public schools — every child deserves a good one in their neighborhood.',
+      'Parental transparency and voice within public schools, without draining public dollars to vouchers or charters.',
+      'Early childhood education.',
+      'Federal science and technology research.',
+      'Clean energy independence — solar, wind, nuclear, geothermal, batteries, the grid.',
+      'Roads, bridges, broadband, water.',
+      'Environmental stewardship.',
+    ],
     color: '#2C4A5E',
     markers: [
       {
@@ -218,6 +235,14 @@ export const CA_PLANKS: SeedPlank[] = [
     shortDescription: 'A full-time job in California should support a life.',
     tagline: 'Wages, housing, no predatory lending.',
     body: `California has the highest housing costs in the country. The state minimum wage is meaningful but rent eats it. Build housing — SB 9, SB 10, ADU pathways, by-right zoning where it works. Stop wage theft. Cap predatory loan rates. Protect tenants from no-cause eviction. Keep workers' protections strong.`,
+    commitments: [
+      'A federal minimum wage that means something.',
+      'Stop wage theft and retaliation against workers who organize.',
+      'End non-competes that trap workers in low-wage jobs.',
+      'Cap predatory loan rates.',
+      'Build housing.',
+      'Paid family leave for working families.',
+    ],
     color: '#8B3A3A',
     markers: [
       {
@@ -333,6 +358,14 @@ export const CA_PLANKS: SeedPlank[] = [
     shortDescription: 'Honor the promises this state has made.',
     tagline: 'Healthcare access, veterans, and care for working families.',
     body: `Medi-Cal expansion has covered millions more Californians. Keep building that. CalRx for affordable medication. Real funding for state veterans homes and benefits. Mental health access that actually exists in your county. Childcare that working parents can afford.`,
+    commitments: [
+      'Honor the promises this country made — to veterans, to elders, to working families who paid in.',
+      'Veterans get the care they earned.',
+      'Drug prices come down.',
+      'Medicare and Medicaid stay strong.',
+      'Social Security stays solvent and pays what people earned.',
+      'Childcare and paid leave, so families can work and raise children at the same time.',
+    ],
     color: '#2C4A5E',
     markers: [
       {
