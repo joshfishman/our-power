@@ -35,6 +35,7 @@
     "scorecard:ingest-pac": "npx tsx ./scripts/ingest-pac-data.ts",
     "scorecard:backfill-people": "npx tsx ./scripts/backfill-legiscan-people.ts",
     "scorecard:ingest-fec": "npx tsx ./scripts/ingest-fec.ts",
+    "scorecard:ingest-usaspending": "npx tsx ./scripts/ingest-usaspending-revenue.ts",
     "scorecard:ingest-fec-receipts-multicycle": "npx tsx ./scripts/ingest-fec-receipts-multicycle.ts",
     "scorecard:map-leadership-pacs": "npx tsx ./scripts/map-leadership-pacs.ts",
     "scorecard:classify-unknown-stubs": "npx tsx ./scripts/classify-unknown-stubs.ts",

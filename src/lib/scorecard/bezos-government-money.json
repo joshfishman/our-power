@@ -36,7 +36,8 @@
       "corroborating_url": "https://www.executivebiz.com/articles/top-government-contracts-won-by-amazon-web-services",
       "value_basis": "reported ceiling value of the C2S contract; IBM protested and lost the re-bid",
       "confidence": "high",
-      "notes": "A federal CONTRACT (government buying cloud services), not a subsidy. Landmark deal: established AWS as the IC's cloud provider and anchored the later C2E multi-cloud procurement."
+      "notes": "A federal CONTRACT (government buying cloud services), not a subsidy. Landmark deal: established AWS as the IC's cloud provider and anchored the later C2E multi-cloud procurement.",
+      "exclude_from_total": true
     },
     {
       "id": "aws-nsa-wildandstormy",
@@ -53,7 +54,8 @@
       "value_basis": "MAXIMUM POTENTIAL ceiling ('up to $10B'), not obligated dollars; classified scope",
       "confidence": "medium",
       "is_estimate": true,
-      "notes": "Ceiling, not obligated. The exact value and task-order draws are classified; $10B is the widely reported ceiling. A federal CONTRACT, not a subsidy."
+      "notes": "Ceiling, not obligated. The exact value and task-order draws are classified; $10B is the widely reported ceiling. A federal CONTRACT, not a subsidy.",
+      "exclude_from_total": true
     },
     {
       "id": "aws-jwcc",
@@ -70,7 +72,8 @@
       "value_basis": "$9B is the COMBINED ceiling for all four vendors, NOT AWS alone; AWS's realized share is whatever task orders it wins",
       "confidence": "medium",
       "is_estimate": true,
-      "notes": "Do NOT attribute the full $9B to AWS — it is a shared ceiling across four companies. A federal CONTRACT, not a subsidy. Successor to the cancelled $10B JEDI award."
+      "notes": "Do NOT attribute the full $9B to AWS — it is a shared ceiling across four companies. A federal CONTRACT, not a subsidy. Successor to the cancelled $10B JEDI award.",
+      "exclude_from_total": true
     },
     {
       "id": "blueorigin-nasa-hls-artemisv",
@@ -103,7 +106,8 @@
       "value_basis": "MAXIMUM POTENTIAL ceiling ('up to'), not obligated; individual mission orders follow as New Glenn certifies",
       "confidence": "medium",
       "is_estimate": true,
-      "notes": "Ceiling value, contingent on New Glenn certification and task orders. A federal CONTRACT, not a subsidy."
+      "notes": "Ceiling value, contingent on New Glenn certification and task orders. A federal CONTRACT, not a subsidy.",
+      "exclude_from_total": true
     },
     {
       "id": "amazon-hq2-virginia",
@@ -136,7 +140,8 @@
       "value_basis": "ANNOUNCED package value — NEVER REALIZED; the project was cancelled, so $0 was actually paid",
       "confidence": "high",
       "is_estimate": false,
-      "notes": "CRITICAL: this $3B was CANCELLED and NEVER PAID. Listed for completeness (announced != realized). Must NOT be counted as government money Bezos/Amazon actually received. amount field is the announced package; realized value is $0."
+      "notes": "CRITICAL: this $3B was CANCELLED and NEVER PAID. Listed for completeness (announced != realized). Must NOT be counted as government money Bezos/Amazon actually received. amount field is the announced package; realized value is $0.",
+      "exclude_from_total": true
     },
     {
       "id": "amazon-gjf-datacenters-component",
@@ -152,7 +157,8 @@
       "corroborating_url": "https://goodjobsfirst.org/amazon-tracker/",
       "value_basis": "component of the ~$11.6B headline; GJF tracks individual deals but the data-center subtotal is not published as one clean number",
       "confidence": "medium",
-      "notes": "SUBSET of the headline aggregate — do NOT add to the $11.6B (it is contained in it). amount=null because no single published data-center subtotal exists; the individual deals are in the Subsidy Tracker. Notable: a 16-building Indiana (St. Joseph County) data-center complex tied to >$11B private investment over ~30 years."
+      "notes": "SUBSET of the headline aggregate — do NOT add to the $11.6B (it is contained in it). amount=null because no single published data-center subtotal exists; the individual deals are in the Subsidy Tracker. Notable: a 16-building Indiana (St. Joseph County) data-center complex tied to >$11B private investment over ~30 years.",
+      "exclude_from_total": true
     },
     {
       "id": "bezos-political-with-honor-2018",
