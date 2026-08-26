@@ -75,7 +75,7 @@ export default async function BillionaireProfilePage(props: Props) {
     moneyOut.slice().sort((a, b) => (b.amount ?? 0) - (a.amount ?? 0))[0];
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8">
+    <div className="mx-auto max-w-site-prose px-4 py-8">
       <Link href="/scorecard/power" className="text-sm text-muted-foreground hover:text-foreground">
         ← Public money &amp; private fortunes
       </Link>

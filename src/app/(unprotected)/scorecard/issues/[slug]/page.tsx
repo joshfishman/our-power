@@ -108,7 +108,7 @@ export default async function IssueScorecardPage(props: Props) {
   };
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
+    <div className="mx-auto max-w-site px-4 py-8">
       <Link href="/scorecard/issues" className="text-sm text-muted-foreground hover:text-foreground">
         ← All issues
       </Link>

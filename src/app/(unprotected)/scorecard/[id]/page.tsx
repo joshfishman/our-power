@@ -183,7 +183,7 @@ export default async function LegislatorScorecardPage(props: Props) {
   );
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8">
+    <div className="mx-auto max-w-site-prose px-4 py-8">
       <div className="flex items-baseline justify-between gap-3">
         <Link href="/scorecard" className="text-sm text-muted-foreground hover:text-foreground">
           ← Back to scorecard

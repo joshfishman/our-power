@@ -85,7 +85,7 @@ export default async function ScorecardIndexPage(props: { searchParams: Promise<
   };
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
+    <div className="mx-auto max-w-site px-4 py-8">
       <header className="border-b-2 border-border pb-4">
         <p className="font-mono text-xs uppercase tracking-widest text-subtle-foreground">The Scorecard</p>
         <h1 className="mt-1 font-serif text-4xl font-bold text-foreground">We the People</h1>

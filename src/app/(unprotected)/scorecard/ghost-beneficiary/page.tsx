@@ -56,7 +56,7 @@ export default async function GhostBeneficiaryIndexPage() {
   const senateRows = rows.filter((r) => r.chamber === 'SENATE');
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
+    <div className="mx-auto max-w-site px-4 py-8">
       <Link href="/scorecard" className="text-sm text-muted-foreground hover:text-foreground">
         ← Back to scorecard
       </Link>

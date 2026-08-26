@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { CreatePostModalLauncher } from '@/components/CreatePostModalLauncher';
 import { Posts } from '@/components/Posts';
 import { ThemeSwitch } from '@/components/ui/ThemeSwitch';
@@ -37,7 +38,22 @@ export default async function Page() {
           <ThemeSwitch />
         </div>
       </div>
-      <CreatePostModalLauncher />
+      {user ? (
+        <CreatePostModalLauncher />
+      ) : (
+        <div className="mb-4 rounded border border-border bg-surface-elevated p-4">
+          <p className="text-sm text-foreground">
+            You&rsquo;re reading the public feed.{' '}
+            <Link href="/login" className="font-semibold text-accent underline">
+              Sign in
+            </Link>{' '}
+            to post, follow people, and get a feed of your own.
+          </p>
+        </div>
+      )}
+      {/* Signed out: the global feed, newest first, so a visitor can look
+          around before deciding to join. Signed in: their follow graph. */}
+      {!user && <Posts type="public" />}
       {user && !isEmpty && <Posts type="feed" userId={user.id} />}
       {user && isEmpty && (
         <div className="mt-8 rounded border border-muted p-8 text-center">

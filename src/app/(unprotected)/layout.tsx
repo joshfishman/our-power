@@ -1,43 +1,24 @@
-import { AppLogo } from '@/components/AppLogo';
-import Link from 'next/link';
 import React from 'react';
 import { getServerUser } from '@/lib/getServerUser';
-import { HomeMobileDropdownMenu } from './HomeMobileDropdownMenu';
+import { SiteNav } from '@/components/SiteNav';
 
-function HomeNavLink({ children, href }: { children: React.ReactNode; href: string }) {
-  return (
-    <h3 className="cursor-pointer px-4 py-3 text-lg font-semibold text-muted-foreground hover:text-primary">
-      <Link href={href}>{children}</Link>
-    </h3>
-  );
-}
-
+/**
+ * Public shell. The nav is the SAME component the signed-in side uses, so a
+ * visitor moving between the scorecard, the articles and the action hub never
+ * changes navigation.
+ *
+ * This wrapper deliberately does NOT constrain width. It used to clamp every
+ * child to max-w-3xl, which silently overrode the wider containers the
+ * scorecard pages set for themselves; each page now owns its own measure
+ * (max-w-site for data-dense pages, max-w-site-prose for reading).
+ */
 export default async function Layout({ children }: { children: React.ReactNode }) {
   const [user] = await getServerUser();
-  const isLoggedIn = !!user;
 
   return (
-    <div className="flex min-h-screen w-full justify-center">
-      <div className="w-full max-w-3xl gap-3 py-4 sm:py-8">
-        <nav className="flex items-center justify-between px-4 sm:px-0">
-          <Link href="/" title="Home page">
-            <AppLogo size={36} textClass="text-2xl" />
-          </Link>
-          <div className="hidden gap-3 sm:flex">
-            {!isLoggedIn && (
-              <>
-                <HomeNavLink href="/login">Login</HomeNavLink>
-                <HomeNavLink href="/register">Sign Up</HomeNavLink>
-              </>
-            )}
-          </div>
-          <div className="sm:hidden">
-            <HomeMobileDropdownMenu />
-          </div>
-        </nav>
-
-        {children}
-      </div>
+    <div className="flex min-h-screen w-full flex-col">
+      <SiteNav isLoggedIn={!!user} />
+      <div className="w-full flex-1 py-4 sm:py-8">{children}</div>
     </div>
   );
 }

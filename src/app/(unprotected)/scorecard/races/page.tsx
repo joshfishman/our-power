@@ -111,7 +111,7 @@ export default async function RacesIndexPage() {
   const seatsWithIncumbent = [...seats.values()].filter((s) => s.incumbent).length;
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
+    <div className="mx-auto max-w-site px-4 py-8">
       <Link href="/scorecard" className="text-sm text-muted-foreground hover:text-foreground">
         ← Back to scorecard
       </Link>

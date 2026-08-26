@@ -85,7 +85,7 @@ export default async function PacScorecardPage(props: { searchParams: Promise<Se
   const articles = getArticlesForSection('pac');
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
+    <div className="mx-auto max-w-site px-4 py-8">
       <Link href="/scorecard" className="text-sm text-muted-foreground hover:text-foreground">
         ← Back to scorecard
       </Link>

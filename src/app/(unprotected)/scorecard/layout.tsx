@@ -1,14 +1,8 @@
 import type { ReactNode } from 'react';
-import { ScorecardNav } from '@/components/scorecard/ScorecardNav';
 
-// Wraps every /scorecard* page with the persistent top nav. Each page keeps
-// its own max-width container and content, so the layout only prepends the nav
-// and does not otherwise constrain or restyle the page body.
+// The top nav now lives in the (unprotected) shell, shared with every other
+// surface, so this layout only passes its children through. Each scorecard
+// page keeps its own max-width container.
 export default function ScorecardLayout({ children }: { children: ReactNode }) {
-  return (
-    <>
-      <ScorecardNav />
-      {children}
-    </>
-  );
+  return <>{children}</>;
 }

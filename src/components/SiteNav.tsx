@@ -5,7 +5,8 @@ import { AppLogo } from '@/components/AppLogo';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 
-// Persistent top nav for the /scorecard surface. Active-link styling mirrors
+// The site's single top nav — scorecard, articles and the action hub all use
+// it, so navigation is the same wherever a visitor lands. Active-link styling mirrors
 // the active filter-chip styling used across the scorecard pages
 // (accent/brick border + secondary bg + bold). Items with `children` render a
 // click-toggle dropdown.
@@ -52,6 +53,8 @@ const PLANK_LINKS: NavGrandchild[] = [
 // is not settled enough to headline the nav.
 // Races is deliberately absent — the page is broken and its data does not hold.
 const NAV_ITEMS: NavItem[] = [
+  // The Action Hub leads: a visitor can read it and look around without signing in.
+  { href: '/feed', label: 'Action Hub' },
   {
     href: '/scorecard',
     label: 'Scorecard',
@@ -85,16 +88,16 @@ const ITEM_BASE = 'rounded border px-3 py-1 text-foreground transition-colors';
 const activeCls = (active: boolean) =>
   active ? 'border-accent bg-secondary font-semibold' : 'border-border bg-surface shadow-sm hover:bg-secondary-accent';
 
-export function ScorecardNav() {
+export function SiteNav({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
   const pathname = usePathname() ?? '/scorecard';
   const [openMenu, setOpenMenu] = useState<string | null>(null);
 
   return (
     <nav
-      aria-label="Scorecard sections"
+      aria-label="Site sections"
       className="sticky top-0 z-30 border-b border-border bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
-      <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
-        <Link href="/scorecard" className="mr-2 shrink-0" aria-label="Our Power — scorecard home">
+      <div className="mx-auto flex max-w-site items-center gap-3 px-4 py-3">
+        <Link href="/" className="mr-1 shrink-0" title="Home page">
           <AppLogo size={32} textClass="text-lg" />
         </Link>
         <ul className="flex flex-wrap items-center gap-2 text-sm">
@@ -177,6 +180,18 @@ export function ScorecardNav() {
             );
           })}
         </ul>
+        {!isLoggedIn && (
+          <div className="ml-auto flex shrink-0 items-center gap-2 text-sm">
+            <Link href="/login" className={`${ITEM_BASE} ${activeCls(false)}`}>
+              Login
+            </Link>
+            <Link
+              href="/register"
+              className="rounded border border-accent bg-accent px-3 py-1 font-semibold text-accent-foreground transition-colors hover:bg-primary">
+              Sign Up
+            </Link>
+          </div>
+        )}
       </div>
     </nav>
   );

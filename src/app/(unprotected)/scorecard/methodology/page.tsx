@@ -27,7 +27,7 @@ async function readMethodologyDoc(): Promise<string> {
 export default async function MethodologyPage() {
   const markdown = await readMethodologyDoc();
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className="mx-auto max-w-site-prose px-4 py-8">
       <Link href="/scorecard" className="text-sm text-muted-foreground hover:text-foreground">
         ← Back to scorecard
       </Link>
