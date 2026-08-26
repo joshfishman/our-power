@@ -141,7 +141,7 @@ A general election in a safe district is rarely in doubt. The **primary** is whe
 
 ## What the money actually buys
 
-Here is the part our scorecard is built to show. Look at the two races below. In each, a single network spent millions to replace one Democrat with another — and on the **domestic** bills this scorecard tracks (Medicaid, wages, housing), the winner votes much like the member they replaced. **The money did not flip a seat between parties or change how the district votes on bread-and-butter issues. It swapped one Democrat for another over a single issue.** That is precisely why a single-issue network finds primaries worth the spend — and precisely the kind of concentrated, pre-vote pressure that Plank 1 (Honest Government) exists to make visible.
+Here is the part our scorecard is built to show. Look at the two races below. In each, a single network spent millions to replace one Democrat with another — and on the **domestic** bills this scorecard tracks (Medicaid, wages, housing), the winner votes much like the member they replaced. **The money did not flip a seat between parties or change how the district votes on bread-and-butter issues. It swapped one Democrat for another over a single issue.** That is precisely why a single-issue network finds primaries worth the spend — and precisely the kind of concentrated, pre-vote pressure that Our Power exists to make visible.
 
 ## The counterpoint
 
