@@ -143,9 +143,9 @@ A general election in a safe district is rarely in doubt. The **primary** is whe
 
 Here is the part our scorecard is built to show. Look at the two races below. In each, a single network spent millions to replace one Democrat with another — and on the **domestic** bills this scorecard tracks (Medicaid, wages, housing), the winner votes much like the member they replaced. **The money did not flip a seat between parties or change how the district votes on bread-and-butter issues. It swapped one Democrat for another over a single issue.** That is precisely why a single-issue network finds primaries worth the spend — and precisely the kind of concentrated, pre-vote pressure that Our Power exists to make visible.
 
-## The counterpoint
+## Is there a legitimate reason for AIPAC Spending?
 
-AIPAC and its supporters say independent expenditures are lawful, fully disclosed, and no different in kind from any other advocacy group exercising its First Amendment rights; that it backs candidates of both parties; and that its primary spending reflects genuine grassroots support for the U.S.–Israel relationship, not a hostile takeover. All true as far as it goes. The civic question this scorecard asks is narrower and applies to **every** network on **every** issue: when uncapped money from one national source can decide a low-turnout primary, can the voters in that district even see who is choosing their representative?`,
+AIPAC and its supporters say independent expenditures are lawful, fully disclosed, and no different in kind from any other advocacy group exercising its First Amendment rights; that it backs candidates of both parties; and that its primary spending reflects genuine grassroots support for the U.S.–Israel relationship, not a hostile takeover. All true as far as it goes. The civic question this scorecard asks is narrower and applies to every network on every issue: **when uncapped money from one source can decide a low-turnout primary, can the voters in that district even see who is choosing their representative?**`,
   cases: [
     {
       race: 'NY-16 · 2024 Democratic primary',
