@@ -53,8 +53,10 @@ const PLANK_LINKS: NavGrandchild[] = [
 // is not settled enough to headline the nav.
 // Races is deliberately absent — the page is broken and its data does not hold.
 const NAV_ITEMS: NavItem[] = [
-  // The Action Hub leads: a visitor can read it and look around without signing in.
-  { href: '/feed', label: 'Action Hub' },
+  // Order is the argument: the platform is what we ask for, the scorecard is
+  // who honours it, the articles are the evidence, the action network is what
+  // you do about it.
+  { href: '/scorecard/issues', label: "People's Platform", exact: true },
   {
     href: '/scorecard',
     label: 'Scorecard',
@@ -66,7 +68,6 @@ const NAV_ITEMS: NavItem[] = [
       { href: '/scorecard/issues/honest-government', label: 'Issues', children: PLANK_LINKS },
     ],
   },
-  { href: '/scorecard/issues', label: "People's Platform", exact: true },
   {
     href: '/scorecard/power',
     label: 'Articles',
@@ -76,6 +77,8 @@ const NAV_ITEMS: NavItem[] = [
       { href: '/scorecard/articles/aipac-spending-in-primaries', label: 'Who Does AIPAC Support?' },
     ],
   },
+  // Readable without an account, so a visitor can look around before joining.
+  { href: '/feed', label: 'Action Network' },
 ];
 
 function isActive(pathname: string, item: NavItem): boolean {
@@ -100,7 +103,7 @@ export function SiteNav({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
         <Link href="/" className="mr-1 shrink-0" title="Home page">
           <AppLogo size={32} textClass="text-lg" />
         </Link>
-        <ul className="flex flex-wrap items-center gap-2 text-sm">
+        <ul className="ml-auto flex flex-wrap items-center justify-end gap-2 text-sm">
           {NAV_ITEMS.map((item) => {
             const active = isActive(pathname, item);
             if (!item.children) {
@@ -181,7 +184,7 @@ export function SiteNav({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
           })}
         </ul>
         {!isLoggedIn && (
-          <div className="ml-auto flex shrink-0 items-center gap-2 text-sm">
+          <div className="flex shrink-0 items-center gap-2 text-sm">
             <Link href="/login" className={`${ITEM_BASE} ${activeCls(false)}`}>
               Login
             </Link>

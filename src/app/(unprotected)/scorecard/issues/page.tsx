@@ -6,9 +6,9 @@ import { getArticlesForPlank } from '@/lib/scorecard/articles';
 import { METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
 
 export const metadata: Metadata = {
-  title: 'Issue Scorecards | We the People Scorecard',
+  title: "The People's Platform | We the People Scorecard",
   description:
-    'How every member of Congress and the California State Legislature scores on each of the five common-ground commitments — one issue at a time.',
+    'Five commitments built from what the public actually wants — every idea carrying at least 55% support — and how every member of Congress and the California State Legislature scores against them.',
 };
 
 export const dynamic = 'force-dynamic';
@@ -23,10 +23,18 @@ export default async function IssuesIndexPage() {
   return (
     <div className="mx-auto max-w-site px-4 py-8">
       <header className="border-b-2 border-border pb-4">
-        <p className="font-mono text-xs uppercase tracking-widest text-subtle-foreground">Issue Scorecards</p>
-        <h1 className="mt-1 font-serif text-4xl font-bold text-foreground">The Five Commitments</h1>
+        <p className="font-mono text-xs uppercase tracking-widest text-subtle-foreground">The Platform</p>
+        <h1 className="mt-1 font-serif text-4xl font-bold text-foreground">The People&rsquo;s Platform</h1>
+        {/* How the planks were arrived at. The 55% figure is POPULAR_SUPPORT_FLOOR
+            in scoring.ts, applied in both compute paths — not a claim invented
+            for this page. */}
+        <p className="mt-3 max-w-2xl text-base text-muted-foreground">
+          The planks of the People&rsquo;s Platform were built by analyzing what the people actually want. We kept only
+          ideas carrying at least <strong className="font-semibold text-foreground">55% public support</strong>, then
+          organized them into a platform we can all stand behind.
+        </p>
         <p className="mt-2 max-w-2xl text-base text-muted-foreground">
-          One scorecard per issue. Each page shows how every legislator scores on that single plank — the same rubric
+          One scorecard per plank. Each shows how every legislator scores on that single commitment — the same rubric
           applied to everyone, every score backed by a public source. California is rated on planks 1&ndash;4; plank 5
           applies to Congress only.
         </p>
