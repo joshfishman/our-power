@@ -48,12 +48,20 @@ async function main(): Promise<void> {
   const dryRun = process.argv.includes('--dry-run');
   const verify = process.argv.includes('--verify');
 
+  // Sitting members only. The table also holds 3,772 candidates and defeated
+  // challengers, none of which carry a published score or appear on a reachable
+  // page now that Races is retired — freezing them was ~85% of the work for
+  // nothing. `--all` restores the old behaviour if Races ever comes back.
+  const includeInactive = process.argv.includes('--all');
   const legislators = await prisma.legislator.findMany({
+    where: includeInactive ? undefined : { isActive: true },
     select: { id: true, fullName: true, jurisdiction: true, moneyCache: true },
     orderBy: { fullName: 'asc' },
   });
   console.log(
-    `[freeze] ${legislators.length} legislators — mode: ${verify ? 'VERIFY' : dryRun ? 'DRY RUN' : 'WRITE'}\n`,
+    `[freeze] ${legislators.length} legislators (${includeInactive ? 'all' : 'sitting only'}) — mode: ${
+      verify ? 'VERIFY' : dryRun ? 'DRY RUN' : 'WRITE'
+    }\n`,
   );
 
   let written = 0;
