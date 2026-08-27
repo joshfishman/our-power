@@ -18,11 +18,9 @@ import { useSessionUserData } from '@/hooks/useSessionUserData';
 import { useNotificationsCountQuery } from '@/hooks/queries/useNotificationsCountQuery';
 import { useDialogs } from '@/hooks/useDialogs';
 import { signOut, useSession } from 'next-auth/react';
-import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/cn';
-import { AppLogo } from './AppLogo';
 import Button from './ui/Button';
 import { Badge } from './ui/Badge';
 
@@ -104,10 +102,6 @@ export function MenuBar() {
     <>
       {/* ── Desktop sidebar — two-column compact grid ── */}
       <div className="hidden md:sticky md:top-0 md:flex md:h-screen md:w-[280px] md:flex-col md:items-start md:p-4">
-        <Link href="/" title="Home" className="mb-4">
-          <AppLogo size={48} textClass="text-3xl" />
-        </Link>
-
         <div className="grid w-full grid-cols-2 gap-1">
           {allItems.map((item) => {
             const isActive =
@@ -167,10 +161,6 @@ export function MenuBar() {
 
       {/* ── Mobile header bar ── */}
       <div className="fixed left-0 right-0 top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-background/90 px-4 backdrop-blur-sm md:hidden">
-        <Link href="/feed">
-          <AppLogo size={32} textClass="text-xl" />
-        </Link>
-
         <div className="flex items-center gap-3">
           {/* Notification badge in header */}
           <button
@@ -212,9 +202,6 @@ export function MenuBar() {
         )}>
         {/* Drawer header */}
         <div className="flex items-center justify-between border-b border-border px-4 py-4">
-          <Link href="/feed" onClick={() => setDrawerOpen(false)}>
-            <AppLogo size={36} textClass="text-2xl" />
-          </Link>
           <button
             type="button"
             aria-label="Close menu"

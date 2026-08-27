@@ -184,16 +184,14 @@ export function SiteNav({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
           })}
         </ul>
         {!isLoggedIn && (
-          <div className="flex shrink-0 items-center gap-2 text-sm">
-            <Link href="/login" className={`${ITEM_BASE} ${activeCls(false)}`}>
-              Login
-            </Link>
-            <Link
-              href="/register"
-              className="rounded border border-accent bg-accent px-3 py-1 font-semibold text-accent-foreground transition-colors hover:bg-primary">
-              Sign Up
-            </Link>
-          </div>
+          // One quiet link, not two competing buttons. Signing up is reachable
+          // from /login, and the nav should not push an account on a visitor
+          // who is here to read.
+          <Link
+            href="/login"
+            className="shrink-0 px-2 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground">
+            Login
+          </Link>
         )}
       </div>
     </nav>

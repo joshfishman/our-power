@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { CreatePostModalLauncher } from '@/components/CreatePostModalLauncher';
 import { Posts } from '@/components/Posts';
+import { FeedDiscoveryCards, getFeedDiscovery } from '@/components/FeedDiscoveryCards';
 import { ThemeSwitch } from '@/components/ui/ThemeSwitch';
 import { getServerUser } from '@/lib/getServerUser';
 import prisma from '@/lib/prisma/prisma';
@@ -11,6 +12,7 @@ export const metadata = {
 
 export default async function Page() {
   const [user] = await getServerUser();
+  const discovery = await getFeedDiscovery();
 
   // Server-side empty-feed detection. If the user follows nobody who has
   // posted AND has no posts of their own, render the empty state directly
@@ -32,11 +34,10 @@ export default async function Page() {
 
   return (
     <div className="px-4 pt-4">
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-4xl font-bold">Feed</h1>
-        <div>
-          <ThemeSwitch />
-        </div>
+      {/* No page title: the nav already says where you are, and the heading
+          was pushing the actual content below the fold. */}
+      <div className="mb-4 flex items-center justify-end">
+        <ThemeSwitch />
       </div>
       {user ? (
         <CreatePostModalLauncher />
@@ -51,6 +52,10 @@ export default async function Page() {
           </p>
         </div>
       )}
+      {/* Ways in — real campaigns and causes, so the page offers something to
+          do rather than only something to read. */}
+      <FeedDiscoveryCards campaigns={discovery.campaigns} causes={discovery.causes} />
+
       {/* Signed out: the global feed, newest first, so a visitor can look
           around before deciding to join. Signed in: their follow graph. */}
       {!user && <Posts type="public" />}
