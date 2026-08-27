@@ -65,7 +65,22 @@ stated workflow.
   pages, light **and** dark. A 5,800-LOC visual refactor without snapshots is
   unverifiable — this is the gate for everything below.
 
-### Phase 1 — install stock defaults (1 day)
+### Phase 1 — install stock defaults ✅ SHIPPED
+
+Landed on `refactor/shadcn-default-palette`. `components.json` added (new-york /
+slate / CSS vars, `aliases.utils` → the existing `@/lib/cn`); token values in
+`globals.css` replaced with stock slate in both themes; all 55 arbitrary-hex
+classes removed plus the brand hex that survived in SVG attributes and
+`articles.ts` chart data; three-family typography system defined; ESLint rule added
+banning `/\[#[0-9a-fA-F]{3,8}/` under `src/app/**` and `src/components/**`;
+`npm run design:contrast` added as a numeric AA gate. Full write-up and measured
+ratios in `docs/design/color-scheme.md`.
+
+Deliberately **not** done here (still open): the component floor (Phase 2), the
+16-page migration (Phase 3), and the ~35 files using theme-blind raw palette
+utilities (`bg-slate-800`, `text-gray-500`) — item 5 of the diagnosis above.
+
+Original scope:
 
 - `npx shadcn@latest init` → `new-york`, base color `slate`, CSS variables on.
 - **Overwrite the token values in `globals.css` with shadcn's stock slate

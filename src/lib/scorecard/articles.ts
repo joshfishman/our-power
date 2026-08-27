@@ -109,18 +109,22 @@ const AIPAC_SPENDING: Article = {
     title: 'AIPAC’s super-PAC spending — 2024 primaries, by party',
     highlight: { value: '~91%', label: 'spent inside Democratic primaries' },
     bars: [
-      { label: 'Against Democrats', value: 20.0, valueLabel: '$20.0M', color: '#8B3A3A' },
-      { label: 'Boosting Dem challengers', value: 12.4, valueLabel: '$12.4M', color: '#B5685A' },
-      { label: 'Against Republicans', value: 3.0, valueLabel: '$3.0M', color: '#C8B98A' },
-      { label: 'Boosting Republicans', value: 0, valueLabel: '$0', color: '#6B7C87' },
+      // Series colors reference the semantic token layer so charts follow light/dark.
+      { label: 'Against Democrats', value: 20.0, valueLabel: '$20.0M', color: 'rgb(var(--score-1))' },
+      { label: 'Boosting Dem challengers', value: 12.4, valueLabel: '$12.4M', color: 'rgb(var(--score-2))' },
+      { label: 'Against Republicans', value: 3.0, valueLabel: '$3.0M', color: 'rgb(var(--score-4))' },
+      { label: 'Boosting Republicans', value: 0, valueLabel: '$0', color: 'rgb(var(--subtle-foreground))' },
     ],
-    caption:
-      'The bars are AIPAC’s super PAC, the United Democracy Project — the single largest pro-Israel super-PAC vehicle (FactCheck.org / FEC, Sept. 2024 snapshot of ~$35.6M in itemized independent expenditures; $37.9M final). About $32.4M — roughly 91% — landed inside Democratic primaries; only ~$3M went against Republicans, and nothing supported them. Democratic Majority for Israel and other pro-Israel groups spend the same way on a smaller scale.',
-    note: '“UDP” is the United Democracy Project — AIPAC’s own super PAC, created and funded by AIPAC’s donor network to make the uncapped “independent expenditure” ads a candidate-contribution PAC legally can’t. When you see UDP money, you are seeing AIPAC money. (AIPAC’s separate, capped PAC does give to both parties — but the uncapped attack money shown here is the part aimed at primaries.)',
   },
-  body: `So what is up with that chart?
+  body: `## AIPAC’s super PAC, the United Democracy Project (UDP)
 
-The short answer: **AIPAC and allied pro-Israel groups are among the largest outside spenders in American elections — and they aim that money almost entirely at Democratic *primaries*.** The point is not to beat Republicans. It is to decide which Democrats survive their own party's primary, in the low-turnout contests that usually settle who represents a safe-blue district.
+UDP is the single largest pro-Israel super-PAC vehicle (FactCheck.org / FEC, Sept. 2024 snapshot of ~$35.6M in itemized independent expenditures; $37.9M final). About $32.4M — roughly 91% — landed inside Democratic primaries; only ~$3M went against Republicans, and nothing supported them. Democratic Majority for Israel and other pro-Israel groups spend the same way on a smaller scale.
+
+“UDP” is the United Democracy Project — AIPAC’s own super PAC, created and funded by AIPAC’s donor network to make the uncapped “independent expenditure” ads a candidate-contribution PAC legally can’t. When you see UDP money, you are seeing AIPAC money. (AIPAC’s separate, capped PAC does give to both parties — but the uncapped attack money shown here is the part aimed at primaries.)
+
+## The Wrap on AIPAC in our politics
+
+**AIPAC and allied pro-Israel groups are among the largest outside spenders in American elections — and they aim that money almost entirely at Democratic *primaries*.** The point is not to beat Republicans. It is to decide which Democrats survive their own party's primary, in the low-turnout contests that usually settle who represents a safe-blue district.
 
 ## The money, by the numbers
 
@@ -137,11 +141,11 @@ A general election in a safe district is rarely in doubt. The **primary** is whe
 
 ## What the money actually buys
 
-Here is the part our scorecard is built to show. Look at the two races below. In each, a single network spent millions to replace one Democrat with another — and on the **domestic** bills this scorecard tracks (Medicaid, wages, housing), the winner votes much like the member they replaced. **The money did not flip a seat between parties or change how the district votes on bread-and-butter issues. It swapped one Democrat for another over a single issue.** That is precisely why a single-issue network finds primaries worth the spend — and precisely the kind of concentrated, pre-vote pressure that Plank 1 (Honest Government) exists to make visible.
+Here is the part our scorecard is built to show. Look at the two races below. In each, a single network spent millions to replace one Democrat with another — and on the **domestic** bills this scorecard tracks (Medicaid, wages, housing), the winner votes much like the member they replaced. **The money did not flip a seat between parties or change how the district votes on bread-and-butter issues. It swapped one Democrat for another over a single issue.** That is precisely why a single-issue network finds primaries worth the spend — and precisely the kind of concentrated, pre-vote pressure that Our Power exists to make visible.
 
-## The counterpoint
+## Is there a legitimate reason for AIPAC Spending?
 
-AIPAC and its supporters say independent expenditures are lawful, fully disclosed, and no different in kind from any other advocacy group exercising its First Amendment rights; that it backs candidates of both parties; and that its primary spending reflects genuine grassroots support for the U.S.–Israel relationship, not a hostile takeover. All true as far as it goes. The civic question this scorecard asks is narrower and applies to **every** network on **every** issue: when uncapped money from one national source can decide a low-turnout primary, can the voters in that district even see who is choosing their representative?`,
+AIPAC and its supporters say independent expenditures are lawful, fully disclosed, and no different in kind from any other advocacy group exercising its First Amendment rights; that it backs candidates of both parties; and that its primary spending reflects genuine grassroots support for the U.S.–Israel relationship, not a hostile takeover. All true as far as it goes. The civic question this scorecard asks is narrower and applies to every network on every issue: **when uncapped money from one source can decide a low-turnout primary, can the voters in that district even see who is choosing their representative?**`,
   cases: [
     {
       race: 'NY-16 · 2024 Democratic primary',

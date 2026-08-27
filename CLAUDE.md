@@ -176,16 +176,28 @@ If a future session sees only `LEGISCAN_API_KEY` in `.env.local`, that's intenti
 
 Pre-119th historical bills (CHIPS H.R.4346, IIJA H.R.3684, PACT S.3373) were activated in v1.8.15-v2 with the bioguide-fallback patch (PR #52 + PR #54). The 117th Congress LegiScan bulk dataset lives in `data/US/2021-2022_117th_Congress/` (session_id 1823) and is picked up by the same `LEGISCAN_DATASET_DIR` recursive walker as the 119th dataset. Cross-session `people_id` namespace mismatch is handled by the sync resolver's bioguide-id fallback against the dataset's `people/*.json` snapshot.
 
-### Scorecard visual theme
+### Visual theme — shadcn/ui stock defaults
 
-Brand colors: brick-red `#8B3A3A`, slate-blue navy `#2C4A5E`, parchment beige `#C8B98A`, wheat `#F5DEB3`. Voice register: civic / Lincoln-Eisenhower-MLK, not progressive-advocacy. Avoid "stakeholders / intersectional / equity / progressive / MAGA." Use "we demand" not "we believe."
+**The bespoke brand palette is retired** (as of the Phase 1 redesign). Wheat `#F5DEB3`, parchment `#C8B98A`, navy `#2C4A5E`, and brick-red `#8B3A3A` are gone from the codebase. There is no `text-gray-900 → parchment` override in `globals.css` — that was removed in v1.9 and the palette moved to shadcn defaults in v2.0.
 
-Visual conventions on `/scorecard*` pages:
+Voice register is unchanged and is editorial, not visual: civic / Lincoln-Eisenhower-MLK, not progressive-advocacy. Avoid "stakeholders / intersectional / equity / progressive / MAGA." Use "we demand" not "we believe."
 
-- Body text on white background uses `text-gray-900` which is globally overridden in `src/app/globals.css` to render as parchment beige `#C8B98A`.
-- Accent panels (PAC link, Featured Issues, status notes, empty states) use `bg-[#2C4A5E]/60` with wheat text (`text-[#F5DEB3]`).
-- Filter chips (jurisdiction, chamber, party): all sit on navy/60 with wheat text. Active state = brick-red border + navy/80 bg + bold weight.
-- Vote-position pills keep their semantic colors (green YES / red NO / yellow NV / etc.) but with brighter borders so they read on the navy backdrop.
+**The system:** shadcn/ui stock defaults — `new-york` style, `slate` base color, CSS variables on. `components.json` at the repo root configures the shadcn CLI and points `aliases.utils` at the existing `@/lib/cn` (do NOT let it create a duplicate `lib/utils.ts`).
+
+- Tokens live in `src/app/globals.css` as space-separated RGB triples, consumed via `rgba(var(--token) / <alpha-value>)` in `tailwind.config.js`. This is deliberately NOT shadcn's current OKLCH variable format — converting would touch ~90 components and every `/<alpha>` call site for no visual gain.
+- `darkMode: 'class'`. `:root` and `.light` both define light so a subtree can force light inside a `.dark` ancestor (`/styleguide` renders both themes side by side and depends on it).
+- Token names are shadcn's schema (`background`, `foreground`, `card`, `popover`, `primary`, `secondary`, `muted`, `accent`, `destructive`, `border`, `input`, `ring`) plus app extras: `--surface`, `--surface-elevated`, `--overlay`, `--subtle-foreground`, `--primary-accent`, `--secondary-accent`, `--success`, `--warning`, `--info`, and the 7-step diverging score ramp `--score-1` … `--score-7`.
+- `--accent` is intentionally identical to `--primary` (one interactive ink color under stock slate). `accent` = selected/active/link emphasis; `primary` = buttons.
+- `--warning` is a **surface** token in both themes (amber-100 light / amber-950 dark), not a fill. For a visible amber bar or dot use `bg-score-3`.
+- `--subtle-foreground` is the AA-Large tier (≥3:1) for de-emphasized meta only — never body copy.
+
+**Rules:**
+
+- **Never write arbitrary hex color classes.** `bg-[#8B3A3A]`, `text-[#F5DEB3]/70`, `border-[#C8B98A]/30` are ESLint errors under `src/app/**` and `src/components/**` (`no-restricted-syntax` in `.eslintrc.json`). Use the semantic token utilities.
+- **Every text-on-surface pairing clears WCAG AA 4.5:1 in both themes.** `npm run design:contrast` re-measures all of them straight from `globals.css` and exits non-zero on a regression. Run it after any token change.
+- **Typography — three families, three jobs** (`layout.tsx` + `tailwind.config.js`): `font-sans` (Poppins) for all UI and body copy; `font-serif` (Poppins **Bold** — deliberately not a serif; the same wordmark face as the "Our Power" logo, so headings and masthead are one voice) for editorial headings only; `font-mono` (IBM Plex Mono) for numeric/tabular data only, paired with `tabular-nums`. Never `font-mono` for prose.
+
+Full palette, measured ratios, and the migration map: `docs/design/color-scheme.md`. Remaining phases: `docs/design/redesign-plan.md`.
 
 ### Scorecard — common pitfalls + fixes
 

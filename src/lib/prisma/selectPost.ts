@@ -15,9 +15,11 @@ export const selectPost = (userId: string | undefined) => ({
     select: {
       id: true,
     },
-    where: {
-      userId,
-    },
+    // An anonymous reader has liked nothing. The guard matters: Prisma DROPS
+    // an `undefined` filter value, so `where: { userId: undefined }` would
+    // match every like row and render every post as already-liked. `id: -1`
+    // never matches an autoincrement primary key.
+    where: userId ? { userId } : { id: -1 },
   },
   _count: {
     select: {

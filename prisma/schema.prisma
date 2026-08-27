@@ -568,7 +568,14 @@ model Plank {
   name             String
   shortDescription String       @db.Text
   tagline          String       @db.Text
-  body             String       @db.Text // Full plank text per the brief
+  body             String       @db.Text // Full plank text per the brief — long-form prose, shown on the issue page
+  // The plank's promises to the public, in display order — the plain-language
+  // VALUES behind the rubric, distinct from Marker rows (which are the
+  // measurable acts used to score a legislator). Rendered on /scorecard/issues.
+  // Named `commitments`, not `values`: VALUES is a reserved word in Postgres
+  // and would need quoting in every raw query. The page calls them commitments
+  // too ("The Five Commitments").
+  commitments      String[]
   color            String? // Hex accent color for UI
 
   markers Marker[]
@@ -605,7 +612,7 @@ model Marker {
   // populated and below POPULAR_SUPPORT_FLOOR (55), the marker is excluded
   // from scoring — we only hold legislators accountable to broadly popular
   // commitments. Populated by scripts/seed-marker-support.ts from curated polls.
-  popularSupport     Float?  // National support %, 0–100. Null = unassessed.
+  popularSupport     Float? // National support %, 0–100. Null = unassessed.
   // Citation for the popularSupport figure: pollster, field date, source URL,
   // and the exact question wording. Free text, stored as TEXT.
   popularSupportPoll String? @db.Text
@@ -800,24 +807,24 @@ model BillCosponsor {
 model Legislator {
   // Primary key is bioguideId for federal, openStatesId for CA.
   // We use a generic cuid id to keep the model uniform; bioguideId/openStatesId are unique secondary keys.
-  id               String       @id @default(cuid())
-  jurisdiction     Jurisdiction
-  bioguideId       String?      @unique // Federal members of Congress
-  openStatesId     String?      @unique // CA state legislators (and any other state expansion later)
-  legiscanPeopleId Int?         @unique // LegiScan's people_id (federal + state)
-  firstName        String
-  lastName         String
-  fullName         String
-  chamber          Chamber
-  state            String // 2-letter state abbreviation
-  district         Int? // null for U.S. Senate; required for U.S. House and state legislatures
-  party            Party
+  id                    String       @id @default(cuid())
+  jurisdiction          Jurisdiction
+  bioguideId            String?      @unique // Federal members of Congress
+  openStatesId          String?      @unique // CA state legislators (and any other state expansion later)
+  legiscanPeopleId      Int?         @unique // LegiScan's people_id (federal + state)
+  firstName             String
+  lastName              String
+  fullName              String
+  chamber               Chamber
+  state                 String // 2-letter state abbreviation
+  district              Int? // null for U.S. Senate; required for U.S. House and state legislatures
+  party                 Party
   // Cross-system identifiers (federal)
-  opensecretsId    String? // OpenSecrets CID
-  fecIds           String[] // FEC committee IDs (sometimes multiple)
-  govtrackId       Int?
-  photoUrl         String?
-  isActive         Boolean      @default(true)
+  opensecretsId         String? // OpenSecrets CID
+  fecIds                String[] // FEC committee IDs (sometimes multiple)
+  govtrackId            Int?
+  photoUrl              String?
+  isActive              Boolean      @default(true)
   // v1.8 — Election cycle this legislator is currently CANDIDATE for (e.g.
   // 2026 for someone who's filed for the 2026 ballot). Null = not currently
   // running. Sitting incumbents seeking re-election get this set alongside
@@ -848,7 +855,7 @@ model Legislator {
   individualMoney    LegislatorIndividualMoney[]
   dimeProfiles       LegislatorDimeProfile[]
   // Leadership PACs sponsored by this legislator (set by map-leadership-pacs.ts).
-  leadershipPacs     PacClassification[] @relation("LegislatorLeadershipPacs")
+  leadershipPacs     PacClassification[]         @relation("LegislatorLeadershipPacs")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1006,15 +1013,15 @@ model PacClassification {
 /// but are informational on the detail page: "this leg's leadership PAC
 /// took $X from corp sources" is an influence signal worth surfacing.
 model LeadershipPacInflow {
-  id                String              @id @default(cuid())
+  id               String             @id @default(cuid())
   // The leadership PAC receiving the money. References PacClassification.committeeId.
-  leadershipPacId   String
-  leadershipPac     PacClassification?  @relation("LeadershipPacInflowsReceived", fields: [leadershipPacId], references: [committeeId])
+  leadershipPacId  String
+  leadershipPac    PacClassification? @relation("LeadershipPacInflowsReceived", fields: [leadershipPacId], references: [committeeId])
   // The donor committee sending the money.
-  donorCommitteeId  String
-  donor             PacClassification?  @relation("LeadershipPacInflowsAsDonor", fields: [donorCommitteeId], references: [committeeId])
-  cycleYear         Int
-  amount            Decimal             @db.Decimal(14, 2)
+  donorCommitteeId String
+  donor            PacClassification? @relation("LeadershipPacInflowsAsDonor", fields: [donorCommitteeId], references: [committeeId])
+  cycleYear        Int
+  amount           Decimal            @db.Decimal(14, 2)
 
   createdAt DateTime @default(now())
 
@@ -1091,14 +1098,14 @@ enum ContributionKind {
 }
 
 model PacContribution {
-  id                String             @id @default(cuid())
-  legislator        Legislator         @relation(fields: [legislatorId], references: [id], onDelete: Cascade)
-  legislatorId      String
-  pacClassification PacClassification? @relation(fields: [donorCommitteeId], references: [committeeId])
-  donorCommitteeId  String
-  cycleYear         Int
-  kind              ContributionKind
-  amount            Decimal            @db.Decimal(14, 2)
+  id                 String             @id @default(cuid())
+  legislator         Legislator         @relation(fields: [legislatorId], references: [id], onDelete: Cascade)
+  legislatorId       String
+  pacClassification  PacClassification? @relation(fields: [donorCommitteeId], references: [committeeId])
+  donorCommitteeId   String
+  cycleYear          Int
+  kind               ContributionKind
+  amount             Decimal            @db.Decimal(14, 2)
   // For JFC_PASS_THROUGH rows: list of JFC committee IDs that routed money
   // from this corp PAC to this candidate (a corp PAC may have contributed to
   // multiple JFCs that each apportioned to the candidate).

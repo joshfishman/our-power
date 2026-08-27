@@ -14,40 +14,47 @@ const SURFACES: { name: string; cls: string; note: string }[] = [
   { name: 'background', cls: 'bg-background', note: 'page' },
   { name: 'surface', cls: 'bg-surface', note: 'cards' },
   { name: 'surface-elevated', cls: 'bg-surface-elevated', note: 'raised panels' },
+  { name: 'card', cls: 'bg-card', note: 'card' },
+  { name: 'popover', cls: 'bg-popover', note: 'popover' },
   { name: 'muted', cls: 'bg-muted', note: 'muted fill' },
   { name: 'secondary', cls: 'bg-secondary', note: 'neutral button' },
   { name: 'input', cls: 'bg-input', note: 'field bg' },
   { name: 'border', cls: 'bg-border', note: 'hairlines' },
 ];
 
+/* Ratios below are measured, not estimated — `npm run design:contrast` recomputes
+ * them straight from globals.css. Each note reads "light · dark" because this
+ * showcase renders once per theme. */
+
 /** Text tokens rendered on the page background. */
 const TEXT_TOKENS: { name: string; cls: string; note: string }[] = [
-  { name: 'foreground', cls: 'text-foreground', note: '14.6:1 on bg — AA ✅' },
-  { name: 'muted-foreground', cls: 'text-muted-foreground', note: '7.6:1 on bg — AA ✅' },
-  { name: 'subtle-foreground', cls: 'text-subtle-foreground', note: '4.76:1 — large/UI only ✅' },
+  { name: 'foreground', cls: 'text-foreground', note: '20.01 · 19.12 on bg — AA ✅' },
+  { name: 'muted-foreground', cls: 'text-muted-foreground', note: '7.58 · 7.80 on bg — AA ✅' },
+  { name: 'subtle-foreground', cls: 'text-subtle-foreground', note: '4.76 · 4.20 — large/UI only' },
 ];
 
 /** Solid color tokens paired with their on-color foreground. */
 const PAIRS: { name: string; bg: string; fg: string; note: string }[] = [
-  { name: 'primary', bg: 'bg-primary', fg: 'text-primary-foreground', note: '5.36:1 — AA ✅' },
-  { name: 'secondary', bg: 'bg-secondary', fg: 'text-secondary-foreground', note: '13:1 — AA ✅' },
-  { name: 'accent', bg: 'bg-accent', fg: 'text-accent-foreground', note: '7.06:1 — AA ✅' },
-  { name: 'success', bg: 'bg-success', fg: 'text-success-foreground', note: '5.02:1 — AA ✅' },
-  { name: 'warning', bg: 'bg-warning', fg: 'text-warning-foreground', note: '6.38:1 — AA ✅' },
-  { name: 'destructive', bg: 'bg-destructive', fg: 'text-destructive-foreground', note: '6.47:1 — AA ✅' },
-  { name: 'info', bg: 'bg-info', fg: 'text-info-foreground', note: '= primary' },
+  { name: 'primary', bg: 'bg-primary', fg: 'text-primary-foreground', note: '17.06 · 17.06 — AA ✅' },
+  { name: 'secondary', bg: 'bg-secondary', fg: 'text-secondary-foreground', note: '16.30 · 13.98 — AA ✅' },
+  { name: 'accent', bg: 'bg-accent', fg: 'text-accent-foreground', note: '17.06 · 17.06 — AA ✅' },
+  { name: 'success', bg: 'bg-success', fg: 'text-success-foreground', note: '5.02 · 11.48 — AA ✅' },
+  { name: 'warning', bg: 'bg-warning', fg: 'text-warning-foreground', note: '6.37 · 12.03 — AA ✅' },
+  { name: 'destructive', bg: 'bg-destructive', fg: 'text-destructive-foreground', note: '6.47 · 7.23 — AA ✅' },
+  { name: 'info', bg: 'bg-info', fg: 'text-info-foreground', note: '6.70 · 7.87 — AA ✅' },
 ];
 
-/* Diverging score ramp, worst → best. Ratios are light-theme (text on white).
+/* Diverging score ramp, worst → best. Ratios are "light · dark", as text on the
+ * page background.
  * Full literal class strings (NOT `bg-score-${n}`) so Tailwind's scanner emits them. */
 const SCORES: { label: string; ratio: string; bg: string; text: string }[] = [
-  { label: 'Worst', ratio: '6.47:1', bg: 'bg-score-1', text: 'text-score-1' },
-  { label: 'Bad', ratio: '5.18:1', bg: 'bg-score-2', text: 'text-score-2' },
-  { label: 'Below avg', ratio: '4.92:1', bg: 'bg-score-3', text: 'text-score-3' },
-  { label: 'Neutral', ratio: '7.58:1', bg: 'bg-score-4', text: 'text-score-4' },
-  { label: 'Above avg', ratio: '4.99:1', bg: 'bg-score-5', text: 'text-score-5' },
-  { label: 'Good', ratio: '5.02:1', bg: 'bg-score-6', text: 'text-score-6' },
-  { label: 'Best', ratio: '7.13:1', bg: 'bg-score-7', text: 'text-score-7' },
+  { label: 'Worst', ratio: '6.47 · 7.23', bg: 'bg-score-1', text: 'text-score-1' },
+  { label: 'Bad', ratio: '5.18 · 11.86', bg: 'bg-score-2', text: 'text-score-2' },
+  { label: 'Below avg', ratio: '5.02 · 13.87', bg: 'bg-score-3', text: 'text-score-3' },
+  { label: 'Neutral', ratio: '7.58 · 7.80', bg: 'bg-score-4', text: 'text-score-4' },
+  { label: 'Above avg', ratio: '4.99 · 15.31', bg: 'bg-score-5', text: 'text-score-5' },
+  { label: 'Good', ratio: '5.02 · 14.25', bg: 'bg-score-6', text: 'text-score-6' },
+  { label: 'Best', ratio: '7.13 · 11.48', bg: 'bg-score-7', text: 'text-score-7' },
 ];
 
 const BTN_MODES = ['primary', 'secondary', 'subtle', 'ghost'] as const;
@@ -107,7 +114,9 @@ function Showcase() {
 
       {/* Score ramp */}
       <section>
-        <SectionTitle sub="Diverging red↔green ramp; every step clears AA on white.">Score ramp</SectionTitle>
+        <SectionTitle sub="Diverging red↔green ramp; every step clears AA 4.5:1 in both themes.">
+          Score ramp
+        </SectionTitle>
         <div className="mb-3 flex flex-wrap gap-2">
           {SCORES.map((s) => (
             <span key={s.bg} className={`${s.bg} rounded-full px-3 py-1 text-xs font-semibold text-background`}>
@@ -124,6 +133,36 @@ function Showcase() {
               <span className="font-mono text-[11px] text-muted-foreground">{s.ratio}</span>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Typography */}
+      <section>
+        <SectionTitle sub="Three families, three jobs. Anything outside these rules is a bug.">Typography</SectionTitle>
+        <div className="flex flex-col gap-3">
+          <div>
+            <p className="font-sans text-base text-foreground">font-sans — Poppins</p>
+            <p className="text-[11px] text-muted-foreground">
+              All UI and body copy. The default on &lt;body&gt;; you should rarely need to write it.
+            </p>
+          </div>
+          <div>
+            <p className="font-serif text-xl font-bold text-foreground">font-serif — Poppins Bold</p>
+            <p className="text-[11px] text-muted-foreground">
+              Editorial headings only — article and essay h1–h3. Not a serif: it is the same Poppins Bold as the
+              &ldquo;Our Power&rdquo; logo wordmark, so headings and the masthead read as one voice. Never body copy,
+              never labels.
+            </p>
+          </div>
+          <div>
+            <p className="font-mono text-base tabular-nums text-foreground">
+              font-mono — IBM Plex Mono · $1,284,900 · 72%
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              Numeric and tabular data only: money, scores, percentages, vote counts, IDs. Pair with{' '}
+              <span className="font-mono">tabular-nums</span> so columns align. Never prose.
+            </p>
+          </div>
         </div>
       </section>
 
