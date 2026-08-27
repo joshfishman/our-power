@@ -66,6 +66,15 @@ operator**; the row is displayed but flagged and excluded from totals.
    profile documents.
 3. **Palantir's obligations nearly doubled in FY2025** ($541M → $1.02B).
 
+> **Addendum, FY2026 refresh (2026-08-27).** Re-running the ingest with
+> `--end-fy=2026` extends every series by one year. Palantir continues to climb —
+> $1.58B with five weeks of the fiscal year still to run, roughly triple its
+> FY2024 figure and a cumulative $5.18B. Anduril reaches $893M. SpaceX ($2.19B)
+> and Blue Origin ($538M) show lower FY2026 numbers than FY2025, but FY2026 is an
+> open year and those are part-year totals, not declines; the table marks that
+> column accordingly. The undercounts named below are unchanged — subawards,
+> classified work, and reseller attribution are all still outside this measure.
+
 ### Where this measure undercounts, and by how much I cannot say
 
 - **Classified and intelligence work is largely absent.** This is the biggest
