@@ -35,7 +35,7 @@ export function Footer() {
 
   return (
     <footer className="mt-12 border-t border-border">
-      <div className="mx-auto max-w-site-prose px-4 py-8">
+      <div className="mx-auto max-w-site px-4 py-8">
         {/* Link columns */}
         <div className="grid grid-cols-2 gap-8 sm:grid-cols-3">
           {footerLinks.map((group) => (

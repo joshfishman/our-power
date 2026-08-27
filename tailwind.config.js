@@ -17,12 +17,12 @@ module.exports = {
        *   serif — editorial headings only
        *   mono  — numeric / tabular data only; pair with `tabular-nums` */
       maxWidth: {
-        // The site's content column, 300px wider than the Tailwind steps the
-        // scorecard pages used to sit on (5xl/1024 and 3xl/768). `site` is the
-        // default shell for data-dense pages; `site-prose` is the narrower
-        // measure for long-form reading (methodology, articles, footer).
-        site: '1324px',
-        'site-prose': '1068px',
+        // The site's one content column. Every page shell uses it — scorecard,
+        // platform, articles, methodology, footer — so the measure never
+        // changes as you move around. Previously each page picked its own
+        // Tailwind step (2xl through 6xl), which is why the site read as seven
+        // different layouts.
+        site: '776px',
       },
       fontFamily: {
         sans: ['var(--font-sans)', ...defaultTheme.fontFamily.sans],

@@ -183,7 +183,7 @@ export default async function LegislatorScorecardPage(props: Props) {
   );
 
   return (
-    <div className="mx-auto max-w-site-prose px-4 py-8">
+    <div className="mx-auto max-w-site px-4 py-8">
       <div className="flex items-baseline justify-between gap-3">
         <Link href="/scorecard" className="text-sm text-muted-foreground hover:text-foreground">
           ← Back to scorecard
@@ -1183,40 +1183,42 @@ function OutsideMoneySection({ summary }: { summary: OutsideMoneySummary }) {
       {byClass.length > 0 && (
         <div className="mt-6">
           <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Breakdown by donor class</p>
-          <table className="mt-2 w-full border-separate border-spacing-y-1 text-sm">
-            <thead>
-              <tr className="text-left font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-                <th className="pl-2">Class</th>
-                <th className="text-right">Spent FOR</th>
-                <th className="text-right">Spent vs opponent</th>
-                <th className="pr-2 text-right">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {byClass.map((row) => {
-                const tone = PAC_CLASS_TONE[row.class] ?? PAC_CLASS_TONE.UNKNOWN;
-                return (
-                  <tr key={row.class} className="text-foreground">
-                    <td className="rounded-l bg-surface-elevated pl-2">
-                      <span
-                        className={`inline-flex w-32 justify-center rounded px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide ${tone.bg}`}>
-                        {tone.label}
-                      </span>
-                    </td>
-                    <td className="bg-surface-elevated text-right font-mono tabular-nums">
-                      {row.ieSupport > 0 ? fmtUsd(row.ieSupport) : '—'}
-                    </td>
-                    <td className="bg-surface-elevated text-right font-mono tabular-nums">
-                      {row.ieOpposeBeneficiary > 0 ? fmtUsd(row.ieOpposeBeneficiary) : '—'}
-                    </td>
-                    <td className="rounded-r bg-surface-elevated pr-2 text-right font-mono font-semibold tabular-nums">
-                      {fmtUsd(row.total)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="mt-2 w-full border-separate border-spacing-y-1 text-sm">
+              <thead>
+                <tr className="text-left font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+                  <th className="pl-2">Class</th>
+                  <th className="text-right">Spent FOR</th>
+                  <th className="text-right">Spent vs opponent</th>
+                  <th className="pr-2 text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {byClass.map((row) => {
+                  const tone = PAC_CLASS_TONE[row.class] ?? PAC_CLASS_TONE.UNKNOWN;
+                  return (
+                    <tr key={row.class} className="text-foreground">
+                      <td className="rounded-l bg-surface-elevated pl-2">
+                        <span
+                          className={`inline-flex w-32 justify-center rounded px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide ${tone.bg}`}>
+                          {tone.label}
+                        </span>
+                      </td>
+                      <td className="bg-surface-elevated text-right font-mono tabular-nums">
+                        {row.ieSupport > 0 ? fmtUsd(row.ieSupport) : '—'}
+                      </td>
+                      <td className="bg-surface-elevated text-right font-mono tabular-nums">
+                        {row.ieOpposeBeneficiary > 0 ? fmtUsd(row.ieOpposeBeneficiary) : '—'}
+                      </td>
+                      <td className="rounded-r bg-surface-elevated pr-2 text-right font-mono font-semibold tabular-nums">
+                        {fmtUsd(row.total)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

@@ -248,7 +248,7 @@ export default async function ArticlePage(props: Props) {
   });
 
   return (
-    <div className="mx-auto max-w-site-prose px-4 py-8">
+    <div className="mx-auto max-w-site px-4 py-8">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
         {plank ? (
           <Link

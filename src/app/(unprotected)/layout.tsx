@@ -10,7 +10,7 @@ import { SiteNav } from '@/components/SiteNav';
  * This wrapper deliberately does NOT constrain width. It used to clamp every
  * child to max-w-3xl, which silently overrode the wider containers the
  * scorecard pages set for themselves; each page now owns its own measure
- * (max-w-site for data-dense pages, max-w-site-prose for reading).
+ * (max-w-site for data-dense pages, max-w-site for reading).
  */
 export default async function Layout({ children }: { children: React.ReactNode }) {
   const [user] = await getServerUser();

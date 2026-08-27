@@ -85,7 +85,7 @@ export default async function BillIssuePage(props: Props) {
   const hasPromotedSiblingVotes = noVoteRoll && siblingsWithVotes.length > 0;
 
   return (
-    <div className="mx-auto max-w-site-prose px-4 py-8">
+    <div className="mx-auto max-w-site px-4 py-8">
       <Link href="/scorecard" className="text-sm text-muted-foreground hover:text-foreground">
         ← Back to scorecard
       </Link>
