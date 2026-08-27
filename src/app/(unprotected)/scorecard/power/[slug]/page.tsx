@@ -13,6 +13,7 @@ import {
   federalRevenueTotal,
   revenueFiscalYears,
   USASPENDING_RETRIEVED,
+  USASPENDING_PARTIAL_FY,
   TYPE_LABEL,
   TYPE_NOTE,
   type MoneyLineItem,
@@ -105,6 +106,7 @@ function FederalRevenueTable({ entities }: { entities: FederalRevenueEntity[] })
                 key={y}
                 className="px-3 py-2 text-right font-mono text-[10px] uppercase tracking-wide text-subtle-foreground">
                 {y}
+                {y === USASPENDING_PARTIAL_FY && <span className="ml-1 normal-case text-accent">(part yr)</span>}
               </th>
             ))}
             <th className="px-3 py-2 text-right font-mono text-[10px] uppercase tracking-wide text-subtle-foreground">
@@ -251,6 +253,15 @@ export default async function BillionaireProfilePage(props: Props) {
           <h3 className="font-serif text-lg font-bold text-foreground">Federal prime-contract obligations</h3>
           <p className="mt-1 text-xs text-muted-foreground">
             From the government&apos;s own award database, by federal fiscal year. Retrieved {USASPENDING_RETRIEVED}.
+            {USASPENDING_PARTIAL_FY && (
+              <>
+                {' '}
+                <strong className="text-foreground">
+                  {USASPENDING_PARTIAL_FY} is still open — that column is a part-year total and is not comparable to the
+                  closed years beside it.
+                </strong>
+              </>
+            )}
           </p>
           <div className="mt-3">
             <FederalRevenueTable entities={revenueEntities} />

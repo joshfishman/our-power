@@ -140,6 +140,8 @@ interface UsaspendingFile {
   source: string;
   retrieved: string;
   fiscal_years: { start: number; end: number };
+  /** e.g. "FY2026" when the newest year pulled has not closed; null when all are complete. */
+  partial_fiscal_year: string | null;
   entities: FederalRevenueEntity[];
 }
 
@@ -149,6 +151,12 @@ const USASPENDING = usaspendingData as unknown as UsaspendingFile;
 export const USASPENDING_SOURCE_URL = 'https://www.usaspending.gov/';
 export const USASPENDING_RETRIEVED = USASPENDING.retrieved;
 export const USASPENDING_FY_RANGE = USASPENDING.fiscal_years;
+/**
+ * The fiscal year still in progress, if the newest column is a part-year figure.
+ * The table must mark it: eleven months of FY2026 sitting beside twelve months of
+ * FY2025 otherwise reads as a fall in federal business that has not happened.
+ */
+export const USASPENDING_PARTIAL_FY: string | null = USASPENDING.partial_fiscal_year ?? null;
 
 /**
  * Federal prime-contract obligations for the companies behind one profile.
