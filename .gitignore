@@ -69,3 +69,4 @@ next-env.d.ts
 # Inline classification batches (intermediate; final state is in pac-candidates.csv)
 /data/inline-classifications-batch*.json
 
+.env*

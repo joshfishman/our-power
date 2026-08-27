@@ -78,7 +78,8 @@
     "scorecard:recache-pac": "npx tsx ./scripts/recache-pac-scores.ts",
     "design:contrast": "node ./scripts/check-contrast.mjs",
     "scorecard:backfill-commitments": "npx tsx ./scripts/backfill-plank-commitments.ts",
-    "seed:demo-feed": "npx tsx ./scripts/seed-demo-feed-posts.ts"
+    "seed:demo-feed": "npx tsx ./scripts/seed-demo-feed-posts.ts",
+    "db:prune": "npx tsx ./scripts/prune-database.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
