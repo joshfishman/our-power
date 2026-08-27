@@ -29,18 +29,19 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   };
 }
 
+/** Source-confidence badge. A three-step scale, so it reads on the status tokens. */
 const CONF_TONE: Record<string, string> = {
-  high: 'bg-[#2C4A5E]/80 text-[#F5DEB3]',
-  medium: 'bg-[#8B3A3A]/40 text-[#F5DEB3]',
-  low: 'bg-[#8B3A3A]/70 text-[#F5DEB3]',
+  high: 'bg-success text-success-foreground',
+  medium: 'bg-warning text-warning-foreground',
+  low: 'bg-destructive text-destructive-foreground',
 };
 
 function LineItem({ item }: { item: MoneyLineItem }) {
   return (
-    <li className="border-t border-[#C8B98A]/20 py-3">
+    <li className="border-t border-border py-3">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <span className="font-serif text-lg font-bold text-foreground">{item.amount_label}</span>
-        <span className="font-mono text-[10px] uppercase tracking-wide text-subtle-foreground">
+        <span className="font-serif text-lg font-bold tabular-nums text-foreground">{item.amount_label}</span>
+        <span className="text-[10px] uppercase tracking-wide text-subtle-foreground">
           {item.agency ? `${item.agency} · ` : ''}
           {item.time_period}
           <span className={`ml-2 rounded px-1.5 py-0.5 ${CONF_TONE[item.confidence] ?? ''}`}>{item.confidence}</span>
@@ -52,7 +53,7 @@ function LineItem({ item }: { item: MoneyLineItem }) {
         href={item.source_url}
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-1 inline-block font-mono text-xs text-[#F5DEB3] underline decoration-[#C8B98A]/40 hover:decoration-[#F5DEB3]">
+        className="mt-1 inline-block text-xs text-muted-foreground underline hover:text-foreground">
         source ↗
       </a>
     </li>
@@ -74,7 +75,7 @@ export default async function BillionaireProfilePage(props: Props) {
     moneyOut.slice().sort((a, b) => (b.amount ?? 0) - (a.amount ?? 0))[0];
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8">
+    <div className="mx-auto max-w-site px-4 py-8">
       <Link href="/scorecard/power" className="text-sm text-muted-foreground hover:text-foreground">
         ← Public money &amp; private fortunes
       </Link>
@@ -94,12 +95,14 @@ export default async function BillionaireProfilePage(props: Props) {
       </header>
 
       {/* Headline — the number leads; the explanation follows below. */}
-      <section className="mt-6 rounded-lg border border-[#C8B98A]/30 bg-[#2C4A5E]/60 p-6">
-        <p className="font-mono text-xs uppercase tracking-widest text-[#F5DEB3]/70">
+      <section className="mt-6 rounded-lg border border-border bg-surface-elevated p-6">
+        <p className="text-xs uppercase tracking-widest text-muted-foreground">
           {pluralSubject ? 'Our money to these billionaires' : 'Our money to this billionaire'}
         </p>
-        <div className="mt-1 font-serif text-6xl font-bold leading-none text-[#F5DEB3]">{generous.label}</div>
-        <p className="mt-3 font-mono text-[11px] uppercase tracking-wide text-[#F5DEB3]/50">
+        <div className="mt-1 font-serif text-6xl font-bold tabular-nums leading-none text-foreground">
+          {generous.label}
+        </div>
+        <p className="mt-3 text-[11px] uppercase tracking-wide text-subtle-foreground">
           What that number is &amp; how to read it ↓
         </p>
       </section>
@@ -187,7 +190,7 @@ export default async function BillionaireProfilePage(props: Props) {
             The opposite direction — money <em>given</em> to shape elections, never to be added to the money received
             above.
           </p>
-          <div className="mt-4 rounded-lg border border-[#8B3A3A]/40 bg-[#8B3A3A]/15 p-5">
+          <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-5">
             {politicalTotal ? (
               <div className="font-serif text-4xl font-bold leading-none text-foreground">
                 {politicalTotal.amount_label}

@@ -15,6 +15,13 @@ export function fileNameToUrl(fileName: string | null) {
     return fileName.trim();
   }
 
+  // An app-relative path is served by this app out of /public (the activism
+  // artwork), not by Supabase Storage — prefixing it would produce a dead
+  // storage URL.
+  if (fileName.startsWith('/')) {
+    return fileName.trim();
+  }
+
   // Trim env vars to prevent stray newlines from breaking URLs
   const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim();
   const bucketName = (process.env.SUPABASE_STORAGE_BUCKET_PRIVATE || 'user-uploads').trim();

@@ -85,7 +85,7 @@ export default async function PacScorecardPage(props: { searchParams: Promise<Se
   const articles = getArticlesForSection('pac');
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
+    <div className="mx-auto max-w-site px-4 py-8">
       <Link href="/scorecard" className="text-sm text-muted-foreground hover:text-foreground">
         ← Back to scorecard
       </Link>
@@ -131,7 +131,7 @@ export default async function PacScorecardPage(props: { searchParams: Promise<Se
       ) : (
         <>
           <div className="mt-6 flex flex-wrap items-center gap-4 text-sm">
-            <span className="rounded bg-accent px-2 py-1 font-mono text-xs uppercase tracking-wide text-white">
+            <span className="rounded bg-accent px-2 py-1 font-mono text-xs uppercase tracking-wide text-accent-foreground">
               {refuserCount} refusing corporate PACs
             </span>
             <span className="text-muted-foreground">
@@ -207,7 +207,7 @@ function JurisdictionToggle({ active, searchParams }: { active: string | undefin
             href={buildPacUrl(searchParams, opt.key)}
             className={
               isActive
-                ? 'rounded bg-accent px-4 py-1.5 font-mono text-xs uppercase tracking-wide text-white'
+                ? 'rounded bg-accent px-4 py-1.5 font-mono text-xs uppercase tracking-wide text-accent-foreground'
                 : 'rounded border border-border px-4 py-1.5 font-mono text-xs uppercase tracking-wide text-foreground shadow-sm hover:bg-surface-elevated'
             }>
             {opt.label}

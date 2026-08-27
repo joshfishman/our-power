@@ -232,7 +232,7 @@ export default async function PacScoreboardPage(props: Props) {
   const iPct = partyPct('I');
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
+    <div className="mx-auto max-w-site px-4 py-8">
       <Link href="/scorecard" className="text-sm text-muted-foreground hover:text-foreground">
         ← Back to scorecard
       </Link>
@@ -332,7 +332,7 @@ export default async function PacScoreboardPage(props: Props) {
               {(['D', 'R', 'I'] as const).map((p) => {
                 const v = partyBreakdown[p] ?? 0;
                 if (v <= 0) return null;
-                const swatch = p === 'D' ? 'bg-[#1d4ed8]' : p === 'R' ? 'bg-[#b91c1c]' : 'bg-[#6b7280]';
+                const swatch = p === 'D' ? 'bg-info' : p === 'R' ? 'bg-score-1' : 'bg-subtle-foreground';
                 const pct = partyPct(p);
                 return (
                   <li key={p} className="flex items-center gap-2">

@@ -27,6 +27,14 @@ export const FEDERAL_PLANKS: SeedPlank[] = [
     shortDescription: 'End legalized bribery. Public servants, not private clients.',
     tagline: 'End legalized bribery. Public servants, not private clients.',
     body: `Public servants work for the public. End the system where members of Congress trade stocks on inside information, take corporate PAC money, and walk into lobbying jobs the day they leave office. Public financing of elections so candidates work for voters, not donors. Full disclosure of dark money. Real cooling-off periods between government service and lobbying.`,
+    commitments: [
+      'Public servants work for the public, not for private clients.',
+      'No trading stocks on inside information.',
+      'No corporate PAC money.',
+      'No walking into a lobbying job the day you leave office — real cooling-off periods.',
+      'Public financing of elections, so candidates answer to voters, not donors.',
+      'Full disclosure of dark money.',
+    ],
     color: '#8B3A3A',
     markers: [
       {
@@ -165,6 +173,15 @@ export const FEDERAL_PLANKS: SeedPlank[] = [
     shortDescription: 'The schools, science, and infrastructure we hand down.',
     tagline: 'What we build and hand down to the next generation.',
     body: `Strong public schools — every child deserves a good one in their neighborhood. Parental empowerment within public schools (transparency, voice in curriculum), without draining public dollars to vouchers or charters. Early childhood education. Federal science and technology research. Clean energy independence — solar, wind, nuclear, geothermal, batteries, the grid. Roads, bridges, broadband, water. Environmental stewardship.`,
+    commitments: [
+      'Strong public schools — every child deserves a good one in their neighborhood.',
+      'Parental transparency and voice within public schools, without draining public dollars to vouchers or charters.',
+      'Early childhood education.',
+      'Federal science and technology research.',
+      'Clean energy independence — solar, wind, nuclear, geothermal, batteries, the grid.',
+      'Roads, bridges, broadband, water.',
+      'Environmental stewardship.',
+    ],
     color: '#2C4A5E',
     markers: [
       {
@@ -316,6 +333,14 @@ export const FEDERAL_PLANKS: SeedPlank[] = [
     shortDescription: 'A full-time job should support a life.',
     tagline: 'A full-time job should support a life. Wages, housing, no predatory lending.',
     body: `A federal minimum wage that means something. Stop wage theft and retaliation against workers who organize. End non-competes that trap workers in low-wage jobs. Cap predatory loan rates. Build housing. Paid family leave for working families.`,
+    commitments: [
+      'A federal minimum wage that means something.',
+      'Stop wage theft and retaliation against workers who organize.',
+      'End non-competes that trap workers in low-wage jobs.',
+      'Cap predatory loan rates.',
+      'Build housing.',
+      'Paid family leave for working families.',
+    ],
     color: '#8B3A3A',
     markers: [
       {
@@ -468,6 +493,14 @@ export const FEDERAL_PLANKS: SeedPlank[] = [
     shortDescription: 'Honor the promises this country has made.',
     tagline: 'Honor the promises this country has made — to veterans, elders, and working families.',
     body: `The country made promises — to veterans, to elders, to working families who paid in. Honor them. Veterans get the care they earned. Drug prices come down. Medicare and Medicaid stay strong. Social Security stays solvent and pays what people earned. Childcare and paid leave so families can work and raise children at the same time.`,
+    commitments: [
+      'Honor the promises this country made — to veterans, to elders, to working families who paid in.',
+      'Veterans get the care they earned.',
+      'Drug prices come down.',
+      'Medicare and Medicaid stay strong.',
+      'Social Security stays solvent and pays what people earned.',
+      'Childcare and paid leave, so families can work and raise children at the same time.',
+    ],
     color: '#2C4A5E',
     markers: [
       {
@@ -631,6 +664,14 @@ export const FEDERAL_PLANKS: SeedPlank[] = [
     shortDescription: 'Use American power wisely. End the forever wars. Audit the Pentagon.',
     tagline: 'Use American power wisely. End the forever wars. Audit the Pentagon.',
     body: `Strength means using power wisely. End the forever wars — Congress, not the executive alone, decides when American troops go into combat. Audit the Pentagon, every dollar accounted for. Break up monopolies that have grown too powerful — Big Tech, pharma, agriculture, defense. Real diplomacy at parity with force projection. Trade deals that protect American workers and the environment.`,
+    commitments: [
+      'Strength means using power wisely.',
+      'End the forever wars — Congress, not the executive alone, decides when American troops go into combat.',
+      'Audit the Pentagon, every dollar accounted for.',
+      'Break up monopolies that have grown too powerful — Big Tech, pharma, agriculture, defense.',
+      'Real diplomacy, at parity with force projection.',
+      'Trade deals that protect American workers and the environment.',
+    ],
     color: '#8B3A3A',
     markers: [
       {

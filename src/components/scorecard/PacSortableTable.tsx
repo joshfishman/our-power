@@ -118,98 +118,100 @@ export function PacSortableTable({ rows, hideStateColumn = false }: Props) {
   const fmt$ = (n: number) => (n > 0 ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—');
 
   return (
-    <table className="mt-6 w-full border-collapse text-sm">
-      <thead>
-        <tr className="border-b-2 border-border text-left">
-          <Th onClick={() => handleClick('rank')}>#{arrow('rank')}</Th>
-          <Th onClick={() => handleClick('name')}>Legislator{arrow('name')}</Th>
-          <Th onClick={() => handleClick('party')}>
-            Party{hideStateColumn ? '' : ' · State'}
-            {arrow('party')}
-          </Th>
-          {/* Contextual: v1.3 direct-only number */}
-          <Th onClick={() => handleClick('corpAmount')} align="right">
-            Direct corporate{arrow('corpAmount')}
-          </Th>
-          {/* v1.4 IE columns */}
-          <Th onClick={() => handleClick('ieSupport')} align="right" accent>
-            Corp IE Supporting{arrow('ieSupport')}
-          </Th>
-          <Th onClick={() => handleClick('ieAgainstOpponent')} align="right">
-            Corp IE vs opponents{arrow('ieAgainstOpponent')}
-          </Th>
-          <Th onClick={() => handleClick('ieAttacking')} align="right" italic muted>
-            Corp IE attacking{arrow('ieAttacking')}
-          </Th>
-          {/* Primary sort column */}
-          <Th onClick={() => handleClick('pct')} align="right" bold>
-            % Corporate Donations{arrow('pct')}
-          </Th>
-          <Th onClick={() => handleClick('receipts')} align="right">
-            Total Receipts{arrow('receipts')}
-          </Th>
-        </tr>
-      </thead>
-      <tbody>
-        {sorted.map((l, i) => {
-          const passes = l.pct < CORPORATE_PAC_THRESHOLD;
-          const idForLink = l.bioguideId ?? l.openStatesId ?? l.id;
-          return (
-            <tr key={l.id} className="border-b border-border">
-              <td className="py-2 pr-4 font-mono text-xs text-subtle-foreground">{i + 1}</td>
-              <td className="py-2 pr-4">
-                <Link
-                  href={`/scorecard/${encodeURIComponent(idForLink)}`}
-                  className="flex items-center gap-2 font-medium text-foreground hover:text-accent hover:underline">
-                  <LegislatorAvatar fullName={l.fullName} photoUrl={l.photoUrl} size={32} />
-                  <span className="min-w-0">
-                    {l.fullName}
-                    {l.chamber === 'REP' && l.district != null && (
-                      <span className="ml-1 text-xs text-subtle-foreground">CD-{l.district}</span>
-                    )}
+    <div className="overflow-x-auto">
+      <table className="mt-6 w-full border-collapse text-sm">
+        <thead>
+          <tr className="border-b-2 border-border text-left">
+            <Th onClick={() => handleClick('rank')}>#{arrow('rank')}</Th>
+            <Th onClick={() => handleClick('name')}>Legislator{arrow('name')}</Th>
+            <Th onClick={() => handleClick('party')}>
+              Party{hideStateColumn ? '' : ' · State'}
+              {arrow('party')}
+            </Th>
+            {/* Contextual: v1.3 direct-only number */}
+            <Th onClick={() => handleClick('corpAmount')} align="right">
+              Direct corporate{arrow('corpAmount')}
+            </Th>
+            {/* v1.4 IE columns */}
+            <Th onClick={() => handleClick('ieSupport')} align="right" accent>
+              Corp IE Supporting{arrow('ieSupport')}
+            </Th>
+            <Th onClick={() => handleClick('ieAgainstOpponent')} align="right">
+              Corp IE vs opponents{arrow('ieAgainstOpponent')}
+            </Th>
+            <Th onClick={() => handleClick('ieAttacking')} align="right" italic muted>
+              Corp IE attacking{arrow('ieAttacking')}
+            </Th>
+            {/* Primary sort column */}
+            <Th onClick={() => handleClick('pct')} align="right" bold>
+              % Corporate Donations{arrow('pct')}
+            </Th>
+            <Th onClick={() => handleClick('receipts')} align="right">
+              Total Receipts{arrow('receipts')}
+            </Th>
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map((l, i) => {
+            const passes = l.pct < CORPORATE_PAC_THRESHOLD;
+            const idForLink = l.bioguideId ?? l.openStatesId ?? l.id;
+            return (
+              <tr key={l.id} className="border-b border-border">
+                <td className="py-2 pr-4 font-mono text-xs text-subtle-foreground">{i + 1}</td>
+                <td className="py-2 pr-4">
+                  <Link
+                    href={`/scorecard/${encodeURIComponent(idForLink)}`}
+                    className="flex items-center gap-2 font-medium text-foreground hover:text-accent hover:underline">
+                    <LegislatorAvatar fullName={l.fullName} photoUrl={l.photoUrl} size={32} />
+                    <span className="min-w-0">
+                      {l.fullName}
+                      {l.chamber === 'REP' && l.district != null && (
+                        <span className="ml-1 text-xs text-subtle-foreground">CD-{l.district}</span>
+                      )}
+                    </span>
+                  </Link>
+                </td>
+                <td className="py-2 pr-4 text-muted-foreground">
+                  {PARTY_LABEL[l.party] ?? l.party}
+                  {!hideStateColumn && <> · {l.state}</>}
+                </td>
+                {/* Direct corporate (v1.3 contextual) */}
+                <td className="py-2 pr-4 text-right font-mono text-xs text-muted-foreground">{fmt$(l.corpAmount)}</td>
+                {/* Corp IE Supporting — prominent */}
+                <td className="py-2 pr-4 text-right font-mono text-sm font-bold text-accent">{fmt$(l.ieSupport)}</td>
+                {/* Corp IE vs opponents */}
+                <td className="py-2 pr-4 text-right font-mono text-xs text-muted-foreground">
+                  {fmt$(l.ieAgainstOpponent)}
+                </td>
+                {/* Corp IE attacking — disclosure only, muted italic */}
+                <td className="py-2 pr-4 text-right font-mono text-xs italic text-subtle-foreground">
+                  {fmt$(l.ieAttacking)}
+                </td>
+                {/* % Corporate Donations — primary */}
+                <td className="py-2 pr-4 text-right">
+                  <span
+                    className={
+                      passes
+                        ? 'font-serif text-base font-bold text-accent'
+                        : 'font-serif text-base font-bold text-foreground'
+                    }>
+                    {(l.pct * 100).toFixed(1)}%
                   </span>
-                </Link>
-              </td>
-              <td className="py-2 pr-4 text-muted-foreground">
-                {PARTY_LABEL[l.party] ?? l.party}
-                {!hideStateColumn && <> · {l.state}</>}
-              </td>
-              {/* Direct corporate (v1.3 contextual) */}
-              <td className="py-2 pr-4 text-right font-mono text-xs text-muted-foreground">{fmt$(l.corpAmount)}</td>
-              {/* Corp IE Supporting — prominent */}
-              <td className="py-2 pr-4 text-right font-mono text-sm font-bold text-accent">{fmt$(l.ieSupport)}</td>
-              {/* Corp IE vs opponents */}
-              <td className="py-2 pr-4 text-right font-mono text-xs text-muted-foreground">
-                {fmt$(l.ieAgainstOpponent)}
-              </td>
-              {/* Corp IE attacking — disclosure only, muted italic */}
-              <td className="py-2 pr-4 text-right font-mono text-xs italic text-subtle-foreground">
-                {fmt$(l.ieAttacking)}
-              </td>
-              {/* % Corporate Donations — primary */}
-              <td className="py-2 pr-4 text-right">
-                <span
-                  className={
-                    passes
-                      ? 'font-serif text-base font-bold text-accent'
-                      : 'font-serif text-base font-bold text-foreground'
-                  }>
-                  {(l.pct * 100).toFixed(1)}%
-                </span>
-                {passes && (
-                  <span className="ml-2 rounded bg-accent px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-white">
-                    ✓
-                  </span>
-                )}
-              </td>
-              <td className="py-2 text-right font-mono text-xs text-muted-foreground">
-                ${l.totalReceipts.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+                  {passes && (
+                    <span className="ml-2 rounded bg-accent px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-accent-foreground">
+                      ✓
+                    </span>
+                  )}
+                </td>
+                <td className="py-2 text-right font-mono text-xs text-muted-foreground">
+                  ${l.totalReceipts.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

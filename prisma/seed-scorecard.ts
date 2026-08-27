@@ -71,6 +71,7 @@ async function seedPlanks(planks: SeedPlank[]): Promise<{
         shortDescription: seed.shortDescription,
         tagline: seed.tagline,
         body: seed.body,
+        commitments: seed.commitments,
         color: seed.color,
       },
       update: {
@@ -79,6 +80,7 @@ async function seedPlanks(planks: SeedPlank[]): Promise<{
         shortDescription: seed.shortDescription,
         tagline: seed.tagline,
         body: seed.body,
+        commitments: seed.commitments,
         color: seed.color,
       },
     });

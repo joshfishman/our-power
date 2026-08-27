@@ -1,4 +1,5 @@
 const typography = require('@tailwindcss/typography');
+const defaultTheme = require('tailwindcss/defaultTheme');
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
@@ -10,6 +11,28 @@ module.exports = {
   ],
   theme: {
     extend: {
+      /* Three families, three jobs. Loaded in src/app/layout.tsx via
+       * next/font/google, which supplies the --font-* variables.
+       *   sans  — all UI and body copy (default on <body>)
+       *   serif — editorial headings only
+       *   mono  — numeric / tabular data only; pair with `tabular-nums` */
+      maxWidth: {
+        // The site's one content column. Every page shell uses it — scorecard,
+        // platform, articles, methodology, footer — so the measure never
+        // changes as you move around. Previously each page picked its own
+        // Tailwind step (2xl through 6xl), which is why the site read as seven
+        // different layouts.
+        site: '776px',
+      },
+      fontFamily: {
+        sans: ['var(--font-sans)', ...defaultTheme.fontFamily.sans],
+        // `font-serif` is the EDITORIAL HEADING face, and it is not a serif:
+        // it resolves to Poppins Bold — the same wordmark face as the logo.
+        // Kept under the `serif` key so the ~109 existing call sites (all of
+        // which already pair it with font-bold/semibold) keep working.
+        serif: ['var(--font-sans)', ...defaultTheme.fontFamily.sans],
+        mono: ['var(--font-mono)', ...defaultTheme.fontFamily.mono],
+      },
       colors: {
         background: 'rgb(var(--background) / <alpha-value>)',
         foreground: 'rgba(var(--foreground) / <alpha-value>)',
@@ -43,6 +66,7 @@ module.exports = {
         'info-foreground': 'rgba(var(--info-foreground) / <alpha-value>)',
         border: 'rgba(var(--border) / <alpha-value>)',
         input: 'rgba(var(--input) / <alpha-value>)',
+        ring: 'rgba(var(--ring) / <alpha-value>)',
         'score-1': 'rgba(var(--score-1) / <alpha-value>)',
         'score-2': 'rgba(var(--score-2) / <alpha-value>)',
         'score-3': 'rgba(var(--score-3) / <alpha-value>)',

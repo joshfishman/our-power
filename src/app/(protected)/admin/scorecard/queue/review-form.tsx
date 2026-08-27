@@ -48,7 +48,9 @@ export function ReviewForm({
               key={p}
               onClick={() => togglePlank(p)}
               className={`rounded border px-2 py-0.5 ${
-                planks.has(p) ? 'border-accent bg-accent font-bold text-white' : 'border-border bg-transparent'
+                planks.has(p)
+                  ? 'border-accent bg-accent font-bold text-accent-foreground'
+                  : 'border-border bg-transparent'
               }`}>
               P{p}
             </button>
@@ -64,7 +66,9 @@ export function ReviewForm({
               key={v}
               onClick={() => setAligned(v)}
               className={`rounded border px-2 py-0.5 ${
-                aligned === v ? 'border-accent bg-accent font-bold text-white' : 'border-border bg-transparent'
+                aligned === v
+                  ? 'border-accent bg-accent font-bold text-accent-foreground'
+                  : 'border-border bg-transparent'
               }`}>
               {v}
             </button>
@@ -74,7 +78,7 @@ export function ReviewForm({
       <button
         type="submit"
         disabled={pending}
-        className="mt-1 rounded bg-accent px-3 py-1 font-mono uppercase tracking-wide text-white disabled:opacity-50">
+        className="mt-1 rounded bg-accent px-3 py-1 font-mono uppercase tracking-wide text-accent-foreground disabled:opacity-50">
         {pending ? 'Saving…' : status === 'saved' ? '✓ Saved' : 'Approve / save'}
       </button>
       {status === 'error' && <p className="text-destructive">Failed to save</p>}

@@ -1947,6 +1947,7 @@ export async function getPlankBySlug(jurisdiction: ScorecardJurisdiction, slug: 
       shortDescription: true,
       tagline: true,
       body: true,
+      commitments: true,
       color: true,
     },
   });

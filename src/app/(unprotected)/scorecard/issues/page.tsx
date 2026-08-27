@@ -6,9 +6,9 @@ import { getArticlesForPlank } from '@/lib/scorecard/articles';
 import { METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
 
 export const metadata: Metadata = {
-  title: 'Issue Scorecards | We the People Scorecard',
+  title: "The People's Platform | We the People Scorecard",
   description:
-    'How every member of Congress and the California State Legislature scores on each of the five common-ground commitments — one issue at a time.',
+    'Five commitments built from what the public actually wants — every idea carrying at least 55% support — and how every member of Congress and the California State Legislature scores against them.',
 };
 
 export const dynamic = 'force-dynamic';
@@ -21,12 +21,20 @@ export default async function IssuesIndexPage() {
   const federalPlanks = (await getPublicPlanks('FEDERAL')).sort((a, b) => a.number - b.number);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
+    <div className="mx-auto max-w-site px-4 py-8">
       <header className="border-b-2 border-border pb-4">
-        <p className="font-mono text-xs uppercase tracking-widest text-subtle-foreground">Issue Scorecards</p>
-        <h1 className="mt-1 font-serif text-4xl font-bold text-foreground">The Five Commitments</h1>
+        <p className="font-mono text-xs uppercase tracking-widest text-subtle-foreground">The Platform</p>
+        <h1 className="mt-1 font-serif text-4xl font-bold text-foreground">The People&rsquo;s Platform</h1>
+        {/* How the planks were arrived at. The 55% figure is POPULAR_SUPPORT_FLOOR
+            in scoring.ts, applied in both compute paths — not a claim invented
+            for this page. */}
+        <p className="mt-3 max-w-2xl text-base text-muted-foreground">
+          The planks of the People&rsquo;s Platform were built by analyzing what the people actually want. We kept only
+          ideas carrying at least <strong className="font-semibold text-foreground">55% public support</strong>, then
+          organized them into a platform we can all stand behind.
+        </p>
         <p className="mt-2 max-w-2xl text-base text-muted-foreground">
-          One scorecard per issue. Each page shows how every legislator scores on that single plank — the same rubric
+          One scorecard per plank. Each shows how every legislator scores on that single commitment — the same rubric
           applied to everyone, every score backed by a public source. California is rated on planks 1&ndash;4; plank 5
           applies to Congress only.
         </p>
@@ -35,16 +43,23 @@ export default async function IssuesIndexPage() {
       <ul className="mt-8 divide-y divide-border border border-border">
         {federalPlanks.map((plank) => {
           const articleCount = getArticlesForPlank(plank.slug).length;
+          const href = `/scorecard/issues/${encodeURIComponent(plank.slug)}`;
+          // The plank's own commitments — not its markers. A marker is the
+          // measurable act used to score a legislator; a commitment is what that
+          // act is for. Readers need the second before the first makes sense.
+          const { commitments } = plank;
           return (
-            <li key={plank.id} className="transition-colors hover:bg-surface-elevated">
-              <Link
-                href={`/scorecard/issues/${encodeURIComponent(plank.slug)}`}
-                className="flex items-start justify-between gap-4 px-4 py-4">
+            <li key={plank.id} className="px-4 py-4 transition-colors hover:bg-surface-elevated">
+              <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <p className="font-mono text-[11px] uppercase tracking-widest text-subtle-foreground">
                     Plank {plank.number}
                   </p>
-                  <p className="mt-0.5 font-serif text-xl font-semibold text-foreground">{plank.name}</p>
+                  <Link
+                    href={href}
+                    className="mt-0.5 block font-serif text-xl font-semibold text-foreground hover:text-accent">
+                    {plank.name}
+                  </Link>
                   <p className="mt-1 text-sm text-muted-foreground">{plank.shortDescription}</p>
                 </div>
                 {articleCount > 0 && (
@@ -52,6 +67,20 @@ export default async function IssuesIndexPage() {
                     {articleCount} article{articleCount === 1 ? '' : 's'}
                   </span>
                 )}
+              </div>
+
+              {commitments.length > 0 && (
+                <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-muted-foreground marker:text-subtle-foreground">
+                  {commitments.map((commitment) => (
+                    <li key={commitment}>{commitment}</li>
+                  ))}
+                </ol>
+              )}
+
+              <Link
+                href={href}
+                className="mt-3 inline-block text-sm font-semibold text-accent underline-offset-2 hover:underline">
+                See how every legislator scores &rarr;
               </Link>
             </li>
           );

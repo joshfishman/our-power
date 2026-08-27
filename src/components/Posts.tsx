@@ -20,11 +20,17 @@ import { GenericLoading } from './GenericLoading';
 
 // If the `type` is 'profile' or 'feed', the `userId` property is required
 // If the `type` is 'hashtag', the `hashtag` property is required
+// If the `type` is 'public', neither is — it is the signed-out global feed
 type PostsProps =
   | {
       type: 'hashtag';
       userId?: undefined;
       hashtag: string;
+    }
+  | {
+      type: 'public';
+      userId?: undefined;
+      hashtag?: undefined;
     }
   | {
       type: 'profile' | 'feed';
@@ -35,10 +41,11 @@ type PostsProps =
 export function Posts({ type, hashtag, userId }: PostsProps) {
   const qc = useQueryClient();
   // Need to memoize `queryKey`, so when used in a dependency array, it won't trigger the `useEffect`/`useCallback`
-  const queryKey = useMemo(
-    () => (type === 'hashtag' ? ['posts', { hashtag }] : ['users', userId, 'posts', { type }]),
-    [type, userId, hashtag],
-  );
+  const queryKey = useMemo(() => {
+    if (type === 'hashtag') return ['posts', { hashtag }];
+    if (type === 'public') return ['posts', { type }];
+    return ['users', userId, 'posts', { type }];
+  }, [type, userId, hashtag]);
   const topElRef = useRef<HTMLDivElement>(null);
   const isTopOnScreen = useOnScreen(topElRef);
   const bottomElRef = useRef<HTMLDivElement>(null);
@@ -71,10 +78,14 @@ export function Posts({ type, hashtag, userId }: PostsProps) {
       params.set('cursor', cursor.toString());
       params.set('sort-direction', isForwards ? 'desc' : 'asc');
 
-      const fetchUrl =
-        type === 'hashtag'
-          ? `/api/posts/hashtag/${hashtag}`
-          : `/api/users/${userId}/${type === 'profile' ? 'posts' : 'feed'}`;
+      let fetchUrl: string;
+      if (type === 'hashtag') {
+        fetchUrl = `/api/posts/hashtag/${hashtag}`;
+      } else if (type === 'public') {
+        fetchUrl = '/api/posts/public';
+      } else {
+        fetchUrl = `/api/users/${userId}/${type === 'profile' ? 'posts' : 'feed'}`;
+      }
       const res = await fetch(`${fetchUrl}?${params.toString()}`);
 
       if (!res.ok) throw Error('Failed to load posts.');

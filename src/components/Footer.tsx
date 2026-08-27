@@ -20,6 +20,9 @@ const footerLinks = [
   {
     heading: 'Project',
     links: [
+      // Methodology lives here rather than in the scorecard nav: it is
+      // reference material, and it is not settled enough to headline the nav.
+      { label: 'Methodology', href: '/scorecard/methodology' },
       { label: 'About', href: '/about' },
       { label: 'GitHub', href: 'https://github.com/joshfishman/our-power', external: true },
       { label: 'Report a Bug', href: 'https://github.com/joshfishman/our-power/issues', external: true },
@@ -32,7 +35,7 @@ export function Footer() {
 
   return (
     <footer className="mt-12 border-t border-border">
-      <div className="mx-auto max-w-3xl px-4 py-8">
+      <div className="mx-auto max-w-site px-4 py-8">
         {/* Link columns */}
         <div className="grid grid-cols-2 gap-8 sm:grid-cols-3">
           {footerLinks.map((group) => (

@@ -75,7 +75,10 @@
     "prisma:studio": "npx prisma studio",
     "prepm2": "npm run build",
     "pm2": "pm2 start next --name 'our-power' -- start -p 3000",
-    "scorecard:recache-pac": "npx tsx ./scripts/recache-pac-scores.ts"
+    "scorecard:recache-pac": "npx tsx ./scripts/recache-pac-scores.ts",
+    "design:contrast": "node ./scripts/check-contrast.mjs",
+    "scorecard:backfill-commitments": "npx tsx ./scripts/backfill-plank-commitments.ts",
+    "seed:demo-feed": "npx tsx ./scripts/seed-demo-feed-posts.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

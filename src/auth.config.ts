@@ -16,7 +16,12 @@ export default {
       const isLoggedIn = !!auth?.user;
       const isOnAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register');
 
-      const unProtectedPages = ['/terms', '/privacy-policy', '/developers', '/scorecard', '/styleguide']; // Add more here if needed
+      // '/feed' is public on purpose: a visitor can read the global feed and
+      // look around before signing up. Posting, following and the personal
+      // follow-graph feed all still require a session — the page renders the
+      // signed-out variant, and /api/posts/public serves only what a post card
+      // shows. Every other member surface stays gated.
+      const unProtectedPages = ['/terms', '/privacy-policy', '/developers', '/scorecard', '/styleguide', '/feed']; // Add more here if needed
       // Dynamic route patterns that should be public
       const unProtectedPatterns = [
         /^\/c\/[^/]+$/, // Public campaign detail pages at /c/:id

@@ -13,7 +13,7 @@ const LEAN_LABEL: Record<string, string> = { left: 'leans left', right: 'leans r
 export default function PowerIndexPage() {
   const profiles = listProfiles();
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className="mx-auto max-w-site px-4 py-8">
       <Link href="/scorecard" className="text-sm text-muted-foreground hover:text-foreground">
         ← Back to scorecard
       </Link>
