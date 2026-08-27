@@ -24,7 +24,15 @@ import { cn } from '@/lib/cn';
 import Button from './ui/Button';
 import { Badge } from './ui/Badge';
 
-export function MenuBar() {
+/**
+ * The left navigation grid.
+ *
+ * Shown to signed-out visitors too, since the Action Network is public — but
+ * the member-only destinations are filtered out rather than rendered as dead
+ * links that bounce a visitor to /login (My Campaigns, My Actions, Dashboard,
+ * Notifications, My Profile, and Logout all require a session).
+ */
+export function MenuBar({ isLoggedIn = true }: { isLoggedIn?: boolean }) {
   const [user] = useSessionUserData();
   const { data: session } = useSession();
   const username = user?.username || session?.user?.id || '';
@@ -66,7 +74,8 @@ export function MenuBar() {
   }, [drawerOpen]);
 
   // All nav items
-  const allItems = [
+  const memberOnlyRoutes = new Set(['/my-campaigns', '/my-actions', '/dashboard', '/notifications', `/${username}`]);
+  const everyItem = [
     { title: 'Feed', Icon: GridFeedCards, route: '/feed' },
     { title: 'Campaigns', Icon: Bullhorn, route: '/campaigns' },
     { title: 'My Campaigns', Icon: TwoPeople, route: '/my-campaigns' },
@@ -84,6 +93,7 @@ export function MenuBar() {
     },
     { title: 'My Profile', Icon: Profile, route: `/${username}` },
   ];
+  const allItems = isLoggedIn ? everyItem : everyItem.filter((item) => !memberOnlyRoutes.has(item.route));
 
   // Prevent hydration mismatch: react-aria useButton and session-dependent
   // content can differ between SSR and client. Render a placeholder until mounted.
@@ -152,11 +162,13 @@ export function MenuBar() {
           })}
         </div>
 
-        <div className="mt-auto w-full border-t border-muted pt-4">
-          <Button onPress={handleLogout} mode="subtle" expand="full" Icon={LogOutCircle}>
-            Logout
-          </Button>
-        </div>
+        {isLoggedIn && (
+          <div className="mt-auto w-full border-t border-muted pt-4">
+            <Button onPress={handleLogout} mode="subtle" expand="full" Icon={LogOutCircle}>
+              Logout
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* ── Mobile header bar ── */}

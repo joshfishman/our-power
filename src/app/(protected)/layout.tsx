@@ -19,9 +19,9 @@ export default async function Layout({ children }: { children: React.ReactNode }
           (notifications, profile, sign out). */}
       <SiteNav isLoggedIn={!!user} />
       <div className="flex flex-1 md:justify-center md:gap-2">
-        {/* Member tools only. /feed is readable signed out, and a visitor must
-            not be shown My Profile, Notifications or Logout. */}
-        {user && <MenuBar />}
+        {/* Shown to visitors too — the Action Network is public and the grid is
+            how you get around. MenuBar filters its own member-only entries. */}
+        <MenuBar isLoggedIn={!!user} />
 
         <ResponsiveContainer className="pt-14 md:pt-0">{children}</ResponsiveContainer>
       </div>
