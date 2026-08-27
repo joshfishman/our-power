@@ -5,6 +5,7 @@ import { unstable_cache } from 'next/cache';
 import prisma from '@/lib/prisma/prisma';
 import { METHODOLOGY_VERSION } from '@/lib/scorecard/scoring';
 import { classifyEmployer, SECTOR_LABEL } from '@/lib/scorecard/employer-industry';
+import { readMoneyCache } from '@/lib/scorecard/money-cache';
 import { CURATED_VOTE_BILLS, curatedDirection } from '@/lib/scorecard/curated-votes';
 
 export type ScorecardJurisdiction = 'FEDERAL' | 'CA';
@@ -463,7 +464,7 @@ export interface CaMoneyTrail {
   topDonors: Array<{ name: string; class: string; amount: number }>;
   cycles: number[];
 }
-export async function getCaMoneyTrail(legislatorId: string): Promise<CaMoneyTrail | null> {
+async function getCaMoneyTrailLive(legislatorId: string): Promise<CaMoneyTrail | null> {
   const rows = await prisma.$queryRaw<Array<{ name: string; class: string; amount: string; cycleYear: number }>>`
     SELECT pcl.name AS name, pcl.class::text AS class, pc.amount::text AS amount, pc."cycleYear" AS "cycleYear"
     FROM "PacContribution" pc
@@ -726,7 +727,7 @@ export async function getPacScoresByLegislatorV171(
  * v1.7.1 — full money trail for ONE legislator. Used by the detail page to
  * render counts-against, per-class breakdown, top donors, and IE-opposed.
  */
-export async function getLegislatorMoneyTrail(legislatorId: string): Promise<PacMoneyTrail> {
+async function getLegislatorMoneyTrailLive(legislatorId: string): Promise<PacMoneyTrail> {
   const rows = await prisma.$queryRaw<Array<{ class: string; kind: string; amount: string }>>`
     SELECT pc.class::text AS class, pcontrib.kind::text AS kind, SUM(pcontrib.amount::numeric)::text AS amount
     FROM "PacContribution" pcontrib
@@ -925,7 +926,7 @@ export async function getLegislatorMoneyTrail(legislatorId: string): Promise<Pac
  * Returns 0 if there is no matching contribution data — callers should treat
  * 0 as "no overlap," not "no money."
  */
-export async function getLegislatorPacInfluence20222024(legislatorId: string): Promise<number> {
+async function getLegislatorPacInfluence20222024Live(legislatorId: string): Promise<number> {
   const rows = await prisma.$queryRaw<Array<{ total: string }>>`
     SELECT COALESCE(SUM(amount::numeric), 0)::text AS total
     FROM "PacContribution"
@@ -951,7 +952,7 @@ export interface TopDonor {
   ieOppose: number; // IE_OPPOSE same donor (often 0)
 }
 
-export async function getTopDonorsForLegislator(legislatorId: string, limit = 15): Promise<TopDonor[]> {
+async function getTopDonorsForLegislatorLive(legislatorId: string, limit = 15): Promise<TopDonor[]> {
   const rows = await prisma.$queryRaw<
     Array<{ committeeId: string; name: string; class: string; total: string; ieOppose: string }>
   >`
@@ -986,7 +987,7 @@ export async function getTopDonorsForLegislator(legislatorId: string, limit = 15
  * Tracked separately because it's info-only (doesn't affect their score)
  * but useful transparency ("AIPAC tried to defeat you").
  */
-export async function getOpposedByPacs(legislatorId: string, limit = 10): Promise<TopDonor[]> {
+async function getOpposedByPacsLive(legislatorId: string, limit = 10): Promise<TopDonor[]> {
   const rows = await prisma.$queryRaw<Array<{ committeeId: string; name: string; class: string; ieOppose: string }>>`
     SELECT
       pc."committeeId" AS "committeeId",
@@ -1045,7 +1046,7 @@ export interface OutsideMoneySummary {
   topSpenders: OutsideMoneySpender[];
 }
 
-export async function getOutsideMoneyForLegislator(legislatorId: string, topLimit = 15): Promise<OutsideMoneySummary> {
+async function getOutsideMoneyForLegislatorLive(legislatorId: string, topLimit = 15): Promise<OutsideMoneySummary> {
   // Per-class roll-up for the headline tiles.
   const classRows = await prisma.$queryRaw<Array<{ class: string; ieSupport: string; ieOpposeBeneficiary: string }>>`
     SELECT
@@ -2065,3 +2066,78 @@ export const getScorecardBase = unstable_cache(
   ['scorecard-base'],
   { revalidate: 3600, tags: ['scorecard'] },
 );
+
+// ─── Frozen money cache (publish-then-freeze) ────────────────────────────────
+//
+// Everything below is derived from PacContribution, which is ~1.8M rows and by
+// far the largest table in the database. Under a publish-then-freeze model it
+// is an INGEST-TIME input: scripts/freeze-money-cache.ts precomputes these
+// aggregates onto Legislator.moneyCache so the itemized rows can be dropped and
+// re-ingested only when the data is refreshed.
+//
+// Each public function below prefers the frozen value and falls back to the
+// live query when the cache is absent or written by an older cache version, so
+// the site behaves identically whether or not the freeze has run.
+
+/** One indexed primary-key lookup for the frozen bundle. */
+async function loadMoneyCache(legislatorId: string) {
+  const row = await prisma.legislator.findUnique({
+    where: { id: legislatorId },
+    select: { moneyCache: true },
+  });
+  return readMoneyCache(row?.moneyCache);
+}
+
+export async function getLegislatorMoneyTrail(legislatorId: string): Promise<PacMoneyTrail> {
+  const cached = await loadMoneyCache(legislatorId);
+  if (cached?.moneyTrail) return cached.moneyTrail;
+  return getLegislatorMoneyTrailLive(legislatorId);
+}
+
+export async function getCaMoneyTrail(legislatorId: string): Promise<CaMoneyTrail | null> {
+  const cached = await loadMoneyCache(legislatorId);
+  // A CA trail is legitimately null for federal legislators, so a populated
+  // cache is authoritative even when the value itself is null.
+  if (cached) return cached.caMoneyTrail;
+  return getCaMoneyTrailLive(legislatorId);
+}
+
+export async function getTopDonorsForLegislator(legislatorId: string, limit = 15): Promise<TopDonor[]> {
+  const cached = await loadMoneyCache(legislatorId);
+  if (cached) return cached.topDonors.slice(0, limit);
+  return getTopDonorsForLegislatorLive(legislatorId, limit);
+}
+
+export async function getOpposedByPacs(legislatorId: string, limit = 10): Promise<TopDonor[]> {
+  const cached = await loadMoneyCache(legislatorId);
+  if (cached) return cached.opposedBy.slice(0, limit);
+  return getOpposedByPacsLive(legislatorId, limit);
+}
+
+export async function getOutsideMoneyForLegislator(legislatorId: string, topLimit = 15): Promise<OutsideMoneySummary> {
+  const cached = await loadMoneyCache(legislatorId);
+  if (cached?.outsideMoney) {
+    return { ...cached.outsideMoney, topSpenders: cached.outsideMoney.topSpenders.slice(0, topLimit) };
+  }
+  return getOutsideMoneyForLegislatorLive(legislatorId, topLimit);
+}
+
+export async function getLegislatorPacInfluence20222024(legislatorId: string): Promise<number> {
+  const cached = await loadMoneyCache(legislatorId);
+  if (cached) return cached.pacInfluence20222024;
+  return getLegislatorPacInfluence20222024Live(legislatorId);
+}
+
+/** Live recomputation of the whole bundle — used by the freeze script only. */
+export async function computeMoneyCacheBundle(legislatorId: string) {
+  const [moneyTrail, caMoneyTrail, topDonors, opposedBy, outsideMoney, pacInfluence20222024] = await Promise.all([
+    getLegislatorMoneyTrailLive(legislatorId),
+    getCaMoneyTrailLive(legislatorId),
+    getTopDonorsForLegislatorLive(legislatorId, 50),
+    getOpposedByPacsLive(legislatorId, 50),
+    getOutsideMoneyForLegislatorLive(legislatorId, 50),
+    getLegislatorPacInfluence20222024Live(legislatorId),
+  ]);
+  return { moneyTrail, caMoneyTrail, topDonors, opposedBy, outsideMoney, pacInfluence20222024 };
+}
+// ─── end frozen money cache ──────────────────────────────────────────────────

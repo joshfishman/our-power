@@ -841,6 +841,18 @@ model Legislator {
   // rows live (that request-time query was timing out and hanging /scorecard).
   // Recomputed after every PAC ingest. Null = no PAC data / not yet cached.
   pacScoreCache         Int?
+  // FROZEN MONEY CACHE (publish-then-freeze).
+  //
+  // Everything the public pages derive from PacContribution, precomputed per
+  // legislator: the PAC money trail, CA money trail, top donors, opposing
+  // PACs, and outside-money summary. Written by scripts/freeze-money-cache.ts.
+  //
+  // The point is that PacContribution — 1.8M rows and ~646MB, by far the
+  // largest table — is an INGEST-TIME input, not a runtime dependency. Once
+  // this is populated the itemized rows can be dropped and re-ingested only
+  // when the data is refreshed and re-frozen. Read paths fall back to the live
+  // query when this is null, so the site works either way.
+  moneyCache            Json?
   pacScoreCachedAt      DateTime?
 
   scores             RepresentativeScore[]
