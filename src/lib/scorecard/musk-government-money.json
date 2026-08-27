@@ -107,7 +107,8 @@
       "source_url": "https://spaceflightnow.com/2025/04/05/u-s-space-force-awards-13-7-billion-in-new-national-security-launch-contracts-to-blue-origin-spacex-and-ula/",
       "value_basis": "MAXIMUM POTENTIAL ceiling ('up to'), not obligated; individual mission orders follow",
       "confidence": "medium",
-      "notes": "Ceiling value. Subsequent FY2026 task orders (Oct 2025) assigned SpaceX 5 missions for $714M."
+      "notes": "Ceiling value. Subsequent FY2026 task orders (Oct 2025) assigned SpaceX 5 missions for $714M.",
+      "exclude_from_total": true
     },
     {
       "id": "spacex-starshield-nro",
@@ -139,7 +140,8 @@
       "value_basis": "company-stated aggregate blending public + reported-classified awards",
       "confidence": "low",
       "is_estimate": true,
-      "notes": "AGGREGATE — do not sum with the individual SpaceX line items above (it contains them). Company-stated, not a single auditable line. Public USAspending.gov ('Space Exploration Technologies Corp') captures unclassified primes only and under-counts vs this claim."
+      "notes": "AGGREGATE — do not sum with the individual SpaceX line items above (it contains them). Company-stated, not a single auditable line. Public USAspending.gov ('Space Exploration Technologies Corp') captures unclassified primes only and under-counts vs this claim.",
+      "exclude_from_total": true
     },
     {
       "id": "tesla-doe-atvm-loan",
@@ -161,12 +163,12 @@
       "category": "Tesla regulatory credits (NOT a direct government payment)",
       "company": "Tesla",
       "amount": 11400000000,
-      "amount_label": "$11.4 billion (cumulative, per WaPo); ~$9B by summing 10-K annuals",
-      "time_period": "~2009-2024 (cumulative)",
-      "description": "Revenue Tesla earned selling regulatory compliance credits (state ZEV + federal GHG/CAFE) to OTHER automakers that fall short of government emissions/efficiency mandates.",
+      "amount_label": "$1.99 billion in 2025 alone; ~$11.4 billion cumulative",
+      "time_period": "2025 (annual); cumulative ~2009-2025",
+      "description": "Revenue Tesla earns selling regulatory compliance credits to other automakers: $1,790M (2023), $2,763M (2024), $1,993M (2025). For scale, 2025 net income attributable to common stockholders was $3,794M — so regulatory credits alone were about 52% of Tesla’s profit, and credits plus manufacturing credits came to roughly 97% of it.",
       "type": "REGULATORY_CREDIT",
       "agency": "N/A (government-CREATED compliance market; CARB / EPA / NHTSA set the mandates)",
-      "source_url": "https://www.washingtonpost.com/technology/interactive/2025/elon-musk-business-government-contracts-funding/",
+      "source_url": "https://www.sec.gov/Archives/edgar/data/1318605/000162828026003952/tsla-20251231.htm",
       "corroborating_url": "https://stockdividendscreener.com/auto-manufacturers/teslas-regulatory-credits-revenue/",
       "value_basis": "WaPo cites $11.4B cumulative; annual audited 10-K figures sum to a broadly consistent ~$9-11B",
       "confidence": "high",
@@ -181,7 +183,8 @@
         "2023": 1790000000,
         "2024": 2760000000
       },
-      "forward_note": "The 2025 federal tax-and-policy law eliminated the penalties underpinning the ZEV/CAFE credit market; this revenue stream is projected to shrink sharply (2025 already reported down ~28%)."
+      "forward_note": "The 2025 federal tax-and-policy law eliminated the penalties underpinning the ZEV/CAFE credit market; this revenue stream is projected to shrink sharply (2025 already reported down ~28%).",
+      "notes": "NOT a government payment. This money comes from rival automakers buying compliance credits in a market the government created — which is why it is excluded from the \"given\" headline. Credit revenue fell 49% in the first half of 2026 after the July 2025 tax law narrowed the programs."
     },
     {
       "id": "tesla-nevada-gigafactory",
@@ -266,16 +269,17 @@
       "category": "State/local subsidy (aggregate)",
       "company": "Tesla + SpaceX + SolarCity",
       "amount": 1500000000,
-      "amount_label": "at least ~$1.5 billion (state/local) / ~$3.6B combined all-government subsidies+credits",
-      "time_period": "2007-2025",
-      "description": "Good Jobs First's documented state/local subsidy component across all Musk companies (~$1.5B), rising to ~$3.6B when various federal+local subsidies and credits are combined.",
+      "amount_label": "$3.16 billion in subsidies + $467 million in loans (Tesla, Good Jobs First)",
+      "time_period": "cumulative, 110 subsidy awards; tracker data as of May 2026, retrieved 2026-08-26",
+      "description": "Good Jobs First’s Subsidy Tracker totals for Tesla: $3.16 billion across 110 subsidy awards, plus $467 million in federal loans. State and local awards account for $2.83 billion of it, led by Nevada ($1.98 billion) and New York ($750 million for the SolarCity plant).",
       "type": "STATE_LOCAL_SUBSIDY",
       "agency": "Multiple state/local governments (per Good Jobs First Subsidy Tracker)",
-      "source_url": "https://subsidytracker.goodjobsfirst.org/",
+      "source_url": "https://subsidytracker.goodjobsfirst.org/parent/tesla-inc",
       "corroborating_url": "https://goodjobsfirst.org/elon-musks-business-empire-is-built-on-38-billion-in-government-funding/",
       "value_basis": "GJF compiled tally; scope-sensitive",
       "confidence": "medium",
-      "notes": "AGGREGATE — contains the individual state/local items above; do not sum together. Scope discipline: ~$1.5B (state/local) != ~$3.6B (subsidies+credits all levels) != $38B (all-government). The $38B is dominated by federal SpaceX contracts, not state/local incentives."
+      "notes": "Good Jobs First says its own totals are floors — subsidy disclosure is patchy and many abatements are never published. Separately, the tracker files Twitter/X’s Oregon property-tax abatements under the SpaceX parent, so its $19.7M \"SpaceX\" total is mostly X, not the rocket company: actual SpaceX awards are about $3.2 million.",
+      "exclude_from_total": true
     },
     {
       "id": "tesla-ev-consumer-credit-30d",
@@ -292,7 +296,8 @@
       "confidence": "high",
       "is_estimate": false,
       "critical_nuance": "DEMAND-SIDE: money does not land on Tesla's books. Treasury/IRS reported $2B+ in point-of-sale EV credits to 300,000+ buyers (all makers) since Jan 2024, and ~87% of 2024 EV sales used the credit, but no reliable figure isolates Tesla buyers' share. Any 'Tesla buyers got $X billion' number is a DERIVED ESTIMATE (sales volume x credit), not official.",
-      "notes": "Program terminated Sept 30, 2025."
+      "notes": "Program terminated Sept 30, 2025.",
+      "exclude_from_total": true
     },
     {
       "id": "tesla-45x-manufacturing-credit",
@@ -309,7 +314,8 @@
       "value_basis": "Tesla FY2024 10-K disclosure (energy segment only)",
       "confidence": "high",
       "is_estimate": false,
-      "notes": "ENERGY-SEGMENT ONLY. Tesla's 4680 vehicle cells are also 45X-eligible but Tesla does not separately break out an automotive 45X figure, so company-wide 45X is undisclosed and likely higher. Separately, ITEP found Tesla paid $0 federal income tax on $2.3B of 2024 U.S. pretax income, aided by ~$300M in U.S. tax credits."
+      "notes": "Superseded by the FY2025 figure. Retained to show the trajectory: $115M (FY2023) to $756M (FY2024) in the energy segment alone.",
+      "exclude_from_total": true
     },
     {
       "id": "musk-america-pac-2024",
@@ -347,32 +353,62 @@
       "category": "Political spending (aggregate, money OUT)",
       "company": "Elon Musk (personal)",
       "amount": 290000000,
-      "amount_label": "more than $290 million",
-      "time_period": "2024 cycle (FEC year-end)",
-      "description": "Musk's total 2024 political giving across all committees (America PAC $238M + RBG PAC $20.5M + ~$0.92M to a Trump joint fundraising committee + others), per CNN's tally of year-end FEC filings.",
+      "amount_label": "$292.7 million",
+      "time_period": "2024 cycle (2023-01-01 to 2024-12-31; filings final)",
+      "description": "Musk’s total federal political giving in the 2024 cycle, summed from his own itemized FEC filings across 95 records: America PAC $249.8M, RBG PAC $20.5M, Senate Leadership Fund $10M, MAHA Alliance $6M, Sentinel Action Fund $2.3M, plus roughly fifty state Republican committees. About $56M of it was in-kind rather than cash.",
       "type": "POLITICAL_SPENDING",
       "agency": "FEC-reported",
-      "source_url": "https://www.cnn.com/2025/02/01/politics/elon-musk-2024-election-spending-millions",
+      "source_url": "https://www.fec.gov/data/receipts/individual-contributions/",
       "value_basis": "FEC year-end aggregate",
       "confidence": "high",
-      "notes": "AGGREGATE — contains the America PAC and RBG PAC items above. The '~$250M / quarter-billion' figure widely reported pre-election was an earlier snapshot; the final year-end total rose to >$290M."
+      "notes": "Net of roughly $1.16M of joint-fundraising pass-throughs that also appear as party-committee rows, the figure is about $291.6M. This confirms the widely reported \"more than $290 million\" from the filings themselves rather than from press restatement."
     },
     {
       "id": "musk-2026-cycle",
       "category": "Political spending (money OUT)",
       "company": "Elon Musk (personal)",
       "amount": 85000000,
-      "amount_label": "~$85 million (cycle-to-date)",
-      "time_period": "2026 midterm cycle (through ~mid-2026)",
-      "description": "Despite a 2025 'step back' and floating an 'America Party' after his Trump feud, Musk is again a top-tier GOP donor — ~$85M cycle-to-date (3rd-largest donor), incl. ~$20M to two GOP groups by end-2025 and $10M into the Kentucky Senate race (Jan 2026).",
+      "amount_label": "$90.3 million (cycle-to-date)",
+      "time_period": "2026 cycle, through 2026-06-30 (last filed period)",
+      "description": "Musk’s super-PAC giving so far this cycle: America PAC $50.3M, Fight for Kentucky $10M, Congressional Leadership Fund $10M, Senate Leadership Fund $10M, MAGA Inc. $5M, V-PAC $5M.",
       "type": "POLITICAL_SPENDING",
       "agency": "reported / OpenSecrets-aggregated (FEC underlying)",
-      "source_url": "https://thehill.com/policy/technology/5727198-musk-political-fray-big-2026-midterm-donations/",
+      "source_url": "https://www.fec.gov/data/receipts/individual-contributions/",
       "corroborating_url": "https://www.opensecrets.org/donor-lookup/results?name=elon+musk",
       "value_basis": "journalism/OpenSecrets tally; individual checks (e.g., $10M KY) are FEC-traceable",
-      "confidence": "medium",
+      "confidence": "high",
+      "is_estimate": false,
+      "notes": "A floor, not a total — quarterly super-PAC filers report only through June 30, and the heaviest spending window is still ahead. Two things are worth noting. Despite announcing an \"America Party\" in July 2025, no such committee exists at the FEC: a Form 1 that briefly appeared was disowned by Musk as fraudulent and removed. And of the $52.3M America PAC has spent this cycle, only $87,133 was federal independent expenditures — the money is going to operations, not to ads for candidates."
+    },
+    {
+      "id": "spacex-sec-federal-share-2025",
+      "category": "SpaceX government revenue (SEC filing)",
+      "company": "SpaceX",
+      "amount": null,
+      "amount_label": "~one-fifth of 2025 revenue",
+      "time_period": "FY2025 (calendar year)",
+      "description": "SpaceX completed its IPO in June 2026 and now files with the SEC. Its prospectus states plainly: \"In 2025, approximately one-fifth of our revenue was attributable to agencies within the U.S. federal government.\" On total 2025 revenue of $18.67 billion that implies roughly $3.9 billion. Named federal counterparties include NASA, the Department of War, GSA, and intelligence agencies; SpaceX says it is \"almost always the prime contractor.\"",
+      "type": "COMPANY_REPORTED_GOV_REVENUE",
+      "agency": "multiple",
+      "source_url": "https://www.sec.gov/Archives/edgar/data/1181412/000162828026042639/spaceexplorationtechnologi.htm",
+      "confidence": "high",
       "is_estimate": true,
-      "notes": "The $85M is an aggregated tally, not a single FEC line. The 'America Party' remains a concept, not an operational party able to field a 2026 slate."
+      "exclude_from_total": true,
+      "notes": "Read the denominator carefully. These financials are recast to include xAI (acquired Feb 2026) and X, so \"SpaceX revenue\" is not the rocket company alone: 2025 revenue splits into Space $4.09B, Starlink $11.39B, and AI $3.20B. The one-fifth share is stated; the dollar figure is our arithmetic on it."
+    },
+    {
+      "id": "tesla-manufacturing-credits-2025",
+      "category": "Federal manufacturing tax credit (supply-side, paid to Tesla)",
+      "company": "Tesla",
+      "amount": 1685000000,
+      "amount_label": "$1.69 billion (FY2025)",
+      "time_period": "FY2025 (vs $1.38B FY2024, $474M FY2023)",
+      "description": "Federal advanced-manufacturing production credits Tesla booked in 2025 — $565M against automotive cost of revenues and $1,120M against energy generation and storage. Unlike the consumer EV credit, this money benefits the company directly.",
+      "type": "TAX_CREDIT_SUBSIDY",
+      "agency": "Treasury / IRS",
+      "source_url": "https://www.sec.gov/Archives/edgar/data/1318605/000162828026003952/tsla-20251231.htm",
+      "confidence": "high",
+      "notes": "Tesla never uses the term \"45X\" in its filings — it calls these \"manufacturing credits\" and reports them as a reduction of cost of revenues in Note 2, not as revenue. Supersedes the earlier FY2024 figure."
     }
   ],
   "caveats": "CRITICAL DISTINCTIONS (read before citing any number):\n\n1. GROSS CONTRACT VALUE != SUBSIDY != PROFIT != PERSONAL INCOME. A federal CONTRACT (e.g., SpaceX's NASA/Space Force awards) is the government BUYING a service or good (launches, cargo, a lunar lander) at a negotiated price — it funds operations, payroll, and capital, and most of it is spent delivering the work. A SUBSIDY or tax break (Nevada/NY/Texas abatements) is closer to a gift or a forgone tax — the government gets no direct service in return. A LOAN (the DOE ATVM facility) is money that must be repaid; Tesla repaid its $465M in full, early, with a profit to taxpayers. Never collapse these into one blended 'Musk got $X' figure without breaking down by TYPE and saying plainly that contracts are the government buying things. That blending is exactly what critics (fairly) hit the Washington Post $38B number on.\n\n2. CONTRACTS (services rendered) vs SUBSIDIES (gifts/breaks). The bulk of the $38B headline is federal CONTRACTS to SpaceX — i.e., the government chose SpaceX as the lowest-cost, most-capable launch provider and paid market(ish) rates for services delivered. That is categorically different from a tax abatement handed over to attract a factory. A civic-accountability profile must show the split, not the lump sum.\n\n3. REGULATORY CREDITS ARE NOT GOVERNMENT MONEY. Tesla's $11.4B in regulatory-credit revenue is money paid by OTHER automakers inside a government-CREATED compliance market (state ZEV mandates + federal GHG/CAFE rules). The government sets the rules and creates the market but writes Tesla no check. Listing it as 'government money to Musk' is the single most misleading move available; flag it as regulatory-market revenue every time.\n\n4. CONSUMER EV CREDITS ARE DEMAND-SIDE. The up-to-$7,500 federal EV credit flows to BUYERS (or dealers), not to Tesla's books. It subsidizes demand for Tesla cars but is not a payment to Tesla. No official figure isolates how much went to Tesla buyers; any such number is a derived estimate. (By contrast, the 45X manufacturing credit IS a supply-side credit that hits Tesla's financials — $756M in FY2024 for the energy segment alone.)\n\n5. ANNOUNCED/CEILING != REALIZED. State subsidy packages (Nevada $1.3B, NY $750M) are authorized multi-year ceilings contingent on performance; realized value is lower and disputed. Federal contract 'ceiling' / 'up to' values (NSSL Phase 3 'up to $5.9B') are maximum potential, not obligated dollars.\n\n6. THE $38B IS A FLOOR, AND ALSO MIXES PAID + PROMISED. The Washington Post calls it 'at least $38B': it excludes classified defense/intelligence work (e.g., the ~$1.8B NRO/Starshield contract) and some grants with unavailable amounts, so the true figure is higher. But it also mixes cash already paid with funds committed/promised — so it is 'funding directed to' the companies, not cash-in-hand. A separate ~$11.8B in future contract obligations is NOT part of the $38B.\n\n7. AGGREGATES CONTAIN THEIR LINE ITEMS — DO NOT DOUBLE-COUNT. The SpaceX ~$22B cumulative, the GJF ~$1.5B state/local, and the Musk >$290M 2024 totals each CONTAIN the individual items listed under them. Summing the JSON 'amount' fields naively will over-count. Use the headline $38B (or the per-type breakdown) for any total, not a sum of all rows.\n\n8. ATTRIBUTING COMPANY MONEY TO THE PERSON IS DEFENSIBLE BUT IMPERFECT. It is fair to say public money flowed to an empire Musk founded, controls, and runs (founder + controlling shareholder + CEO/chair of SpaceX; founder, largest shareholder, and CEO of Tesla) — WITH the explicit framing that the dollars went to the COMPANIES and the person controls/benefits from them. It is analytically false to imply the dollars landed in Musk's personal account. Tesla in particular is a public company whose subsidies also benefit pension funds, index investors, and millions of small shareholders. The honest unit of truth is the company and the award; the person is a lens layered on top, with the control relationship stated, never an implied wire transfer to a checking account.\n\n9. POLITICAL SPENDING IS MONEY OUT, NOT MONEY IN. The America PAC / RBG PAC / 2026 figures are money Musk SPENT on politics, included for the side-by-side contrast (public money received vs political influence purchased). They are not government money received and must never be added to the $38B."
