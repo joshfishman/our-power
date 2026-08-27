@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { CreatePostModalLauncher } from '@/components/CreatePostModalLauncher';
 import { Posts } from '@/components/Posts';
 import { FeedDiscoveryCards, getFeedDiscovery } from '@/components/FeedDiscoveryCards';
@@ -39,19 +38,11 @@ export default async function Page() {
       <div className="mb-4 flex items-center justify-end">
         <ThemeSwitch />
       </div>
-      {user ? (
-        <CreatePostModalLauncher />
-      ) : (
-        <div className="mb-4 rounded border border-border bg-surface-elevated p-4">
-          <p className="text-sm text-foreground">
-            You&rsquo;re reading the public feed.{' '}
-            <Link href="/login" className="font-semibold text-accent underline">
-              Sign in
-            </Link>{' '}
-            to post, follow people, and get a feed of your own.
-          </p>
-        </div>
-      )}
+      {/* Signed in: compose. Signed out: nothing here — the nav's Login link is
+          the only prompt, so the page reads as the Action Network rather than
+          as a locked door. */}
+      {user && <CreatePostModalLauncher />}
+
       {/* Ways in — real campaigns and causes, so the page offers something to
           do rather than only something to read. */}
       <FeedDiscoveryCards campaigns={discovery.campaigns} causes={discovery.causes} />
