@@ -62,7 +62,10 @@ verb-first), never an issue or topic. Issues with no demands don't appear on the
 
 ### featured.csv
 
-`headline_id, headline, issue_id, backing_solution_ids, evidence_note`. Headline demands are curated,
+`headline_id, headline, issue_id, backing_solution_ids, evidence_note, plank_slug`. `plank_slug` marks
+headlines that state a Common Ground plank commitment (`src/lib/scorecard/federal-planks.ts`); blank
+means an editorial pick. Notes may cite the scorecard's own marker polls in `data/marker-popular-support.json`
+when the sweep found nothing newer; those are labeled as older polls. Headline demands are curated,
 plain-language demands shown prominently on the map (for example "End the war in Iran"). Each is
 backed by one or more demands in `support.csv` or `frontier.csv` (semicolon-separated ids), and its
 evidence note says what was actually polled. A headline's support is read from its backing demands,

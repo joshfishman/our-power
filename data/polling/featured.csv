@@ -1,75 +1,84 @@
-headline_id,headline,issue_id,backing_solution_ids,evidence_note
-end-the-war-in-iran,End the war in Iran,foreign-policy-israel-middle-east,negotiate-ceasefire-with-iran;end-iran-war-as-soon-as-possible;withdraw-us-forces-from-iran-war,"Polled as a negotiated ceasefire or deal (median 59%), ending the war as the top U.S. goal (50%), and full withdrawal (27%)."
-end-support-to-israel,End financial and military support to Israel,foreign-policy-israel-middle-east,cut-military-aid-to-israel,Polls in the sweep ask only about military aid (reduce or end: median 48%). No national poll on ending financial aid was found.
-raise-taxes-on-the-wealthy,Raise taxes on the wealthy,taxes-fairness,raise-taxes-on-millionaires;raise-taxes-income-over-400k;raise-taxes-on-billionaires;raise-top-income-tax-rate-millionaires;tax-wealth-over-50-million,"Every version polled has majority support; thresholds range from $400,000 of income to $50 million of wealth."
-raise-capital-gains-taxes,Raise capital gains taxes,taxes-fairness,tax-capital-gains-as-wages-over-1m;close-carried-interest-loophole,Polled as taxing capital gains like wages above $1 million and closing the carried-interest loophole.
-invest-in-small-towns,Invest in small towns and small businesses,rural-decline,rural-broadband-investment,No direct national poll found in the sweep. Rural broadband investment is the closest polled demand.
-healthcare-for-all,Healthcare for all,health-insurance-coverage,medicare-for-all-single-payer;create-public-option;medikids-universal-child-coverage,Polled as Medicare for All (8 polls) and a public option anyone can buy into; covering every child is an unpolled proposal.
-end-the-filibuster,End the filibuster,government-dysfunction,eliminate-senate-filibuster,Polled as eliminating the Senate filibuster: 19% and 32% support in the two polls in the sweep. A contested demand.
-get-big-money-out,Get big money out of elections,money-in-politics,overturn-citizens-united-amendment;disclose-dark-money-donors;small-donor-tax-credit,Backed by 3 polled demands across 5 polls; median support 67–82%.
-ban-stock-trading-in-congress,Ban stock trading in Congress,congressional-ethics,ban-congressional-stock-trading;bar-members-voting-on-own-holdings;ban-executive-justice-stock-trading,Backed by 3 polled demands across 6 polls; median support 71–77%.
-early-voting-everywhere,Make early voting available everywhere,voting-access,expand-early-voting;automatic-voter-registration,Backed by 2 polled demands across 2 polls; median support 60–68%.
-end-gerrymandering,End gerrymandering,partisan-gerrymandering,independent-redistricting;ban-partisan-gerrymandering,Backed by 2 polled demands across 5 polls; median support 56–69%.
-open-primaries,Open primaries to all voters,political-polarization,open-primaries;ranked-choice-voting,Backed by 2 polled demands across 2 polls; median support 66–71%.
-supreme-court-ethics,Bind the Supreme Court to an ethics code,supreme-court-trust,supreme-court-binding-ethics-code;supreme-court-mandatory-recusal;supreme-court-term-limits,Backed by 3 polled demands across 8 polls; median support 74–83%.
-keep-power-of-purse,Keep the power of the purse with Congress,presidential-power,congress-keeps-power-of-purse;protect-independent-agencies,Backed by 2 polled demands across 4 polls; median support 60–64%.
-balance-the-budget,Balance the federal budget,federal-debt,balance-the-federal-budget,Backed by 1 polled demand across 2 polls; median support 82%.
-audit-federal-spending,Audit every federal dollar,government-waste,full-audit-of-federal-spending,Backed by 1 polled demand across 1 poll; median support 77%.
-public-grocery-stores,Open public grocery stores where none exist,inflation-cost-of-living,municipal-grocery-stores,No national poll found in the sweep. Backed by a sourced proposal in frontier.csv.
-lower-interest-rates,Lower interest rates,economy-general,pressure-fed-lower-rates,Backed by 1 polled demand across 1 poll; median support 65%.
-raise-the-minimum-wage,Raise the minimum wage,wages-low,raise-federal-minimum-wage;raise-federal-minimum-wage-to-15;raise-federal-minimum-wage-to-20,Backed by 3 polled demands across 4 polls; median support 54–94%.
-guarantee-paid-vacation,Guarantee paid vacation,worker-protections,require-paid-vacation,Backed by 1 polled demand across 1 poll; median support 79%.
-protect-right-to-organize,Protect the right to organize,unions-labor,union-neutrality-agreements;require-project-labor-agreements,Backed by 2 polled demands across 3 polls; median support 58–58%.
-cut-taxes-tips-overtime,"Cut taxes on tips, overtime and Social Security",taxes-burden,no-tax-on-tips;no-tax-on-overtime;no-tax-on-social-security-benefits,Backed by 3 polled demands across 5 polls; median support 66–77%.
-baby-bonds,Seed an investment account for every newborn,income-inequality,child-investment-accounts,Backed by 1 polled demand across 2 polls; median support 58%.
-cap-credit-card-rates,Cap credit card interest rates,consumer-debt,cap-credit-card-interest-10pct;ban-junk-fees,Backed by 2 polled demands across 5 polls; median support 64–85%.
-break-up-monopolies,Break up monopolies,corporate-power,limit-big-tech-market-power,Backed by 1 polled demand across 1 poll; median support 69%.
-fair-trade-deals,Put labor and environmental standards in trade deals,trade-tariffs,labor-environment-standards-in-trade-deals,Backed by 1 polled demand across 2 polls; median support 88%.
-tariff-steel,Tariff steel and aluminum imports,manufacturing-jobs,steel-aluminum-tariffs,Backed by 1 polled demand across 1 poll; median support 33%.
-build-affordable-homes,Build more affordable homes,housing-affordability,builder-tax-incentives-affordable-homes;federal-funding-dense-affordable-housing;federal-role-housing-construction,Backed by 3 polled demands across 4 polls; median support 74–83%.
-camps-with-services,Move encampments into sites with services,homelessness,designated-homeless-camping-areas;require-treatment-for-homeless-housing-aid,Backed by 2 polled demands across 4 polls; median support 66–68%.
-cap-childcare-costs,Cap childcare at 7% of family income,childcare-cost,cap-child-care-costs;subsidize-child-care-low-income;free-or-low-cost-child-care,Backed by 3 polled demands across 3 polls; median support 64–79%.
-paid-family-leave,Guarantee paid family leave,paid-leave,national-paid-family-leave,Backed by 1 polled demand across 2 polls; median support 69%.
-phones-out-of-class,Ban phones in class,education-k12,ban-cellphones-in-class,Backed by 1 polled demand across 1 poll; median support 77%.
-fund-apprenticeships,Fund apprenticeships,college-cost,expand-apprenticeship-funding,Backed by 1 polled demand across 1 poll; median support 71%.
-fund-head-start-pre-k,Fund Head Start and pre-K,early-childhood-ed,fund-head-start;universal-pre-k,Backed by 2 polled demands across 2 polls; median support 73–87%.
-post-real-prices,Make hospitals post real prices,health-care-cost,hospital-price-transparency;regulate-insurer-prior-authorization,Backed by 2 polled demands across 4 polls; median support 89–89%.
-fair-drug-prices,Pay what other countries pay for drugs,prescription-drug-prices,international-reference-drug-pricing;most-favored-nation-drug-pricing;expand-medicare-drug-negotiation;cap-insulin-35-for-all,Backed by 4 polled demands across 6 polls; median support 76–86%.
-protect-medicaid,Protect Medicaid,medicaid,increase-medicaid-spending-to-cover-more;medicaid-access-over-fraud-crackdown,Backed by 2 polled demands across 3 polls; median support 62–70%.
-medicare-dental-vision,"Add dental, vision and hearing to Medicare",medicare,medicare-dental-vision-hearing,Backed by 1 polled demand across 1 poll; median support 90%.
-protect-social-security,Protect Social Security benefits,social-security,raise-taxes-to-preserve-social-security-benefits,Backed by 1 polled demand across 1 poll; median support 85%.
-keep-988,Keep the 988 crisis line fully running,mental-health,keep-988-lgbtq-youth-crisis-line,Backed by 1 polled demand across 1 poll; median support 69%.
-treatment-for-all,Fund addiction treatment for all,opioid-addiction,fund-addiction-treatment-for-all,Backed by 1 polled demand across 1 poll; median support 75%.
-pregnancy-emergency-care,Protect abortion care in pregnancy emergencies,abortion,protect-abortion-access-pregnancy-emergencies,Backed by 1 polled demand across 1 poll; median support 69%.
-staff-the-va,Fully staff the VA,veterans-care,,"No poll in the sweep asks about this directly. The only VA item polled is the reverse, making major staff cuts at the VA, which has a median of 22% support."
-e-verify-and-visas,Pair E-Verify with more work visas,immigration-legal-system,require-e-verify-with-more-work-visas;mandatory-e-verify,Backed by 2 polled demands across 2 polls; median support 70–83%.
-keep-death-penalty,Keep the death penalty for murder,crime-public-safety,death-penalty-for-murder,Backed by 1 polled demand across 5 polls; median support 52%.
-background-checks,Require background checks on all gun sales,gun-violence,universal-background-checks;red-flag-laws,Backed by 2 polled demands across 2 polls; median support 73–83%.
-police-body-cameras,Require police body cameras,policing-justice,require-police-body-cameras;national-police-misconduct-database;police-duty-to-intervene,Backed by 3 polled demands across 3 polls; median support 88–90%.
-legalize-marijuana,Legalize marijuana,drug-policy,legalize-marijuana;clear-marijuana-convictions;reschedule-medical-marijuana,Backed by 3 polled demands across 4 polls; median support 59–72%.
-cut-emissions,Cut greenhouse gas emissions every year,climate-change,emissions-reduction-goal;clean-electricity-standard;raise-vehicle-fuel-economy-standards,Backed by 3 polled demands across 3 polls; median support 76–80%.
-efficient-homes,Give tax credits for energy-efficient homes,energy-costs,home-energy-efficiency-tax-credits;permitting-reform-energy,Backed by 2 polled demands across 3 polls; median support 65–84%.
-ban-forever-chemicals,Ban forever chemicals from drinking water,environment-pollution,ban-pfas-in-drinking-water,Backed by 1 polled demand across 2 polls; median support 77%.
-keep-infrastructure-funding,"Keep investing in roads, bridges and broadband",infrastructure,protect-infrastructure-funding,Backed by 1 polled demand across 1 poll; median support 67%.
-fund-research,Fund science and energy research,science-research,fund-renewable-energy-research;protect-science-research-funding,Backed by 2 polled demands across 2 polls; median support 52–77%.
-ai-safety-rules,Require AI safety standards,artificial-intelligence,require-ai-safety-rules;require-ai-content-labels;create-federal-ai-regulatory-agency,Backed by 3 polled demands across 8 polls; median support 77–79%.
-rein-in-big-tech-data,Rein in Big Tech data use,big-tech-privacy,regulate-tech-companies-more;ban-ai-surveillance-pricing,Backed by 2 polled demands across 3 polls; median support 66–67%.
-parental-consent-social-media,Require parental consent for kids' social media,kids-online-safety,require-parental-consent-minor-social-media;require-age-verification-social-media,Backed by 2 polled demands across 2 polls; median support 78–85%.
-platforms-curb-false-info,Have platforms curb false information,misinformation,tech-companies-restrict-false-information,Backed by 1 polled demand across 1 poll; median support 60%.
-nuclear-arms-control,Keep nuclear arms control,national-defense,nuclear-arms-control,Backed by 1 polled demand across 2 polls; median support 78%.
-vote-before-war,Require a vote in Congress before war,war-powers,require-congress-approval-before-military-action;war-powers-funding-cutoff,Backed by 2 polled demands across 5 polls; median support 70–71%.
-audit-the-pentagon,Audit the Pentagon,pentagon-spending,pentagon-audit-penalty,No national poll found in the sweep. Backed by a sourced proposal in frontier.csv.
-ukraine-peace-guarantees,Back a Ukraine peace deal with U.S. guarantees,foreign-policy-ukraine-russia,us-security-guarantees-for-ukraine-peace,Backed by 1 polled demand across 4 polls; median support 66%.
-protect-us-tech-from-china,Restrict China's access to U.S. technology,foreign-policy-china,restrict-chinese-tech-access,Backed by 1 polled demand across 3 polls; median support 65%.
-expand-humanitarian-aid,Expand humanitarian aid abroad,diplomacy-foreign-aid,expand-humanitarian-aid;maintain-foreign-aid,Backed by 2 polled demands across 5 polls; median support 58–64%.
-end-racial-preferences,End racial preferences in government,race-relations,end-racial-preferences-in-government,Backed by 1 polled demand across 2 polls; median support 62%.
-national-service-year,Build a national service year,loneliness-civic-life,universal-national-service,No national poll found in the sweep. Backed by a sourced proposal in frontier.csv.
-hold-insurers-accountable,Let homeowners sue insurers that deny claims,disaster-resilience,insurer-claims-accountability,Backed by 1 polled demand across 1 poll; median support 84%.
-clean-up-food,Get chemical additives out of food,food-agriculture,stricter-limits-food-chemical-additives;ban-processed-foods-school-lunches,Backed by 2 polled demands across 9 polls; median support 75–77%.
-reward-kidney-donors,Reward living kidney donors,organ-donation,pay-living-kidney-donors,No national poll found in the sweep. Backed by a sourced proposal in frontier.csv.
-citizens-assemblies,Convene citizens' assemblies,citizen-deliberation,local-citizens-assemblies;citizens-initiative-review,No national poll found in the sweep. Backed by a sourced proposal in frontier.csv.
-fund-local-news,Fund local newsrooms,local-news,local-journalism-payroll-credit,No national poll found in the sweep. Backed by a sourced proposal in frontier.csv.
-puerto-rico-vote,Hold a binding vote on Puerto Rico's status,territorial-representation,puerto-rico-status-plebiscite,No national poll found in the sweep. Backed by a sourced proposal in frontier.csv.
-teach-civics,Teach civics in every school,civic-education,federal-civics-education-fund;civic-education-roadmap,No national poll found in the sweep. Backed by a sourced proposal in frontier.csv.
-popular-vote,Elect the president by popular vote,electoral-college,elect-president-by-national-popular-vote,Backed by 1 polled demand across 2 polls; median support 49%.
-keep-school-vaccines,Keep school vaccine requirements,vaccine-policy,keep-school-vaccine-requirements,Backed by 1 polled demand across 3 polls; median support 79%.
+headline_id,headline,issue_id,backing_solution_ids,evidence_note,plank_slug
+end-the-war-in-iran,End the war in Iran,foreign-policy-israel-middle-east,negotiate-ceasefire-with-iran;end-iran-war-as-soon-as-possible;withdraw-us-forces-from-iran-war,"Polled as a negotiated ceasefire or deal (median 59%), ending the war as the top U.S. goal (50%), and full withdrawal (27%).",
+end-support-to-israel,End financial and military support to Israel,foreign-policy-israel-middle-east,cut-military-aid-to-israel,Polls in the sweep ask only about military aid (reduce or end: median 48%). No national poll on ending financial aid was found.,
+raise-taxes-on-the-wealthy,Raise taxes on the wealthy,taxes-fairness,raise-taxes-on-millionaires;raise-taxes-income-over-400k;raise-taxes-on-billionaires;raise-top-income-tax-rate-millionaires;tax-wealth-over-50-million,"Every version polled has majority support; thresholds range from $400,000 of income to $50 million of wealth.",
+raise-capital-gains-taxes,Raise capital gains taxes,taxes-fairness,tax-capital-gains-as-wages-over-1m;close-carried-interest-loophole,Polled as taxing capital gains like wages above $1 million and closing the carried-interest loophole.,
+invest-in-small-towns,Invest in small towns and small businesses,rural-decline,rural-broadband-investment,No direct national poll found in the sweep. Rural broadband investment is the closest polled demand.,
+healthcare-for-all,Healthcare for all,health-insurance-coverage,medicare-for-all-single-payer;create-public-option;medikids-universal-child-coverage,Polled as Medicare for All (8 polls) and a public option anyone can buy into; covering every child is an unpolled proposal.,
+end-the-filibuster,End the filibuster,government-dysfunction,eliminate-senate-filibuster,Polled as eliminating the Senate filibuster: 19% and 32% support in the two polls in the sweep. A contested demand.,
+get-big-money-out,Overturn Citizens United,money-in-politics,overturn-citizens-united-amendment,Backed by 1 polled demand across 1 poll; median support 82%.,
+ban-stock-trading-in-congress,Ban stock trading in Congress,congressional-ethics,ban-congressional-stock-trading;bar-members-voting-on-own-holdings;ban-executive-justice-stock-trading,Backed by 3 polled demands across 6 polls; median support 71–77%.,honest-government
+early-voting-everywhere,Make early voting available everywhere,voting-access,expand-early-voting;automatic-voter-registration,Backed by 2 polled demands across 2 polls; median support 60–68%.,
+end-gerrymandering,End gerrymandering,partisan-gerrymandering,independent-redistricting;ban-partisan-gerrymandering,Backed by 2 polled demands across 5 polls; median support 56–69%.,
+open-primaries,Open primaries to all voters,political-polarization,open-primaries;ranked-choice-voting,Backed by 2 polled demands across 2 polls; median support 66–71%.,
+supreme-court-ethics,Bind the Supreme Court to an ethics code,supreme-court-trust,supreme-court-binding-ethics-code;supreme-court-mandatory-recusal;supreme-court-term-limits,Backed by 3 polled demands across 8 polls; median support 74–83%.,
+keep-power-of-purse,Keep the power of the purse with Congress,presidential-power,congress-keeps-power-of-purse;protect-independent-agencies,Backed by 2 polled demands across 4 polls; median support 60–64%.,
+balance-the-budget,Balance the federal budget,federal-debt,balance-the-federal-budget,Backed by 1 polled demand across 2 polls; median support 82%.,
+audit-federal-spending,Audit every federal dollar,government-waste,full-audit-of-federal-spending,Backed by 1 polled demand across 1 poll; median support 77%.,
+public-grocery-stores,Open public grocery stores where none exist,inflation-cost-of-living,municipal-grocery-stores,No national poll found in the sweep. Backed by a sourced proposal in frontier.csv.,
+lower-interest-rates,Lower interest rates,economy-general,pressure-fed-lower-rates,Backed by 1 polled demand across 1 poll; median support 65%.,
+raise-the-minimum-wage,Raise the minimum wage,wages-low,raise-federal-minimum-wage;raise-federal-minimum-wage-to-15;raise-federal-minimum-wage-to-20,Backed by 3 polled demands across 4 polls; median support 54–94%.,making-a-living
+guarantee-paid-vacation,Guarantee paid vacation,worker-protections,require-paid-vacation,Backed by 1 polled demand across 1 poll; median support 79%.,
+protect-right-to-organize,Protect the right to organize,unions-labor,union-neutrality-agreements;require-project-labor-agreements,Backed by 2 polled demands across 3 polls; median support 58–58%.,
+cut-taxes-tips-overtime,"Cut taxes on tips, overtime and Social Security",taxes-burden,no-tax-on-tips;no-tax-on-overtime;no-tax-on-social-security-benefits,Backed by 3 polled demands across 5 polls; median support 66–77%.,
+baby-bonds,Seed an investment account for every newborn,income-inequality,child-investment-accounts,Backed by 1 polled demand across 2 polls; median support 58%.,
+cap-credit-card-rates,Cap predatory loan rates,consumer-debt,cap-credit-card-interest-10pct;ban-junk-fees,"Backed by 2 polled demands across 5 polls; median support 64–85%. Polled here as a 10% credit card cap; scorecard marker data (older poll) shows 70% for a 36% APR cap on consumer loans (Morning Consult, 2020).",making-a-living
+break-up-monopolies,Break up monopolies,corporate-power,limit-big-tech-market-power,Backed by 1 polled demand across 1 poll; median support 69%.,peace-and-strength
+fair-trade-deals,Put labor and environmental standards in trade deals,trade-tariffs,labor-environment-standards-in-trade-deals,Backed by 1 polled demand across 2 polls; median support 88%.,peace-and-strength
+tariff-steel,Tariff steel and aluminum imports,manufacturing-jobs,steel-aluminum-tariffs,Backed by 1 polled demand across 1 poll; median support 33%.,
+build-affordable-homes,Build more affordable homes,housing-affordability,builder-tax-incentives-affordable-homes;federal-funding-dense-affordable-housing;federal-role-housing-construction,Backed by 3 polled demands across 4 polls; median support 74–83%.,making-a-living
+camps-with-services,Move encampments into sites with services,homelessness,designated-homeless-camping-areas;require-treatment-for-homeless-housing-aid,Backed by 2 polled demands across 4 polls; median support 66–68%.,
+cap-childcare-costs,Cap childcare at 7% of family income,childcare-cost,cap-child-care-costs;subsidize-child-care-low-income;free-or-low-cost-child-care,Backed by 3 polled demands across 3 polls; median support 64–79%.,the-care-we-owe
+paid-family-leave,Guarantee paid family leave,paid-leave,national-paid-family-leave,Backed by 1 polled demand across 2 polls; median support 69%.,making-a-living
+phones-out-of-class,Ban phones in class,education-k12,ban-cellphones-in-class,Backed by 1 polled demand across 1 poll; median support 77%.,
+fund-apprenticeships,Fund apprenticeships,college-cost,expand-apprenticeship-funding,Backed by 1 polled demand across 1 poll; median support 71%.,
+fund-head-start-pre-k,Fund Head Start and pre-K,early-childhood-ed,fund-head-start;universal-pre-k,Backed by 2 polled demands across 2 polls; median support 73–87%.,our-children-our-future
+post-real-prices,Make hospitals post real prices,health-care-cost,hospital-price-transparency;regulate-insurer-prior-authorization,Backed by 2 polled demands across 4 polls; median support 89–89%.,
+fair-drug-prices,Pay what other countries pay for drugs,prescription-drug-prices,international-reference-drug-pricing;most-favored-nation-drug-pricing;expand-medicare-drug-negotiation;cap-insulin-35-for-all,Backed by 4 polled demands across 6 polls; median support 76–86%.,the-care-we-owe
+protect-medicaid,Protect Medicaid,medicaid,increase-medicaid-spending-to-cover-more;medicaid-access-over-fraud-crackdown,Backed by 2 polled demands across 3 polls; median support 62–70%.,the-care-we-owe
+medicare-dental-vision,"Add dental, vision and hearing to Medicare",medicare,medicare-dental-vision-hearing,Backed by 1 polled demand across 1 poll; median support 90%.,the-care-we-owe
+protect-social-security,Keep Social Security solvent,social-security,raise-taxes-to-preserve-social-security-benefits,Backed by 1 polled demand across 1 poll; median support 85%.,the-care-we-owe
+keep-988,Keep the 988 crisis line fully running,mental-health,keep-988-lgbtq-youth-crisis-line,Backed by 1 polled demand across 1 poll; median support 69%.,
+treatment-for-all,Fund addiction treatment for all,opioid-addiction,fund-addiction-treatment-for-all,Backed by 1 polled demand across 1 poll; median support 75%.,
+pregnancy-emergency-care,Protect abortion care in pregnancy emergencies,abortion,protect-abortion-access-pregnancy-emergencies,Backed by 1 polled demand across 1 poll; median support 69%.,
+staff-the-va,Give veterans the care they earned,veterans-care,,"No poll in the sweep asks about this directly. The only VA item polled is the reverse, making major staff cuts at the VA, which has a median of 22% support. Scorecard marker data (older poll): 72% back expanded care for toxic-exposed veterans (Pew, March 2019, proxy for the PACT Act).",the-care-we-owe
+dreamers-path,Give Dreamers a path to citizenship,immigration-legal-system,path-to-citizenship-dreamers;path-to-legal-status,Backed by 2 polled demands across 8 polls; median support 64–72%.,
+keep-death-penalty,Keep the death penalty for murder,crime-public-safety,death-penalty-for-murder,Backed by 1 polled demand across 5 polls; median support 52%.,
+background-checks,Require background checks on all gun sales,gun-violence,universal-background-checks;red-flag-laws,Backed by 2 polled demands across 2 polls; median support 73–83%.,
+police-body-cameras,Require police body cameras,policing-justice,require-police-body-cameras;national-police-misconduct-database;police-duty-to-intervene,Backed by 3 polled demands across 3 polls; median support 88–90%.,
+legalize-marijuana,Legalize marijuana,drug-policy,legalize-marijuana;clear-marijuana-convictions;reschedule-medical-marijuana,Backed by 3 polled demands across 4 polls; median support 59–72%.,
+cut-emissions,Cut greenhouse gas emissions every year,climate-change,emissions-reduction-goal;clean-electricity-standard;raise-vehicle-fuel-economy-standards,Backed by 3 polled demands across 3 polls; median support 76–80%.,
+efficient-homes,Give tax credits for energy-efficient homes,energy-costs,home-energy-efficiency-tax-credits;permitting-reform-energy,Backed by 2 polled demands across 3 polls; median support 65–84%.,
+ban-forever-chemicals,Ban forever chemicals from drinking water,environment-pollution,ban-pfas-in-drinking-water,Backed by 1 polled demand across 2 polls; median support 77%.,our-children-our-future
+keep-infrastructure-funding,"Keep investing in roads, bridges and broadband",infrastructure,protect-infrastructure-funding,Backed by 1 polled demand across 1 poll; median support 67%.,our-children-our-future
+fund-research,Fund science and energy research,science-research,fund-renewable-energy-research;protect-science-research-funding,Backed by 2 polled demands across 2 polls; median support 52–77%.,our-children-our-future
+ai-safety-rules,Require AI safety standards,artificial-intelligence,require-ai-safety-rules;require-ai-content-labels;create-federal-ai-regulatory-agency,Backed by 3 polled demands across 8 polls; median support 77–79%.,
+rein-in-big-tech-data,Rein in Big Tech data use,big-tech-privacy,regulate-tech-companies-more;ban-ai-surveillance-pricing,Backed by 2 polled demands across 3 polls; median support 66–67%.,
+parental-consent-social-media,Require parental consent for kids' social media,kids-online-safety,require-parental-consent-minor-social-media;require-age-verification-social-media,Backed by 2 polled demands across 2 polls; median support 78–85%.,
+platforms-curb-false-info,Have platforms curb false information,misinformation,tech-companies-restrict-false-information,Backed by 1 polled demand across 1 poll; median support 60%.,
+nuclear-arms-control,Keep nuclear arms control,national-defense,nuclear-arms-control,Backed by 1 polled demand across 2 polls; median support 78%.,
+vote-before-war,Require a vote in Congress before war,war-powers,require-congress-approval-before-military-action;war-powers-funding-cutoff,Backed by 2 polled demands across 5 polls; median support 70–71%.,peace-and-strength
+audit-the-pentagon,Audit the Pentagon,pentagon-spending,pentagon-audit-penalty,No national poll found in the sweep. Backed by a sourced proposal in frontier.csv.,peace-and-strength
+ukraine-peace-guarantees,Back a Ukraine peace deal with U.S. guarantees,foreign-policy-ukraine-russia,us-security-guarantees-for-ukraine-peace,Backed by 1 polled demand across 4 polls; median support 66%.,
+protect-us-tech-from-china,Restrict China's access to U.S. technology,foreign-policy-china,restrict-chinese-tech-access,Backed by 1 polled demand across 3 polls; median support 65%.,
+expand-humanitarian-aid,Expand humanitarian aid abroad,diplomacy-foreign-aid,expand-humanitarian-aid;maintain-foreign-aid,Backed by 2 polled demands across 5 polls; median support 58–64%.,
+end-racial-preferences,End racial preferences in government,race-relations,end-racial-preferences-in-government,Backed by 1 polled demand across 2 polls; median support 62%.,
+national-service-year,Build a national service year,loneliness-civic-life,universal-national-service,No national poll found in the sweep. Backed by a sourced proposal in frontier.csv.,
+hold-insurers-accountable,Let homeowners sue insurers that deny claims,disaster-resilience,insurer-claims-accountability,Backed by 1 polled demand across 1 poll; median support 84%.,
+clean-up-food,Get chemical additives out of food,food-agriculture,stricter-limits-food-chemical-additives;ban-processed-foods-school-lunches,Backed by 2 polled demands across 9 polls; median support 75–77%.,
+reward-kidney-donors,Reward living kidney donors,organ-donation,pay-living-kidney-donors,No national poll found in the sweep. Backed by a sourced proposal in frontier.csv.,
+citizens-assemblies,Convene citizens' assemblies,citizen-deliberation,local-citizens-assemblies;citizens-initiative-review,No national poll found in the sweep. Backed by a sourced proposal in frontier.csv.,
+fund-local-news,Fund local newsrooms,local-news,local-journalism-payroll-credit,No national poll found in the sweep. Backed by a sourced proposal in frontier.csv.,
+puerto-rico-vote,Hold a binding vote on Puerto Rico's status,territorial-representation,puerto-rico-status-plebiscite,No national poll found in the sweep. Backed by a sourced proposal in frontier.csv.,
+teach-civics,Teach civics in every school,civic-education,federal-civics-education-fund;civic-education-roadmap,No national poll found in the sweep. Backed by a sourced proposal in frontier.csv.,
+popular-vote,Elect the president by popular vote,electoral-college,elect-president-by-national-popular-vote,Backed by 1 polled demand across 2 polls; median support 49%.,
+keep-school-vaccines,Keep school vaccine requirements,vaccine-policy,keep-school-vaccine-requirements,Backed by 1 polled demand across 3 polls; median support 79%.,
+refuse-corporate-pac-money,Refuse corporate PAC money,money-in-politics,,"No poll in the sweep asks about this directly. Scorecard marker data (older poll, proxy): 77% favor limits on campaign contributions (Pew, 2018).",honest-government
+close-the-revolving-door,Close the revolving door,congressional-ethics,lifetime-ban-foreign-lobbying-officials;lengthen-lobbying-cooling-off,"Backed by 2 polled demands across 2 polls; median support 44–82%. Scorecard marker data (older poll): 73% back an extended lobbying ban for former members (University of Maryland, 2017).",honest-government
+disclose-dark-money,Disclose all dark money,money-in-politics,disclose-dark-money-donors;federal-contractor-donation-disclosure,Backed by 2 polled demands across 4 polls; median support 81–81%.,honest-government
+publicly-finance-elections,Publicly finance elections,money-in-politics,small-donor-tax-credit;democracy-vouchers,Backed by 1 polled demand across 1 poll; median support 67%. Includes an unpolled proposal.,honest-government
+fund-public-schools,Fund strong public schools,education-k12,,No national poll on public school funding was found in the sweep. The plank keeps public dollars in public schools (no vouchers or charters).,our-children-our-future
+build-clean-energy,Build American clean energy,energy-costs,clean-energy-tax-credits;tech-neutral-energy-tax-credit;keep-ira-clean-energy-law,Backed by 3 polled demands across 9 polls; median support 58–64%.,our-children-our-future
+end-noncompetes-wage-theft,End non-competes and wage theft,worker-protections,,No national poll since October 2024 was found. Scorecard marker data cites an Ipsos poll on restricting non-competes (April 2024) without a recorded figure.,making-a-living
+end-forever-wars,End the forever wars,war-powers,bring-troops-home-from-iraq-syria;repeal-2001-aumf,Backed by 2 polled demands across 4 polls; median support 47–62%.,peace-and-strength
+fund-diplomacy,Fund diplomacy as seriously as defense,diplomacy-foreign-aid,maintain-state-department-funding,"Backed by 1 polled demand across 1 poll; median support 51%. Scorecard marker data (older poll, proxy): 60% support funding diplomacy and development aid (Pew, March 2025).",peace-and-strength
