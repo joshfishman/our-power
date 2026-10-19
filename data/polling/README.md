@@ -66,8 +66,8 @@ verb-first), never an issue or topic. Issues with no demands don't appear on the
 plain-language demands shown prominently on the map (for example "End the war in Iran"). Each is
 backed by one or more demands in `support.csv` or `frontier.csv` (semicolon-separated ids), and its
 evidence note says what was actually polled. A headline's support is read from its backing demands,
-never stated on its own. These are editorial picks; review them like any other platform position. Every issue cluster that has at least one demand has at least one headline, so the map labels
-are always demands, never problem statements.
+never stated on its own. These are editorial picks; review them like any other platform position. Map labels are always headline demands, never problem statements; a cluster without a headline
+is shown unlabeled.
 
 ### salience.csv
 
