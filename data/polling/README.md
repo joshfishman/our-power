@@ -74,11 +74,27 @@ is shown unlabeled.
 
 ### leverage.csv
 
-`from_headline_id, to_headline_id, relation, opposing_interest, source_status`. Links a root demand to
-the demands it would unlock. `BLOCKED_BY` means the `to` demand is held back by the problem the
-`from` demand fixes; `opposing_interest` names the money in the way. These links are **editorial
-claims**, not polling. Each one needs a lobbying or campaign-spending source (OpenSecrets, Senate LDA
-filings, or this project's own PAC data) before public launch.
+`from_headline_id, to_headline_id, relation, opposing_interest, source_status, evidence,
+evidence_source_url, evidence_period, note`. Links a root demand to the demands it would unlock.
+`BLOCKED_BY` means the `to` demand is held back by the problem the `from` demand fixes;
+`opposing_interest` names the money in the way. The link itself is an **editorial claim**, not
+polling; the `evidence` columns back it with a spending figure.
+
+- `source_status` is `sourced` when `evidence` carries a figure from a primary filing. 14 of 15 rows
+  are sourced. `raise-taxes-on-the-wealthy` is still editorial: wealthy donors are not a lobbying
+  registrant, and the widely reported New York Times billionaire-donor figure could not be opened to
+  verify (see its `note`).
+- Lobbying figures are from Senate LDA reports, queried from the lda.gov API (2025 calendar year,
+  Q1-Q4). Each figure is the organization's own self-filed total, latest amendment per quarter.
+  `evidence_source_url` holds one reproducible API query per organization, separated by `;`.
+- Campaign-spending figures are FEC committee totals (fec.gov), for United Democracy Project, the
+  AIPAC PAC and Leading the Future.
+- LDA totals cover **all issues** an organization lobbied on, not this demand alone. Read them as the
+  size of the interest's lobbying operation. Each row names specific organizations, not a whole
+  industry, so the figures understate total industry spending.
+- OpenSecrets industry totals were not used. The site blocks automated access, so its numbers could
+  not be checked first-hand. This project's `PacContribution` / `PacMoneyData` tables were not used
+  either: they record PAC money per legislator, not per industry, so they cannot give these totals.
 
 ### salience.csv
 
