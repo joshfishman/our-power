@@ -60,6 +60,14 @@ used to map pollster categories. `map_caption` is the plain problem statement sh
 cluster of demands on the map. Every map dot is a demand (a `solution_title`, always written
 verb-first), never an issue or topic. Issues with no demands don't appear on the map.
 
+### featured.csv
+
+`headline_id, headline, issue_id, backing_solution_ids, evidence_note`. Headline demands are curated,
+plain-language demands shown prominently on the map (for example "End the war in Iran"). Each is
+backed by one or more demands in `support.csv` or `frontier.csv` (semicolon-separated ids), and its
+evidence note says what was actually polled. A headline's support is read from its backing demands,
+never stated on its own. These are editorial picks; review them like any other platform position.
+
 ### salience.csv
 
 `issue_id, issue_title, pollster, series, field_start, field_end, sample_size, population,
