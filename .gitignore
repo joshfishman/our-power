@@ -54,6 +54,8 @@ next-env.d.ts
 !/data/pac-candidates.csv
 !/data/leadership-pacs-manual.csv
 !/data/ghost-beneficiary-*.csv
+# Curated issue-graph polling sweep (docs/ideas/issue-graph.md, Phase 0)
+!/data/polling/
 /CA/
 
 # Claude Code / Cursor working directories
