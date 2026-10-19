@@ -80,8 +80,10 @@ evidence_source_url, evidence_period, note`. Links a root demand to the demands 
 `opposing_interest` names the money in the way. The link itself is an **editorial claim**, not
 polling; the `evidence` columns back it with a spending figure.
 
-- `source_status` is `sourced` when `evidence` carries a figure from a primary filing. 14 of 15 rows
-  are sourced. `raise-taxes-on-the-wealthy` is still editorial: wealthy donors are not a lobbying
+- `source_status` is `sourced` when `evidence` carries a figure from a primary filing. 14 of the 37
+  rows are sourced. 22 rows were added by judgment against one test, "would rich or corporate
+  interests oppose this?", and are marked `editorial (judgment…)` with no evidence yet. Sourcing
+  them works the same way as the first 14. `raise-taxes-on-the-wealthy` is still editorial: wealthy donors are not a lobbying
   registrant, and the widely reported New York Times billionaire-donor figure could not be opened to
   verify (see its `note`).
 - Lobbying figures are from Senate LDA reports, queried from the lda.gov API (2025 calendar year,
