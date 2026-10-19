@@ -80,12 +80,14 @@ evidence_source_url, evidence_period, note`. Links a root demand to the demands 
 `opposing_interest` names the money in the way. The link itself is an **editorial claim**, not
 polling; the `evidence` columns back it with a spending figure.
 
-- `source_status` is `sourced` when `evidence` carries a figure from a primary filing. 14 of the 37
-  rows are sourced. 22 rows were added by judgment against one test, "would rich or corporate
-  interests oppose this?", and are marked `editorial (judgment…)` with no evidence yet. Sourcing
-  them works the same way as the first 14. `raise-taxes-on-the-wealthy` is still editorial: wealthy donors are not a lobbying
-  registrant, and the widely reported New York Times billionaire-donor figure could not be opened to
-  verify (see its `note`).
+- `source_status` is `sourced` when `evidence` carries a figure from a primary filing or a
+  reputable analysis. 15 of the 37 rows are sourced. 22 rows were added by judgment against one
+  test, "would rich or corporate interests oppose this?", and are marked `editorial (judgment…)` with
+  no evidence yet. Sourcing them works the same way as the first 15.
+- `raise-taxes-on-the-wealthy` is the one row sourced from a secondary analysis, not a filing. Wealthy
+  donors do not register as lobbyists, so it cites a New York Times analysis of FEC data (March
+  2026): 300 billionaires gave 19% of all 2024 federal contributions. The article is paywalled, so the
+  figure was checked against consistent excerpts, not the full text (see its `note`).
 - Lobbying figures are from Senate LDA reports, queried from the lda.gov API (2025 calendar year,
   Q1-Q4). Each figure is the organization's own self-filed total, latest amendment per quarter.
   `evidence_source_url` holds one reproducible API query per organization, separated by `;`.
