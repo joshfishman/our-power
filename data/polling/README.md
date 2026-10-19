@@ -72,6 +72,14 @@ evidence note says what was actually polled. A headline's support is read from i
 never stated on its own. These are editorial picks; review them like any other platform position. Map labels are always headline demands, never problem statements; a cluster without a headline
 is shown unlabeled.
 
+### leverage.csv
+
+`from_headline_id, to_headline_id, relation, opposing_interest, source_status`. Links a root demand to
+the demands it would unlock. `BLOCKED_BY` means the `to` demand is held back by the problem the
+`from` demand fixes; `opposing_interest` names the money in the way. These links are **editorial
+claims**, not polling. Each one needs a lobbying or campaign-spending source (OpenSecrets, Senate LDA
+filings, or this project's own PAC data) before public launch.
+
 ### salience.csv
 
 `issue_id, issue_title, pollster, series, field_start, field_end, sample_size, population,
