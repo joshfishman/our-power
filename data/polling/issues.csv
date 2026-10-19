@@ -1,81 +1,81 @@
-issue_id,issue_title,domain,plank_slug
-government-dysfunction,Government is not working / poor leadership in Washington,government,honest-government
-money-in-politics,Money and special interests have too much influence in politics,government,honest-government
-congressional-ethics,Members of Congress profit from their office (stock trading / lobbying revolving door),government,honest-government
-election-integrity,Confidence that elections are run fairly and securely,government,honest-government
-voting-access,Ease of registering and voting,government,honest-government
-partisan-gerrymandering,Politicians draw their own district lines,government,honest-government
-political-polarization,Division and hostility between Americans,government,
-supreme-court-trust,Trust in and accountability of the Supreme Court,government,
-presidential-power,Limits on presidential power and checks and balances,government,
-federal-debt,Federal debt and deficits,economy,
-government-waste,Wasteful federal spending,economy,
-inflation-cost-of-living,Prices and the cost of living,economy,making-a-living
-economy-general,The economy in general / jobs,economy,making-a-living
-wages-low,Wages too low to live on,economy,making-a-living
-worker-protections,Wage theft / non-competes / workplace rights,economy,making-a-living
-unions-labor,Workers' ability to organize and bargain,economy,making-a-living
-taxes-fairness,Taxes are unfair / the wealthy and corporations do not pay their share,economy,
-taxes-burden,Taxes are too high for working families,economy,
-income-inequality,Gap between rich and poor,economy,
-consumer-debt,Predatory lending and consumer debt,economy,making-a-living
-corporate-power,Big corporations have too much market power,economy,peace-and-strength
-trade-tariffs,Trade policy / tariffs and their effect on prices and jobs,economy,peace-and-strength
-manufacturing-jobs,Loss of American manufacturing jobs,economy,
-housing-affordability,Housing costs too much to rent or buy,housing,making-a-living
-homelessness,Homelessness,housing,
-childcare-cost,Childcare costs too much,family,our-children-our-future
-paid-leave,No paid family or medical leave,family,making-a-living
-education-k12,Quality of K-12 schools,education,our-children-our-future
-college-cost,College costs and student debt,education,our-children-our-future
-early-childhood-ed,Access to pre-K and early learning,education,our-children-our-future
-health-care-cost,Health care costs too much,health,the-care-we-owe
-prescription-drug-prices,Prescription drug prices,health,the-care-we-owe
-health-insurance-coverage,People lack health insurance / ACA coverage,health,the-care-we-owe
-medicaid,Medicaid funding and coverage,health,the-care-we-owe
-medicare,Medicare's future,health,the-care-we-owe
-social-security,Social Security's solvency,health,the-care-we-owe
-mental-health,Mental health care access,health,
-opioid-addiction,Opioid and fentanyl addiction and overdose,health,
-long-term-care,Care for aging parents and the disabled,health,the-care-we-owe
-abortion,Abortion policy,health,
-veterans-care,Care and benefits for veterans,health,the-care-we-owe
-immigration-border,Illegal immigration and border security,immigration,
-immigration-legal-system,Legal immigration system / work visas / Dreamers,immigration,
-crime-public-safety,Crime and public safety,safety,
-gun-violence,Gun violence,safety,
-policing-justice,Policing and criminal justice reform,safety,
-drug-policy,Marijuana and drug policy,safety,
-climate-change,Climate change,environment,our-children-our-future
-energy-costs,Energy and gasoline prices / energy supply,environment,our-children-our-future
-environment-pollution,Clean air and water / pollution,environment,our-children-our-future
-infrastructure,Roads / bridges / water systems / broadband,infrastructure,our-children-our-future
-science-research,Federal investment in science and research,infrastructure,our-children-our-future
-artificial-intelligence,Risks of artificial intelligence,technology,
-big-tech-privacy,Data privacy and the power of tech platforms,technology,
-kids-online-safety,Children and social media / online safety,technology,
-misinformation,False information and trust in media,technology,
-national-defense,National defense and military readiness,foreign,peace-and-strength
-war-powers,Congress's role in decisions to go to war,foreign,peace-and-strength
-pentagon-spending,Pentagon spending and accountability,foreign,peace-and-strength
-foreign-policy-ukraine-russia,Russia / Ukraine,foreign,peace-and-strength
-foreign-policy-israel-middle-east,Israel / Gaza / Middle East,foreign,peace-and-strength
-foreign-policy-china,Relations with China,foreign,peace-and-strength
-diplomacy-foreign-aid,Diplomacy and foreign aid,foreign,peace-and-strength
-moral-decline,Moral or ethical decline / family decline,society,
-race-relations,Race relations and discrimination,society,
-lgbt-issues,Transgender and LGBT policy,society,
-rural-decline,Decline of rural communities and small towns,society,
-loneliness-civic-life,Loneliness and weakened civic and community life,society,
-disaster-resilience,Natural disasters and insurance costs,environment,
-food-agriculture,Food prices / farm policy / food safety,economy,
-welfare-safety-net,Welfare and the safety net for people in need,economy,
-free-speech,Free speech and civil liberties,society,
-term-limits,Term limits for elected officials,government,honest-government
-organ-donation,Organ shortage and donation,health,
-citizen-deliberation,Citizens having a direct voice in decisions (assemblies / participatory budgeting),government,
-local-news,Decline of local news,technology,
-territorial-representation,Representation for U.S. territories,government,
-civic-education,Civic education,education,
-electoral-college,How the president is elected (Electoral College),government,
-vaccine-policy,Vaccine requirements and recommendations,health,
+issue_id,issue_title,map_caption,domain,plank_slug
+government-dysfunction,Government is not working / poor leadership in Washington,Congress can't pass budgets or get things done,government,honest-government
+money-in-politics,Money and special interests have too much influence in politics,Big donors and hidden money sway elections,government,honest-government
+congressional-ethics,Members of Congress profit from their office (stock trading / lobbying revolving door),Lawmakers trade stocks in companies they regulate,government,honest-government
+election-integrity,Confidence that elections are run fairly and securely,Many voters doubt elections are secure,government,honest-government
+voting-access,Ease of registering and voting,Registering and voting is harder than it needs to be,government,honest-government
+partisan-gerrymandering,Politicians draw their own district lines,Politicians draw their own districts,government,honest-government
+political-polarization,Division and hostility between Americans,Americans see each other as enemies,government,
+supreme-court-trust,Trust in and accountability of the Supreme Court,Justices answer to no enforceable ethics rules,government,
+presidential-power,Limits on presidential power and checks and balances,Presidents act without Congress's consent,government,
+federal-debt,Federal debt and deficits,The national debt keeps growing,economy,
+government-waste,Wasteful federal spending,Federal money is wasted,economy,
+inflation-cost-of-living,Prices and the cost of living,Everyday prices keep rising,economy,making-a-living
+economy-general,The economy in general / jobs,Good jobs are hard to find,economy,making-a-living
+wages-low,Wages too low to live on,Full-time pay doesn't cover the basics,economy,making-a-living
+worker-protections,Wage theft / non-competes / workplace rights,Employers withhold pay and block job changes,economy,making-a-living
+unions-labor,Workers' ability to organize and bargain,Workers who try to organize face retaliation,economy,making-a-living
+taxes-fairness,Taxes are unfair / the wealthy and corporations do not pay their share,Many doubt the wealthy and corporations pay their share,economy,
+taxes-burden,Taxes are too high for working families,Taxes squeeze working families,economy,
+income-inequality,Gap between rich and poor,The gap between rich and poor keeps widening,economy,
+consumer-debt,Predatory lending and consumer debt,High-interest lenders trap borrowers in debt,economy,making-a-living
+corporate-power,Big corporations have too much market power,A few big companies dominate their markets,economy,peace-and-strength
+trade-tariffs,Trade policy / tariffs and their effect on prices and jobs,Trade deals and tariffs hit jobs and prices,economy,peace-and-strength
+manufacturing-jobs,Loss of American manufacturing jobs,Factory jobs have moved overseas,economy,
+housing-affordability,Housing costs too much to rent or buy,Rent and home prices are out of reach,housing,making-a-living
+homelessness,Homelessness,More people are living on the streets,housing,
+childcare-cost,Childcare costs too much,Childcare is out of reach for many families,family,our-children-our-future
+paid-leave,No paid family or medical leave,Many workers can't take paid time off for a new baby or illness,family,making-a-living
+education-k12,Quality of K-12 schools,Too many students fall behind in school,education,our-children-our-future
+college-cost,College costs and student debt,College leaves students deep in debt,education,our-children-our-future
+early-childhood-ed,Access to pre-K and early learning,Many kids start school without pre-K,education,our-children-our-future
+health-care-cost,Health care costs too much,Medical bills drive families into debt,health,the-care-we-owe
+prescription-drug-prices,Prescription drug prices,Americans pay more for drugs than other countries,health,the-care-we-owe
+health-insurance-coverage,People lack health insurance / ACA coverage,Millions lack health insurance,health,the-care-we-owe
+medicaid,Medicaid funding and coverage,Medicaid cuts and new work rules,health,the-care-we-owe
+medicare,Medicare's future,Medicare's trust fund is running low,health,the-care-we-owe
+social-security,Social Security's solvency,Social Security's trust fund runs short in the 2030s,health,the-care-we-owe
+mental-health,Mental health care access,Mental health care is hard to get,health,
+opioid-addiction,Opioid and fentanyl addiction and overdose,Fentanyl kills tens of thousands a year,health,
+long-term-care,Care for aging parents and the disabled,Care for aging parents is costly and scarce,health,the-care-we-owe
+abortion,Abortion policy,States and Washington are split on abortion,health,
+veterans-care,Care and benefits for veterans,Veterans wait too long for care,health,the-care-we-owe
+immigration-border,Illegal immigration and border security,Illegal crossings strain the border,immigration,
+immigration-legal-system,Legal immigration system / work visas / Dreamers,The legal immigration system is backlogged,immigration,
+crime-public-safety,Crime and public safety,People don't feel safe from crime,safety,
+gun-violence,Gun violence,Gun deaths remain high,safety,
+policing-justice,Policing and criminal justice reform,Trust between police and communities is low,safety,
+drug-policy,Marijuana and drug policy,Marijuana is legal in many states but not federally,safety,
+climate-change,Climate change,"A warming climate brings more heat, fire and flood",environment,our-children-our-future
+energy-costs,Energy and gasoline prices / energy supply,Gas and power bills keep rising,environment,our-children-our-future
+environment-pollution,Clean air and water / pollution,Polluted air and water make people sick,environment,our-children-our-future
+infrastructure,Roads / bridges / water systems / broadband,"Roads, bridges and pipes are wearing out",infrastructure,our-children-our-future
+science-research,Federal investment in science and research,Research funding is uncertain,infrastructure,our-children-our-future
+artificial-intelligence,Risks of artificial intelligence,AI is advancing faster than the rules,technology,
+big-tech-privacy,Data privacy and the power of tech platforms,Tech companies collect and sell personal data,technology,
+kids-online-safety,Children and social media / online safety,Kids face harm on social media,technology,
+misinformation,False information and trust in media,False information spreads faster than facts,technology,
+national-defense,National defense and military readiness,Military readiness is under strain,foreign,peace-and-strength
+war-powers,Congress's role in decisions to go to war,Presidents go to war without a vote in Congress,foreign,peace-and-strength
+pentagon-spending,Pentagon spending and accountability,The Pentagon has never passed an audit,foreign,peace-and-strength
+foreign-policy-ukraine-russia,Russia / Ukraine,The war in Ukraine,foreign,peace-and-strength
+foreign-policy-israel-middle-east,Israel / Gaza / Middle East,"Conflict in Israel, Gaza and Iran",foreign,peace-and-strength
+foreign-policy-china,Relations with China,China's rising power and pressure on Taiwan,foreign,peace-and-strength
+diplomacy-foreign-aid,Diplomacy and foreign aid,"What the U.S. spends abroad, and why",foreign,peace-and-strength
+moral-decline,Moral or ethical decline / family decline,Many feel the country is losing its moral footing,society,
+race-relations,Race relations and discrimination,Americans disagree on how to address racial discrimination,society,
+lgbt-issues,Transgender and LGBT policy,Disputes over transgender policy in schools and sports,society,
+rural-decline,Decline of rural communities and small towns,Small towns are losing jobs and people,society,
+loneliness-civic-life,Loneliness and weakened civic and community life,Americans are lonelier and less connected,society,
+disaster-resilience,Natural disasters and insurance costs,Disasters are driving up home insurance,environment,
+food-agriculture,Food prices / farm policy / food safety,Groceries cost too much,economy,
+welfare-safety-net,Welfare and the safety net for people in need,The safety net misses some people and is misused by others,economy,
+free-speech,Free speech and civil liberties,Worries about censorship and free speech,society,
+term-limits,Term limits for elected officials,Members of Congress serve for decades,government,honest-government
+organ-donation,Organ shortage and donation,Thousands die waiting for organs,health,
+citizen-deliberation,Citizens having a direct voice in decisions (assemblies / participatory budgeting),Citizens rarely get a direct say between elections,government,
+local-news,Decline of local news,Local newspapers are disappearing,technology,
+territorial-representation,Representation for U.S. territories,Territory residents can't vote for president or Congress,government,
+civic-education,Civic education,Students leave school without learning how government works,education,
+electoral-college,How the president is elected (Electoral College),A president can win while losing the popular vote,government,
+vaccine-policy,Vaccine requirements and recommendations,Disputes over vaccine rules and safety,health,

@@ -53,6 +53,13 @@ the caveats below to decide what to check first.
 | `party_dem`, `party_rep`, `party_ind` | Support within each party, only where the pollster published crosstabs                                                                                                                                                                                                                                             |
 | `source_url`, `notes`                 | Most primary page reached, and everything a reviewer needs to know about the row                                                                                                                                                                                                                                   |
 
+### issues.csv
+
+`issue_id, issue_title, map_caption, domain, plank_slug`. `issue_title` is the research label
+used to map pollster categories. `map_caption` is the plain problem statement shown over a
+cluster of demands on the map. Every map dot is a demand (a `solution_title`, always written
+verb-first), never an issue or topic. Issues with no demands don't appear on the map.
+
 ### salience.csv
 
 `issue_id, issue_title, pollster, series, field_start, field_end, sample_size, population,
