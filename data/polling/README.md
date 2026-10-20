@@ -187,6 +187,16 @@ paid leave, drug prices, Medicare/Medicaid, mental health, long-term care, China
 Pentagon spending, rural decline, loneliness, disasters. That is a finding: they are issues
 people support action on when asked, not ones they volunteer.
 
+## Merged duplicates
+
+Same-policy demands that appeared under different wording or clusters were merged so their polls
+combine: each merged row's `notes` starts with `[Merged duplicate: was <old id>, "<old title>"]`.
+Merged on 2026-10-19: Social Security benefit tax (2 ids), AI data-center pause (2), newborn
+investment accounts (3, incl. one frontier row), police license-plate cameras (2), international /
+most-favored-nation drug pricing (2), surveillance pricing (2), and millionaire tax increases (2).
+Different levels or scopes of a policy ($15 vs $20 minimum wage, Iran vs all military action) are
+kept separate on purpose.
+
 ## Dropped in review
 
 - Napolitan News "balance the federal budget": it rested on a search snippet with no field dates.
