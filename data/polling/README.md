@@ -195,8 +195,9 @@ Merged on 2026-10-19: Social Security benefit tax (2 ids), AI data-center pause 
 investment accounts (3, incl. one frontier row), police license-plate cameras (2), international /
 most-favored-nation drug pricing (2), surveillance pricing (2), and millionaire tax increases (2).
 Minimum wage: the generic, $15 and $20 versions were then combined into one demand ("Raise the federal
-minimum wage"); each poll's `notes` keeps the level it asked about. Other differences in scope (Iran vs
-all military action) stay separate on purpose.
+minimum wage"); each poll's `notes` keeps the level it asked about. Oil and gas: general production, offshore drilling and fracking were combined into one demand
+("Expand U.S. oil and gas production, including offshore drilling and fracking"). Other differences in
+scope (Iran vs all military action) stay separate on purpose.
 
 **Removed by editorial decision (2026-10-19):** all DEI-related items: `end-dei-programs`,
 `keep-dei-programs`, `end-racial-preferences-in-government` (support.csv), the frontier idea
